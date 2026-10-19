@@ -1,5 +1,5 @@
 /*
- * 엔틱 디자인 토큰 (design-drafts.html의 엔틱 시안 기준)
+ * 엔틱 디자인 토큰 (docs/design/design-drafts.html의 엔틱 시안 기준)
  * 색·글자·간격·터치 크기는 여기 변수만 쓴다. 컴포넌트에서 색 값을 직접 쓰지 않는다.
  */
 :root {
