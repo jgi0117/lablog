@@ -2,7 +2,8 @@ import { useMemo, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useParams } from 'react-router-dom'
 import { useBackend } from '../app/BackendContext'
 import { EmptyState } from '../components/EmptyState'
-import { SaveIndicator } from '../components/SaveIndicator'
+import { SaverIndicator } from '../components/SaverIndicator'
+import { useLatest } from '../hooks/useLatest'
 import { useDebouncedSave } from '../hooks/useDebouncedSave'
 import { useProjectBundles } from '../hooks/useBundles'
 import type { ProjectContext } from '../hooks/useProjectContext'
@@ -15,9 +16,10 @@ function ProjectEditor({ project, onSaved }: { project: Project; onSaved: (p: Pr
   const [description, setDescription] = useState(project.description)
   const [error, setError] = useState('')
   const pending = useRef<Patch<Project>>({})
-  const saver = useDebouncedSave<Patch<Project>>(async (patch) => {
+  const version = useLatest(project.version)
+  const saver = useDebouncedSave<Patch<Project>>(async (patch, { force }) => {
     pending.current = {}
-    onSaved(await backend.projects.update(project.id, patch))
+    onSaved(await backend.projects.update(project.id, patch, force ? undefined : version.current))
   })
   const change = (patch: Patch<Project>) => {
     pending.current = { ...pending.current, ...patch }
@@ -57,7 +59,7 @@ function ProjectEditor({ project, onSaved }: { project: Project; onSaved: (p: Pr
           }}
         />
       </div>
-      <SaveIndicator status={saver.status} savedAt={saver.savedAt} onRetry={() => void saver.retry()} />
+      <SaverIndicator saver={saver} />
     </details>
   )
 }

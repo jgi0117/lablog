@@ -1,6 +1,7 @@
 import { LablogDB } from './db'
 import { createSearchIndex } from './searchIndex'
 import { guard, makeEntity, nowIso } from './util'
+import { createChangeBus } from '../../services/changeBus'
 import {
   BACKUP_SCHEMA_VERSION,
   ConflictError,
@@ -39,9 +40,27 @@ function bump<T extends Entity>(cur: T, patch: Partial<T>): T {
  * IndexedDB(Dexie) 구현. 목록·검색은 데이터를 읽어 메모리에서 거르고 정렬한다.
  * 실험 수백 건 규모에서는 충분하다. 느려지면 Phase 4~5에서 색인을 붙인다.
  */
-export function createLocalBackend(name = 'lablog'): LocalBackend {
+export function createLocalBackend(name = 'lablog', options: { channel?: Parameters<typeof createChangeBus>[1] } = {}): LocalBackend {
   const db = new LablogDB(name)
   const index = createSearchIndex(db)
+  // 이 탭에서 일어난 모든 변경을 다른 탭에 알린다. 받는 쪽은 onExternalChange로 듣는다.
+  const bus = createChangeBus(`lablog-changes:${name}`, options.channel)
+  for (const [table, key] of [
+    [db.projects, 'projects'],
+    [db.experiments, 'experiments'],
+    [db.steps, 'steps'],
+    [db.dataItems, 'dataItems'],
+  ] as const) {
+    table.hook('creating', (id) => {
+      bus.post({ table: key, id: String(id) })
+    })
+    table.hook('updating', (_mods, id) => {
+      bus.post({ table: key, id: String(id) })
+    })
+    table.hook('deleting', (id) => {
+      bus.post({ table: key, id: String(id) })
+    })
+  }
 
   const getExperiment = async (id: ID): Promise<Experiment> => {
     const e = await db.experiments.get(id)
@@ -353,6 +372,17 @@ export function createLocalBackend(name = 'lablog'): LocalBackend {
       }),
   }
 
-  return { projects, experiments, steps, dataItems, backup, close: () => db.close() }
+  return {
+    projects,
+    experiments,
+    steps,
+    dataItems,
+    backup,
+    onExternalChange: (listener) => bus.subscribe(() => listener()),
+    close: () => {
+      bus.close()
+      db.close()
+    },
+  }
 }
 

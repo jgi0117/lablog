@@ -19,5 +19,19 @@ export class LablogDB extends Dexie {
       steps: 'id, experimentId, [experimentId+order], deletedAt',
       dataItems: 'id, experimentId, [experimentId+kind], deletedAt',
     })
+    // v2: 프로젝트별 최근순 조회용 복합 인덱스 추가. 예전에 저장된 실험에 빠져 있을 수 있는 필드를 채운다.
+    this.version(2)
+      .stores({
+        experiments: 'id, status, projectId, updatedAt, deletedAt, [projectId+updatedAt]',
+      })
+      .upgrade((tx) =>
+        tx
+          .table('experiments')
+          .toCollection()
+          .modify((e: Record<string, unknown>) => {
+            if (!Array.isArray(e.tags)) e.tags = []
+            if (e.sourceExperimentId === undefined) e.sourceExperimentId = null
+          }),
+      )
   }
 }

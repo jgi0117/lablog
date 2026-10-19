@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useBackend } from '../app/BackendContext'
 import { ProgressBar } from '../components/ProgressBar'
-import { SaveIndicator } from '../components/SaveIndicator'
+import { SaverIndicator } from '../components/SaverIndicator'
+import { useLatest } from '../hooks/useLatest'
 import { useToast } from '../components/Toast'
 import { useDebouncedSave } from '../hooks/useDebouncedSave'
 import { useExperiment } from '../hooks/useExperimentContext'
@@ -28,9 +29,10 @@ export function OverviewPage() {
   const [titleError, setTitleError] = useState('')
   const pending = useRef<Patch<Experiment>>({})
 
-  const saver = useDebouncedSave<Patch<Experiment>>(async (patch) => {
+  const version = useLatest(experiment.version)
+  const saver = useDebouncedSave<Patch<Experiment>>(async (patch, { force }) => {
     pending.current = {}
-    setExperiment(await backend.experiments.update(experiment.id, patch))
+    setExperiment(await backend.experiments.update(experiment.id, patch, force ? undefined : version.current))
   })
 
   useEffect(() => {
@@ -126,7 +128,7 @@ export function OverviewPage() {
           <label htmlFor="ov-tags">태그</label>
           <input id="ov-tags" className="input" value={form.tags} onChange={(e) => change('tags', e.target.value)} placeholder="쉼표로 구분" />
         </div>
-        <SaveIndicator status={saver.status} savedAt={saver.savedAt} onRetry={() => void saver.retry()} />
+        <SaverIndicator saver={saver} />
       </div>
 
       <aside className="overview__side">

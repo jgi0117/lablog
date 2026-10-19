@@ -160,4 +160,9 @@ export interface DataBackend {
   steps: StepRepository
   dataItems: DataItemRepository
   backup: BackupRepository
+  /**
+   * 다른 탭(또는 다른 기기)에서 데이터가 바뀌면 알려 준다. 해제 함수를 돌려준다.
+   * 로컬 구현은 BroadcastChannel, Supabase 구현(Phase 9)은 실시간 구독으로 채운다. 없어도 앱은 동작한다.
+   */
+  onExternalChange?(listener: () => void): () => void
 }

@@ -3,6 +3,8 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useBackend } from '../app/BackendContext'
 import { useToast } from '../components/Toast'
 import { useDebouncedSave } from '../hooks/useDebouncedSave'
+import { useLatest } from '../hooks/useLatest'
+import { SaverIndicator } from '../components/SaverIndicator'
 import { useExperiment } from '../hooks/useExperimentContext'
 import { completionWarnings } from '../domain/rules'
 import type { DataItem, DataKind } from '../domain/types'
@@ -10,6 +12,7 @@ import { completeExperiment, numericHistory, reopenExperiment } from '../service
 import { catalogNames, findCatalogUnit, type CatalogItem } from '../services/catalog'
 import { useItemCatalog } from '../hooks/useItemCatalog'
 import { COMMON_UNITS, valueWarning } from '../services/validation'
+import { logUsage } from '../services/usage'
 
 const KIND_LABEL: Record<DataKind, string> = { condition: '조건', result: '결과' }
 
@@ -27,8 +30,9 @@ function DataRow({ item, items, catalog, autoFocus, onChanged, onRemove }: RowPr
   const [name, setName] = useState(item.name)
   const [value, setValue] = useState(item.value)
   const [unit, setUnit] = useState(item.unit)
-  const saver = useDebouncedSave<{ name: string; value: string; unit: string }>(async (patch) => {
-    onChanged(await backend.dataItems.update(item.id, patch))
+  const version = useLatest(item.version)
+  const saver = useDebouncedSave<{ name: string; value: string; unit: string }>(async (patch, { force }) => {
+    onChanged(await backend.dataItems.update(item.id, patch, force ? undefined : version.current))
   })
   const warning = valueWarning(value, numericHistory(items, name, item.id))
   const save = (n: string, v: string, u: string) => saver.schedule({ name: n, value: v, unit: u })
@@ -83,14 +87,7 @@ function DataRow({ item, items, catalog, autoFocus, onChanged, onRemove }: RowPr
           {warning}
         </p>
       )}
-      {saver.status === 'error' && (
-        <p className="field__error" role="alert">
-          저장하지 못했습니다.{' '}
-          <button type="button" className="link" onClick={() => void saver.retry()}>
-            다시 시도
-          </button>
-        </p>
-      )}
+      {(saver.status === 'error' || saver.status === 'conflict') && <SaverIndicator saver={saver} />}
     </li>
   )
 }
@@ -135,6 +132,7 @@ export function DataPage() {
   const hasWarn = warn.openSteps > 0 || warn.emptyResults > 0
 
   const complete = async () => {
+    logUsage('complete', { openSteps: warn.openSteps, emptyResults: warn.emptyResults })
     setExperiment(await completeExperiment(backend, experiment))
     toast.show({ message: '실험을 완료했습니다' })
     navigate(`/experiments/${experiment.id}`)

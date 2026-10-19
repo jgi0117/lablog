@@ -1,5 +1,9 @@
 import { useEffect, useRef, type FormEvent } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { useBackupExport } from '../hooks/useBackupExport'
+import { ErrorBoundary } from './ErrorBoundary'
+import { ExternalChangeBanner } from './ExternalChangeBanner'
+import { StorageBanner } from './StorageBanner'
 
 const NAV = [
   { to: '/', label: '홈', end: true },
@@ -9,12 +13,17 @@ const NAV = [
   { to: '/templates', label: '템플릿', end: false },
 ]
 
-/** 왼쪽 메뉴(좁은 화면에서는 아래), 상단 전역 검색과 + 새 실험. 수행 모드는 이 셸을 쓰지 않는다. */
+/**
+ * 왼쪽 메뉴(좁은 화면에서는 아래), 상단 전역 검색과 + 새 실험, 설정. 수행 모드는 이 셸을 쓰지 않는다.
+ * 한 화면에서 오류가 나도 메뉴와 검색은 남도록 본문만 오류 경계로 감싼다.
+ */
 export function AppShell() {
   const navigate = useNavigate()
   const location = useLocation()
   const [params] = useSearchParams()
+  const exportNow = useBackupExport()
   const input = useRef<HTMLInputElement>(null)
+  const main = useRef<HTMLElement>(null)
   // 검색 화면에서는 현재 검색어를 검색창에 보여 준다.
   const currentQuery = location.pathname === '/search' ? (params.get('q') ?? '') : ''
 
@@ -37,6 +46,16 @@ export function AppShell() {
 
   return (
     <div className="shell">
+      <a
+        href="#main"
+        className="skip-link"
+        onClick={(e) => {
+          e.preventDefault()
+          main.current?.focus()
+        }}
+      >
+        본문으로 건너뛰기
+      </a>
       <nav className="rail" aria-label="메인 메뉴">
         <div className="rail__logo" aria-hidden="true">
           L
@@ -68,9 +87,16 @@ export function AppShell() {
           <Link to="/experiments/new" className="btn btn--primary">
             + 새 실험
           </Link>
+          <Link to="/settings" className="topbar__link">
+            설정
+          </Link>
         </header>
-        <main className="shell__main">
-          <Outlet />
+        <StorageBanner />
+        <ExternalChangeBanner />
+        <main id="main" ref={main} tabIndex={-1} className="shell__main">
+          <ErrorBoundary resetKey={location.pathname} onExport={() => void exportNow()}>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
     </div>

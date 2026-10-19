@@ -2,8 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useBackend } from '../app/BackendContext'
 import { EmptyState } from '../components/EmptyState'
+import { ExternalChangeBanner } from '../components/ExternalChangeBanner'
 import { ProgressBar } from '../components/ProgressBar'
-import { SaveIndicator } from '../components/SaveIndicator'
+import { SaverIndicator } from '../components/SaverIndicator'
+import { useLatest } from '../hooks/useLatest'
 import { StatusBadge } from '../components/StatusBadge'
 import { useToast } from '../components/Toast'
 import { useDebouncedSave } from '../hooks/useDebouncedSave'
@@ -18,6 +20,8 @@ import {
   stepStats,
 } from '../services/experimentService'
 import { roman } from '../services/text'
+import { getSettings } from '../services/settings'
+import { logUsage } from '../services/usage'
 import { catalogNames, findCatalogUnit, type CatalogItem } from '../services/catalog'
 import { useItemCatalog } from '../hooks/useItemCatalog'
 import { COMMON_UNITS, valueWarning } from '../services/validation'
@@ -38,8 +42,9 @@ function CurrentStepPanel({ step, items, catalog, onStep, onItem }: PanelProps) 
   const [name, setName] = useState('')
   const [value, setValue] = useState('')
   const [unit, setUnit] = useState('')
-  const saver = useDebouncedSave<string>(async (text) => {
-    onStep(await backend.steps.update(step.id, { note: text }))
+  const version = useLatest(step.version)
+  const saver = useDebouncedSave<string>(async (text, { force }) => {
+    onStep(await backend.steps.update(step.id, { note: text }, force ? undefined : version.current))
   })
   const warning = valueWarning(value, numericHistory(items, name))
 
@@ -128,7 +133,7 @@ function CurrentStepPanel({ step, items, catalog, onStep, onItem }: PanelProps) 
           onBlur={() => void saver.flush()}
         />
       </div>
-      <SaveIndicator status={saver.status} savedAt={saver.savedAt} onRetry={() => void saver.retry()} />
+      <SaverIndicator saver={saver} />
     </div>
   )
 }
@@ -167,6 +172,7 @@ export function RunPage() {
   // 수행 중 화면이 꺼지지 않게 한다. 지원하지 않으면 조용히 넘어간다.
   useEffect(() => {
     let lock: { release: () => Promise<void> } | null = null
+    if (!getSettings().wakeLock) return
     const nav = navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<{ release: () => Promise<void> }> } }
     nav.wakeLock
       ?.request('screen')
@@ -201,6 +207,7 @@ export function RunPage() {
     const step = steps[index]
     const was = step.done
     const updated = await backend.steps.setDone(step.id, !was)
+    logUsage('step_toggle', { done: updated.done })
     const list = steps.map((x) => (x.id === updated.id ? updated : x))
     setSteps(list)
     if (updated.done && index === focus) {
@@ -281,6 +288,7 @@ export function RunPage() {
         </div>
       </header>
 
+      <ExternalChangeBanner />
       {experiment.status === 'done' && (
         <div className="run__banner" role="status">
           완료된 실험입니다.{' '}

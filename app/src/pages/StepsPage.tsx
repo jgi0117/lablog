@@ -2,7 +2,8 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useBackend } from '../app/BackendContext'
 import { EmptyState } from '../components/EmptyState'
-import { SaveIndicator } from '../components/SaveIndicator'
+import { SaverIndicator } from '../components/SaverIndicator'
+import { useLatest } from '../hooks/useLatest'
 import { useToast } from '../components/Toast'
 import { useDebouncedSave } from '../hooks/useDebouncedSave'
 import { useExperiment } from '../hooks/useExperimentContext'
@@ -22,8 +23,9 @@ interface RowProps {
 function StepEditRow({ step, index, count, onChanged, onMove, onRemove }: RowProps) {
   const backend = useBackend()
   const [text, setText] = useState(step.content)
-  const saver = useDebouncedSave<string>(async (content) => {
-    onChanged(await backend.steps.update(step.id, { content }))
+  const version = useLatest(step.version)
+  const saver = useDebouncedSave<string>(async (content, { force }) => {
+    onChanged(await backend.steps.update(step.id, { content }, force ? undefined : version.current))
   })
 
   return (
@@ -52,7 +54,7 @@ function StepEditRow({ step, index, count, onChanged, onMove, onRemove }: RowPro
           ✕
         </button>
       </div>
-      {saver.status === 'error' && <SaveIndicator status="error" onRetry={() => void saver.retry()} />}
+      {(saver.status === 'error' || saver.status === 'conflict') && <SaverIndicator saver={saver} />}
     </li>
   )
 }

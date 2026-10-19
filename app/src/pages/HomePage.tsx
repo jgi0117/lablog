@@ -1,13 +1,19 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useBackend } from '../app/BackendContext'
 import { EmptyState } from '../components/EmptyState'
 import { ExperimentCard } from '../components/ExperimentCard'
+import { BackupReminder } from '../components/BackupReminder'
 import { GapList } from '../components/GapList'
 import { useToast } from '../components/Toast'
 import { useAllBundles } from '../hooks/useBundles'
+import { useBackupExport } from '../hooks/useBackupExport'
 import { seedDemo } from '../data/seed'
 import { findGaps, type Gap } from '../services/analysis'
+import { backupReminder, backupSnoozedUntil, lastBackupAt, snoozeBackupReminder } from '../services/backup'
+import { dataTimestamps } from '../services/projectData'
+import { logGapsSnapshot } from '../services/usage'
+import { formatRelative } from '../services/format'
 import { stepStats } from '../services/experimentService'
 
 /** 홈: 진행 중인 실험, 놓친 것(모든 프로젝트), 최근 실험. 실험이 없으면 첫 실험 안내. */
@@ -15,6 +21,9 @@ export function HomePage() {
   const backend = useBackend()
   const toast = useToast()
   const { state, reload } = useAllBundles()
+  const exportNow = useBackupExport()
+  // 백업 기록(마지막 백업, 미루기)이 바뀌면 다시 계산하려고 쓰는 숫자
+  const [backupTick, setBackupTick] = useState(0)
 
   const view = useMemo(() => {
     if (!state) return null
@@ -39,6 +48,31 @@ export function HomePage() {
     return { names, running, recent, gaps, gapProject, total: state.bundles.length }
   }, [state])
 
+  // 모든 프로젝트의 확인할 것 개수를 이 기기에 기록해 둔다(주마다 줄어드는지 보기 위해).
+  const gapCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const g of view?.gaps ?? []) counts[g.type] = (counts[g.type] ?? 0) + 1
+    return counts
+  }, [view])
+  useEffect(() => {
+    if (view) logGapsSnapshot(gapCounts)
+  }, [view, gapCounts])
+
+  const reminder = useMemo(() => {
+    if (!state) return null
+    const { newestChange, oldestCreated } = dataTimestamps(state.bundles)
+    return backupReminder({
+      now: new Date(),
+      hasData: state.bundles.length > 0,
+      lastBackup: lastBackupAt(),
+      newestChange,
+      oldestCreated,
+      snoozedUntil: backupSnoozedUntil(),
+    })
+    // backupTick이 바뀌면 localStorage의 백업 기록을 다시 읽는다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, backupTick])
+
   const onSeed = async () => {
     const n = await seedDemo(backend)
     toast.show({ message: `데모 실험 ${n}건을 넣었습니다 (필름 개발 프로젝트 3개)` })
@@ -60,6 +94,20 @@ export function HomePage() {
   return (
     <section>
       <h1 className="page-title">오늘의 실험</h1>
+      {reminder && (
+        <BackupReminder
+          kind={reminder}
+          lastBackupLabel={lastBackupAt() ? formatRelative(lastBackupAt() as string) : undefined}
+          onBackup={async () => {
+            await exportNow()
+            setBackupTick((n) => n + 1)
+          }}
+          onSnooze={() => {
+            snoozeBackupReminder(3)
+            setBackupTick((n) => n + 1)
+          }}
+        />
+      )}
       {view.total === 0 ? (
         <EmptyState title="첫 실험을 만들어 보세요" description="맡은 프로젝트의 실험 기록을 한곳에 모읍니다.">
           <Link to="/experiments/new" className="btn btn--primary">

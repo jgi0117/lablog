@@ -11,6 +11,7 @@ import { formatRelative } from '../services/format'
 import { snippet } from '../services/highlight'
 import { roman } from '../services/text'
 import { suggestQueries, vocabularyFrom } from '../services/suggest'
+import { logUsage, noteOpenFromSearch, noteSearchShown } from '../services/usage'
 
 type Group = 'all' | 'title' | 'step' | 'condition' | 'result'
 
@@ -87,13 +88,17 @@ export function SearchPage() {
     Promise.all([backend.experiments.search(q, filter), backend.experiments.list(filter, 'updated_desc')])
       .then(([hits, list]) => {
         if (!alive) return
+        const ms = performance.now() - started
         setResult({
           hits,
           experiments: new Map(list.items.map((e) => [e.id, e])),
           suggestions: hits.length === 0 ? suggestQueries(q, vocabularyFrom(list.items)) : [],
-          ms: performance.now() - started,
+          ms,
         })
         setPendingQuery(null)
+        // KR1: 결과가 뜬 시각을 기억해 두고, 결과에서 실험을 열면 걸린 시간을 기록한다.
+        logUsage('search', { ms: Math.round(ms), hits: hits.length })
+        noteSearchShown()
       })
       .catch(() => {
         if (!alive) return
@@ -212,7 +217,7 @@ export function SearchPage() {
             return (
               <li key={h.experimentId} className="result">
                 <div className="result__top">
-                  <Link to={`/experiments/${e.id}`} className="result__title">
+                  <Link to={`/experiments/${e.id}`} className="result__title" onClick={noteOpenFromSearch}>
                     <Highlight text={e.title} query={q} />
                   </Link>
                   <StatusBadge status={e.status} />

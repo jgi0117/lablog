@@ -3,24 +3,9 @@ import { EmptyState } from '../components/EmptyState'
 import { useToast } from '../components/Toast'
 import { useProject } from '../hooks/useProjectContext'
 import { matrixToCsv } from '../services/analysis'
+import { downloadText } from '../services/download'
+import { logUsage } from '../services/usage'
 import { STATUS_LABEL } from '../components/StatusBadge'
-
-/** CSV를 내려받는다. 브라우저가 파일 저장을 막으면 false. */
-export function downloadText(filename: string, text: string): boolean {
-  try {
-    const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }))
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
-    return true
-  } catch {
-    return false
-  }
-}
 
 /** 프로젝트의 모든 실험을 항목별로 한 표에 모은다. 같은 이름의 조건·결과는 한 열이 된다. */
 export function ProjectDataPage() {
@@ -40,6 +25,7 @@ export function ProjectDataPage() {
 
   const exportCsv = () => {
     const ok = downloadText(`${project.name}-데이터.csv`, matrixToCsv(matrix))
+    if (ok) logUsage('csv_export', { rows: matrix.rows.length })
     toast.show({ message: ok ? 'CSV 파일을 저장했습니다' : '파일을 저장하지 못했습니다. 브라우저의 다운로드 설정을 확인하세요.' })
   }
 

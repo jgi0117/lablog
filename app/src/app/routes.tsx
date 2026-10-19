@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Link, Route, Routes } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { EmptyState } from '../components/EmptyState'
@@ -8,15 +9,18 @@ import { HomePage } from '../pages/HomePage'
 import { NewExperimentPage } from '../pages/NewExperimentPage'
 import { OverviewPage } from '../pages/OverviewPage'
 import { PlaceholderPage } from '../pages/PlaceholderPage'
-import { ProjectAnalysisPage } from '../pages/ProjectAnalysisPage'
-import { ProjectDataPage } from '../pages/ProjectDataPage'
-import { ProjectLayout } from '../pages/ProjectLayout'
-import { ProjectOverviewPage } from '../pages/ProjectOverviewPage'
-import { ProjectsPage } from '../pages/ProjectsPage'
 import { RunPage } from '../pages/RunPage'
 import { SearchPage } from '../pages/SearchPage'
 import { StepsPage } from '../pages/StepsPage'
 import { TrashPage } from '../pages/TrashPage'
+
+// 처음 화면에 필요 없는 무거운 화면(차트, 설정)은 열 때 불러온다.
+const ProjectsPage = lazy(() => import('../pages/ProjectsPage').then((m) => ({ default: m.ProjectsPage })))
+const ProjectLayout = lazy(() => import('../pages/ProjectLayout').then((m) => ({ default: m.ProjectLayout })))
+const ProjectOverviewPage = lazy(() => import('../pages/ProjectOverviewPage').then((m) => ({ default: m.ProjectOverviewPage })))
+const ProjectDataPage = lazy(() => import('../pages/ProjectDataPage').then((m) => ({ default: m.ProjectDataPage })))
+const ProjectAnalysisPage = lazy(() => import('../pages/ProjectAnalysisPage').then((m) => ({ default: m.ProjectAnalysisPage })))
+const SettingsPage = lazy(() => import('../pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
 
 function NotFound() {
   return (
@@ -34,29 +38,31 @@ function NotFound() {
  */
 export function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/experiments/:id/run" element={<RunPage />} />
-      <Route element={<AppShell />}>
-        <Route index element={<HomePage />} />
-        <Route path="projects" element={<ProjectsPage />} />
-        <Route path="projects/:id" element={<ProjectLayout />}>
-          <Route index element={<ProjectOverviewPage />} />
-          <Route path="data" element={<ProjectDataPage />} />
-          <Route path="analysis" element={<ProjectAnalysisPage />} />
+    <Suspense fallback={<p className="muted loading">불러오는 중…</p>}>
+      <Routes>
+        <Route path="/experiments/:id/run" element={<RunPage />} />
+        <Route element={<AppShell />}>
+          <Route index element={<HomePage />} />
+          <Route path="projects" element={<ProjectsPage />} />
+          <Route path="projects/:id" element={<ProjectLayout />}>
+            <Route index element={<ProjectOverviewPage />} />
+            <Route path="data" element={<ProjectDataPage />} />
+            <Route path="analysis" element={<ProjectAnalysisPage />} />
+          </Route>
+          <Route path="experiments" element={<ExperimentsPage />} />
+          <Route path="experiments/new" element={<NewExperimentPage />} />
+          <Route path="experiments/:id" element={<ExperimentLayout />}>
+            <Route index element={<OverviewPage />} />
+            <Route path="steps" element={<StepsPage />} />
+            <Route path="data" element={<DataPage />} />
+          </Route>
+          <Route path="search" element={<SearchPage />} />
+          <Route path="templates" element={<PlaceholderPage title="템플릿" phase="Phase 9 (s3)" />} />
+          <Route path="trash" element={<TrashPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+          <Route path="*" element={<NotFound />} />
         </Route>
-        <Route path="experiments" element={<ExperimentsPage />} />
-        <Route path="experiments/new" element={<NewExperimentPage />} />
-        <Route path="experiments/:id" element={<ExperimentLayout />}>
-          <Route index element={<OverviewPage />} />
-          <Route path="steps" element={<StepsPage />} />
-          <Route path="data" element={<DataPage />} />
-        </Route>
-        <Route path="search" element={<SearchPage />} />
-        <Route path="templates" element={<PlaceholderPage title="템플릿" phase="Phase 8 (s3)" />} />
-        <Route path="trash" element={<TrashPage />} />
-        <Route path="settings" element={<PlaceholderPage title="설정" phase="Phase 5" />} />
-        <Route path="*" element={<NotFound />} />
-      </Route>
-    </Routes>
+      </Routes>
+    </Suspense>
   )
 }

@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { EmptyState } from '../components/EmptyState'
 import { GapList } from '../components/GapList'
 import { ScatterChart, TrendChart } from '../components/charts'
 import { useProject } from '../hooks/useProjectContext'
 import { linearFit, scatterPoints, trendPoints, type Column } from '../services/analysis'
+import { logUsage } from '../services/usage'
 
 /** 상관계수를 말로 풀어 쓴다. 숫자만 보여 주면 오해하기 쉽다. */
 export function describeCorrelation(r: number): string {
@@ -16,6 +17,9 @@ export function describeCorrelation(r: number): string {
 /** 프로젝트 분석: 조건과 결과의 관계, 실험 순서에 따른 추세, 이상치 후보. */
 export function ProjectAnalysisPage() {
   const { matrix, gaps } = useProject()
+  useEffect(() => {
+    logUsage('analysis_view')
+  }, [])
 
   const numericCount = (c: Column) => matrix.rows.filter((r) => r.cells[c.key]?.num != null).length
   const numeric = useMemo(() => matrix.columns.filter((c) => numericCount(c) >= 3), [matrix]) // eslint-disable-line react-hooks/exhaustive-deps
