@@ -65,7 +65,7 @@ test('키보드만으로 검색해서 결과를 열 수 있다', async ({ page }
 
 test('수행 모드에서 방향키로 단계를 옮기고 Space로 체크한다', async ({ page }) => {
   await seedDemo(page)
-  await page.goto('/experiments/concrete-794/run')
+  await page.goto('/experiments/concrete-827/run')
   await expect(page.getByRole('button', { name: /^IV\./ })).toBeVisible()
   // 방향키는 입력칸 밖에서만 단계를 옮긴다. 단계 버튼에 포커스를 두고 누른다.
   await page.getByRole('button', { name: /^III\./ }).focus()

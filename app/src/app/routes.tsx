@@ -2,7 +2,11 @@ import { lazy, Suspense } from 'react'
 import { Link, Route, Routes } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { EmptyState } from '../components/EmptyState'
+import { DataAnalysisPage } from '../pages/DataAnalysisPage'
+import { DataExportPage } from '../pages/DataExportPage'
+import { DataLayout } from '../pages/DataLayout'
 import { DataPage } from '../pages/DataPage'
+import { DataTablePage } from '../pages/DataTablePage'
 import { DeviationsPage } from '../pages/DeviationsPage'
 import { ExperimentsPage } from '../pages/ExperimentsPage'
 import { ExperimentLayout } from '../pages/ExperimentLayout'
@@ -57,6 +61,11 @@ export function AppRoutes() {
             <Route path="steps" element={<StepsPage />} />
             <Route path="data" element={<DataPage />} />
             <Route path="deviations" element={<DeviationsPage />} />
+          </Route>
+          <Route path="data" element={<DataLayout />}>
+            <Route index element={<DataTablePage />} />
+            <Route path="analysis" element={<DataAnalysisPage />} />
+            <Route path="export" element={<DataExportPage />} />
           </Route>
           <Route path="search" element={<SearchPage />} />
           <Route path="templates" element={<TemplatesPage />} />

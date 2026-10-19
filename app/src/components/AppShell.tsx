@@ -9,6 +9,7 @@ const NAV = [
   { to: '/', label: '홈', end: true },
   { to: '/projects', label: '프로젝트', end: false },
   { to: '/experiments', label: '실험', end: false },
+  { to: '/data', label: '데이터', end: false },
   { to: '/search', label: '검색', end: false },
   { to: '/templates', label: '템플릿', end: false },
 ]

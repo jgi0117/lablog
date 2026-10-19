@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { expect, test, type Browser, type Download } from '@playwright/test'
-import { createExperiment, importBackup, seedDemo } from './helpers'
+import { createExperiment, importBackup, seedDemo, skipBulkImportOnWindowsWebKit } from './helpers'
 
 async function readDownload(d: Download): Promise<string> {
   const path = await d.path()
@@ -13,7 +13,8 @@ async function freshDevice(browser: Browser, baseURL: string) {
   return { context, page: await context.newPage() }
 }
 
-test('백업 파일을 다른 브라우저에서 가져오면 그대로 복원된다', async ({ page, browser, baseURL }) => {
+test('백업 파일을 다른 브라우저에서 가져오면 그대로 복원된다', async ({ page, browser, baseURL }, testInfo) => {
+  skipBulkImportOnWindowsWebKit(test, testInfo.project.name)
   await seedDemo(page)
   await page.goto('/settings')
   await expect(page.getByText('아직 없음')).toBeVisible()
@@ -21,8 +22,8 @@ test('백업 파일을 다른 브라우저에서 가져오면 그대로 복원�
   expect(download.suggestedFilename()).toMatch(/^lablog-backup-\d{4}-\d{2}-\d{2}-\d{4}\.json$/)
   const text = await readDownload(download)
   const original = JSON.parse(text)
-  expect(original.experiments).toHaveLength(48)
-  await expect(page.getByText(/백업 파일을 저장했습니다 \(실험 48건\)/)).toBeVisible()
+  expect(original.experiments).toHaveLength(200)
+  await expect(page.getByText(/백업 파일을 저장했습니다 \(실험 200건\)/)).toBeVisible()
   await expect(page.getByText('아직 없음')).toHaveCount(0) // 마지막 백업 시각이 남는다
 
   const other = await freshDevice(browser, baseURL!)
@@ -60,7 +61,8 @@ test('이상한 파일은 이유를 알려 주고 아무것도 바꾸지 않는�
   await expect(page.locator('.card')).toHaveCount(1)
 })
 
-test('바꾸기는 먼저 현재 데이터를 백업 파일로 저장한 뒤 바꾼다', async ({ page, browser, baseURL }) => {
+test('바꾸기는 먼저 현재 데이터를 백업 파일로 저장한 뒤 바꾼다', async ({ page, browser, baseURL }, testInfo) => {
+  skipBulkImportOnWindowsWebKit(test, testInfo.project.name)
   // 다른 기기에서 만든 백업 파일
   const other = await freshDevice(browser, baseURL!)
   let demoBackup = ''
@@ -90,7 +92,7 @@ test('바꾸기는 먼저 현재 데이터를 백업 파일로 저장한 뒤 바
   await expect(page.getByText(/가져오기를 마쳤습니다 \(바꾸기/)).toBeVisible()
   await page.goto('/experiments')
   await expect(page.getByText('지금 있던 실험')).toHaveCount(0)
-  await expect(page.getByText('1–12 / 48')).toBeVisible()
+  await expect(page.getByText('1–12 / 200')).toBeVisible()
 })
 
 test('새로고침과 브라우저 재시작 뒤에도 입력한 내용이 남는다', async ({ page, browser, baseURL }) => {
@@ -108,11 +110,11 @@ test('새로고침과 브라우저 재시작 뒤에도 입력한 내용이 남�
 test('두 탭에서 같은 항목을 고치면 충돌을 알리고 덮어쓰기를 고를 수 있다 (E6, E9)', async ({ page, context }) => {
   await seedDemo(page)
   const tabB = await context.newPage()
-  await page.goto('/experiments/concrete-794')
-  await tabB.goto('/experiments/concrete-794')
+  await page.goto('/experiments/concrete-827')
+  await tabB.goto('/experiments/concrete-827')
   const titleA = page.getByLabel('제목', { exact: true })
   const titleB = tabB.getByLabel('제목', { exact: true })
-  await expect(titleA).toHaveValue('배합 #794, 재령 14일')
+  await expect(titleA).toHaveValue('배합 #827, 재령 3일')
 
   // B가 먼저 고친다
   await titleB.fill('탭 B에서 바꾼 제목')

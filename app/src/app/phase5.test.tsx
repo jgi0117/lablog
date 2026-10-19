@@ -72,10 +72,10 @@ describe('백업 내보내기와 가져오기 (설정)', () => {
     open('/settings', b)
     expect(await screen.findByText('아직 없음')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '백업 파일로 내보내기' }))
-    expect(await screen.findByText(/백업 파일을 저장했습니다 \(실험 48건\)/)).toBeInTheDocument()
+    expect(await screen.findByText(/백업 파일을 저장했습니다 \(실험 200건\)/)).toBeInTheDocument()
     expect(files).toHaveLength(1)
     expect(files[0].name).toMatch(/^lablog-backup-\d{4}-\d{2}-\d{2}-\d{4}\.json$/)
-    expect(JSON.parse(await files[0].text).experiments).toHaveLength(48)
+    expect(JSON.parse(await files[0].text).experiments).toHaveLength(200)
     expect(lastBackupAt()).not.toBeNull()
     expect(readUsage().some((e) => e.name === 'backup_export')).toBe(true)
   })
@@ -95,14 +95,14 @@ describe('백업 내보내기와 가져오기 (설정)', () => {
     const input = await screen.findByLabelText('백업 파일 가져오기')
     await user.upload(input, new File([text], 'backup.json', { type: 'application/json' }))
     const preview = await screen.findByRole('region', { name: '가져올 내용 미리보기' })
-    expect(within(preview).getByText(/프로젝트 4개 · 실험 48건/)).toBeInTheDocument()
+    expect(within(preview).getByText(/프로젝트 4개 · 실험 200건/)).toBeInTheDocument()
     await user.click(within(preview).getByRole('button', { name: '가져오기' }))
     expect(await screen.findByText(/가져오기를 마쳤습니다 \(합치기/)).toBeInTheDocument()
-    expect((await target.experiments.list()).total).toBe(48)
+    expect((await target.experiments.list()).total).toBe(200)
     expect(await target.projects.list()).toHaveLength(4)
     // 한 번 더 합쳐도 같은 항목은 늘지 않는다
     const again = await target.backup.exportAll()
-    expect(again.experiments).toHaveLength(48)
+    expect(again.experiments).toHaveLength(200)
   })
 
   it('이상한 파일은 이유를 알려 주고 아무것도 바꾸지 않는다', async () => {
@@ -148,7 +148,7 @@ describe('백업 내보내기와 가져오기 (설정)', () => {
     expect(JSON.parse(await files[0].text).experiments.map((e: { title: string }) => e.title)).toEqual(['지금 있던 실험'])
     const titles = (await b.experiments.list()).items.map((e) => e.title)
     expect(titles).not.toContain('지금 있던 실험')
-    expect(titles).toHaveLength(48)
+    expect(titles).toHaveLength(200)
   })
 
   it('바꾸기 전 백업이 실패하면 가져오기를 멈춘다', async () => {

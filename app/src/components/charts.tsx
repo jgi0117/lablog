@@ -155,7 +155,10 @@ export function TrendChart({ points, yLabel }: TrendProps) {
   const y = scale([yTicks[0], yTicks[yTicks.length - 1]], [H - M.bottom, M.top])
   const med = median(ys)
   const byX = new Map(points.map((p) => [p.x, p]))
-  const xTicks = points.map((p) => p.x)
+  // 실험이 많으면 눈금을 10개 안팎으로 솎아 글자가 겹치지 않게 한다.
+  const step = Math.max(1, Math.ceil(n / 10))
+  const xTicks = points.filter((_, i) => i % step === 0).map((p) => p.x)
+  const dot = n > 80 ? 2.5 : n > 30 ? 4 : 5.5
   return (
     <Frame title={`실험 순서에 따른 ${yLabel}`} summary={`${n}건, 중앙값 ${fmt(med)}${points.some((p) => p.outlier) ? ', 이상치 후보 포함' : ''}`}>
       <Axes xTicks={xTicks} yTicks={yTicks} x={x} y={y} xLabel="실험 순서 (시작한 날짜순)" yLabel={yLabel} xFormat={(v) => shortTitle(byX.get(v)?.title ?? String(v))} />
@@ -175,7 +178,7 @@ export function TrendChart({ points, yLabel }: TrendProps) {
           onKeyDown={(e) => e.key === 'Enter' && open(p.experimentId)}
         >
           <title>{`${p.title}\n${yLabel} ${fmt(p.y)}`}</title>
-          <circle cx={x(p.x)} cy={y(p.y)} r={p.outlier ? 8 : 5.5} />
+          <circle cx={x(p.x)} cy={y(p.y)} r={p.outlier ? Math.max(dot + 2.5, 5) : dot} />
         </g>
       ))}
     </Frame>

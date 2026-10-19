@@ -35,7 +35,7 @@ test('프로젝트 데이터 표를 CSV로 내려받는다', async ({ page }) =>
   await seedDemo(page)
   await page.goto('/projects/demo-project-1/data')
   await expect(page.getByRole('table')).toBeVisible()
-  await expect(page.getByRole('row')).toHaveCount(14) // 머리글 2줄 + 실험 12건
+  await expect(page.getByRole('row')).toHaveCount(51) // 머리글 1줄 + 실험 50건(한 번에 보기 기본 50건)
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'CSV로 내보내기' }).click()])
   expect(download.suggestedFilename()).toBe('스탠다드믹스 SM-00-데이터.csv')
   const stream = await download.createReadStream()
@@ -44,7 +44,7 @@ test('프로젝트 데이터 표를 CSV로 내려받는다', async ({ page }) =>
   const text = Buffer.concat(chunks).toString('utf-8')
   expect(text.charCodeAt(0)).toBe(0xfeff) // 엑셀에서 한글이 깨지지 않도록 BOM
   expect(text).toContain('시멘트 (kg/m³)')
-  expect(text).toContain('배합 #47, 재령 3일')
+  expect(text).toContain('배합 #395, 재령 28일')
 })
 
 test('분석: 축을 바꿔 보고, 이상치 점을 눌러 그 실험으로 간다', async ({ page }) => {
@@ -74,8 +74,8 @@ test('Journey 3: 프로젝트의 마지막 실험을 이어받아 새 실험을 
   await expect(page.getByRole('link', { name: /^절차 \(4\)/ })).toBeVisible() // 절차 4단계를 이어받음
 
   await page.getByRole('link', { name: '조건·결과' }).click()
-  await expect(page.getByLabel('시멘트 값')).toHaveValue('302') // 조건 값은 그대로 (이어받은 배합 #794)
-  await expect(page.getByLabel('물 값')).toHaveValue('203')
+  await expect(page.getByLabel('시멘트 값')).toHaveValue('480') // 조건 값은 그대로 (이어받은 배합 #827)
+  await expect(page.getByLabel('물 값')).toHaveValue('192')
 
   // 수행 모드에서 이전 실험의 체크는 모두 비어 있다
   await page.getByRole('link', { name: '수행 모드 시작' }).click()

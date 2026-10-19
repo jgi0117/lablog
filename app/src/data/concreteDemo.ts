@@ -50,16 +50,33 @@ export const CONCRETE_PROJECTS: { key: BinderKey; id: string; name: string; subt
 ]
 
 /**
- * 시연용 48건의 원본 행 번호(프로젝트당 12건). 재령 90일 이하에서 고르되,
- * 값의 흩어짐이 비슷해서 일부러 심은 것 말고는 이상치로 잡히지 않는 조합이다(압축강도는 시험을 마친 실험만 센다). analysis.test.ts가 확인한다.
- * 위에서 아래로 시작이 빠른 실험부터이고, 마지막 하나 또는 둘이 진행·준비 상태다.
+ * 시연용 실험의 원본 행 번호(프로젝트당 약 50건, 모두 200건). 재령 90일 이하에서 균등한 간격으로 고른 뒤,
+ * 값이 다른 실험들과 많이 달라 이상치로 잡히는 행은 빼서, 일부러 심은 것 말고는 이상치로 잡히지 않게 했다
+ * (압축강도는 시험을 마친 실험만 센다). analysis.test.ts가 확인한다.
+ * 위에서 아래로 시작이 빠른 실험부터이고, 맨 뒤 두 건은 진행 중(LF의 마지막은 준비)이다.
  */
 export const DEMO_ROWS: Record<BinderKey, number[]> = {
-  SM: [47, 378, 537, 550, 566, 593, 626, 632, 641, 764, 784, 794],
-  ES: [6, 58, 92, 117, 142, 400, 582, 659, 683, 706, 864, 947],
-  LF: [185, 205, 241, 262, 283, 315, 336, 372, 433, 854, 904, 969],
-  HB: [296, 392, 413, 439, 452, 480, 512, 527, 530, 839, 895, 970],
-}
+  SM: [
+    395, 535, 538, 541, 544, 548, 551, 563, 570, 587, 592, 599, 602, 608, 613, 618, 626, 629,
+    632, 635, 639, 642, 645, 724, 729, 733, 737, 740, 744, 747, 750, 754, 759, 762, 766, 772,
+    775, 778, 781, 785, 788, 791, 800, 804, 807, 810, 816, 819, 823, 827,
+  ],
+  ES: [
+    9, 17, 37, 50, 58, 72, 83, 89, 94, 99, 105, 110, 115, 132, 148, 154, 159, 391, 400, 553,
+    558, 567, 575, 582, 588, 598, 651, 656, 661, 666, 671, 676, 682, 687, 692, 697, 702, 708,
+    713, 718, 840, 856, 872, 889, 905, 918, 947, 966, 981, 1004, 1024,
+  ],
+  LF: [
+    187, 192, 197, 202, 205, 207, 212, 217, 223, 243, 248, 253, 258, 263, 268, 275, 280, 285,
+    300, 305, 310, 315, 321, 326, 331, 336, 341, 346, 351, 372, 389, 417, 428, 432, 443, 454,
+    836, 853, 861, 875, 887, 893, 912, 941, 951, 963, 977, 999, 1011, 1019,
+  ],
+  HB: [
+    227, 232, 237, 293, 298, 360, 365, 401, 410, 414, 425, 435, 439, 440, 450, 472, 477, 481,
+    485, 490, 494, 499, 503, 507, 512, 516, 520, 525, 529, 832, 839, 849, 866, 874, 890, 895,
+    907, 916, 926, 930, 934, 946, 958, 971, 986, 990, 1002, 1012, 1026,
+  ],
+};
 
 /**
  * 시연용으로 값을 바꾼 곳. 공개 데이터와 다르다. 해당 실험의 목적 칸에 "※ 시연용으로 바꾼 값"으로 적는다.
@@ -94,15 +111,19 @@ interface Plan {
   doneCount: number
 }
 
-/** 시연용 실험의 날짜와 상태. 시작이 빠른 순서대로 5일 간격이고, 마지막 실험이 진행(또는 준비) 중이다. */
-function demoPlan(key: BinderKey, k: number, row: number): Plan {
+/**
+ * 시연용 실험의 날짜와 상태. 시작이 빠른 순서대로 약 6개월에 걸쳐 흩어 두고(k는 프로젝트 안의 순서, n은 개수),
+ * 맨 뒤 두 건이 진행 중이다(LF의 마지막은 준비). 멈춘 실험은 값은 그대로 두고 날짜와 상태만 그렇게 둔다.
+ */
+function demoPlan(key: BinderKey, k: number, n: number, row: number): Plan {
   const p = CONCRETE_PROJECTS.findIndex((x) => x.key === key)
-  const startedAgo = 66 - 5 * k - p
-  if (row === STALE_ROW) return { status: 'running', startedAgo: 16, touchedAgo: 10, doneCount: 2 }
-  if (k === 11) {
+  const startedAgo = Math.max(3, Math.round(180 - (170 * k) / (n - 1)) - p)
+  if (row === STALE_ROW) return { status: 'running', startedAgo, touchedAgo: 10, doneCount: 2 }
+  if (k === n - 1) {
     if (key === 'LF') return { status: 'ready', startedAgo: 0, touchedAgo: 3, doneCount: 0 }
-    return { status: 'running', startedAgo, touchedAgo: 1, doneCount: key === 'SM' ? 3 : 2 }
+    return { status: 'running', startedAgo: Math.min(startedAgo, 4), touchedAgo: 1, doneCount: key === 'SM' ? 3 : 2 }
   }
+  if (k === n - 2) return { status: 'running', startedAgo: Math.min(startedAgo, 6), touchedAgo: 2, doneCount: 3 }
   return { status: 'done', startedAgo, touchedAgo: startedAgo - 2, doneCount: STEPS.length }
 }
 
@@ -178,13 +199,15 @@ function projects(): Project[] {
     name: p.name,
     description: `${p.subtitle}\n${p.detail}\n${SOURCE_NOTE}`,
     createdAt: daysAgo(70),
-    updatedAt: daysAgo(70),
+    // 수정 시각은 지금보다 살짝 뒤로 둔다. 예시를 지운 직후 다시 넣어도 "지운 프로젝트"보다 새것으로 쳐서 되살아나게 하기 위함이다
+    // (저장소의 시각은 연달아 저장할 때 실제 시계보다 조금 앞서 갈 수 있다).
+    updatedAt: new Date(Date.now() + 5000).toISOString(),
     deletedAt: null,
     version: 1,
   }))
 }
 
-/** mode 'demo': 시연용 48건. 'full': 공개 데이터 전체 1,030건(시연 목록의 48건은 같은 모양으로 들어간다). */
+/** mode 'demo': 시연용 200건. 'full': 공개 데이터 전체 1,030건(시연 목록의 실험은 같은 모양으로 들어간다). */
 export function buildConcreteBackup(rows: ConcreteRow[], mode: 'demo' | 'full'): BackupFile {
   const parts = { experiments: [] as Experiment[], steps: [] as Step[], dataItems: [] as DataItem[] }
   const byRow = new Map(rows.map((r) => [r.row, r]))
@@ -196,7 +219,7 @@ export function buildConcreteBackup(rows: ConcreteRow[], mode: 'demo' | 'full'):
       if (!r) throw new Error(`원본 행 #${row}을 찾을 수 없습니다`)
       if (binderOf(r) !== key) throw new Error(`원본 행 #${row}은 ${key}가 아닙니다`)
       planned.add(row)
-      buildExperiment(r, demoPlan(key, k, row), idOf(key), parts)
+      buildExperiment(r, demoPlan(key, k, DEMO_ROWS[key].length, row), idOf(key), parts)
     })
   }
   if (mode === 'full') {

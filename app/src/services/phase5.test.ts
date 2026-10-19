@@ -30,7 +30,7 @@ describe('백업 파일 검사 (parseBackup)', () => {
     const res = parseBackup(text)
     expect(res.ok).toBe(true)
     if (!res.ok) return
-    expect(res.summary).toMatchObject({ projects: 4, experiments: 48 })
+    expect(res.summary).toMatchObject({ projects: 4, experiments: 200 })
     expect(res.summary.steps).toBeGreaterThan(100)
     const original = await db.backup.exportAll()
     expect(res.file.experiments).toEqual(original.experiments)

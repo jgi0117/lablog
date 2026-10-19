@@ -55,12 +55,12 @@ describe('프로젝트 목록', () => {
     open('/projects', await demoBackend())
     const card = async (name: string) => (await screen.findByRole('heading', { name })).closest('a') as HTMLElement
     const sm = await card('스탠다드믹스 SM-00')
-    expect(within(sm).getByText('실험 12건')).toBeInTheDocument()
-    expect(within(sm).getByText('완료 11')).toBeInTheDocument()
+    expect(within(sm).getByText('실험 50건')).toBeInTheDocument()
+    expect(within(sm).getByText('완료 48')).toBeInTheDocument()
     expect(within(sm).getByText('확인할 것 없음')).toBeInTheDocument()
     expect(within(sm).getByText(/표준 배합 강도 기준 확립/)).toBeInTheDocument()
     const hb = await card('하이브리드본드 HB-50')
-    expect(within(hb).getByText('완료 10')).toBeInTheDocument()
+    expect(within(hb).getByText('완료 46')).toBeInTheDocument()
     expect(within(hb).getByText(/빠진 것·확인할 것 2건/)).toBeInTheDocument()
     expect(within(await card('에코슬래그 ES-30')).getByText(/빠진 것·확인할 것 1건/)).toBeInTheDocument()
     expect(within(await card('로히트 플라이 LF-20')).getByText('준비 1')).toBeInTheDocument()
@@ -112,8 +112,10 @@ describe('프로젝트 현황 (빠진 것 한눈에)', () => {
 
   it('진행 현황과 타임라인을 보여 준다', async () => {
     open(HB, await demoBackend())
-    expect(await screen.findByRole('img', { name: /완료 10건, 진행 2건, 준비 0건/ })).toBeInTheDocument()
-    expect(screen.getByRole('group', { name: /프로젝트 타임라인. 실험 12건/ })).toBeInTheDocument()
+    expect(await screen.findByRole('img', { name: /완료 46건, 진행 3건, 준비 0건/ })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: /프로젝트 타임라인. 실험 30건/ })).toBeInTheDocument()
+    // 실험이 많으면 최근 30건만 그리고 그렇다고 알린다
+    expect(screen.getByText(/가장 최근에 시작한 30건만 그렸습니다\(전체 49건\)/)).toBeInTheDocument()
   })
 
   it('프로젝트 이름을 고치면 자동 저장된다', async () => {
@@ -137,7 +139,7 @@ describe('프로젝트 데이터 표', () => {
     const row = within(table).getByRole('row', { name: /#205/ })
     expect(within(row).getByText(/124\.7/)).toBeInTheDocument()
     expect(within(row).getByText(/이상치 후보/)).toBeInTheDocument()
-    expect(within(table).getAllByRole('row')).toHaveLength(2 + 12) // 머리글 2줄 + 실험 12건
+    expect(within(table).getAllByRole('row')).toHaveLength(1 + 50) // 머리글 1줄 + 실험 50건(한 번에 보기 기본 50건)
   })
 
   it('CSV로 내보내면 파일 저장을 요청하고 안내한다', async () => {
@@ -243,7 +245,7 @@ describe('이전 실험 이어받기', () => {
     await screen.findByRole('heading', { name: /#1000/ })
 
     // SM에서 가장 최근에 손댄 실험은 진행 중인 마지막 배합이다.
-    const lastRow = DEMO_ROWS.SM[11]
+    const lastRow = DEMO_ROWS.SM[DEMO_ROWS.SM.length - 1]
     const made = (await b.experiments.list({ projectId: 'demo-project-1' })).items.find((e) => e.title.includes('#1000'))!
     expect(made.status).toBe('ready')
     expect(made.sourceExperimentId).toBe(`concrete-${lastRow}`)
@@ -266,10 +268,10 @@ describe('이전 실험 이어받기', () => {
 
   it('완료한 실험을 복제하면 압축강도 항목은 남기고 값은 비운다', async () => {
     const b = await demoBackend()
-    const copy = await b.experiments.duplicate('concrete-47')
+    const copy = await b.experiments.duplicate(`concrete-${DEMO_ROWS.SM[0]}`)
     const items = await b.dataItems.listByExperiment(copy.id)
     expect(items.find((i) => i.kind === 'result')).toMatchObject({ name: '압축강도', value: '', unit: 'MPa' })
-    expect(items.find((i) => i.name === '시멘트')?.value).toBe(String(rows[46].cement))
+    expect(items.find((i) => i.name === '시멘트')?.value).toBe(String(rows[DEMO_ROWS.SM[0] - 1].cement))
   })
 
   it('체크를 풀면 빈 실험으로 시작한다', async () => {

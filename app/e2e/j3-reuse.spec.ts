@@ -1,23 +1,23 @@
 import { readFile } from 'node:fs/promises'
 import { expect, test } from '@playwright/test'
-import { importBackup, seedDemo } from './helpers'
+import { importBackup, seedDemo, skipBulkImportOnWindowsWebKit } from './helpers'
 
 // Journey 3: 선배의 실험을 복제해서 따라 하고, 달라진 점을 남기고, 잘 된 것은 템플릿으로 저장한다.
 
 test('Journey 3: 복제 → 수행하며 달라진 점 기록 → 템플릿 저장 → 템플릿으로 새 실험', async ({ page }) => {
   await seedDemo(page)
 
-  // 완료된 실험(배합 #47)을 연다. 압축강도 값이 있는 실험이다.
-  await page.goto('/experiments/concrete-47/data')
-  await expect(page.getByLabel('압축강도 값')).toHaveValue('15.05')
+  // 완료된 실험(배합 #395)을 연다. 압축강도 값이 있는 실험이다.
+  await page.goto('/experiments/concrete-395/data')
+  await expect(page.getByLabel('압축강도 값')).toHaveValue('52.3')
 
   // 1. 복제: 클릭 한 번. 새 실험이 열리고 결과 값은 비어 있다고 알려 준다.
-  await page.goto('/experiments/concrete-47')
+  await page.goto('/experiments/concrete-395')
   await page.getByRole('button', { name: '복제하여 새 실험' }).click()
   await expect(page.getByText(/결과 값과 체크·메모는 비워졌습니다/)).toBeVisible()
   await expect(page.getByRole('heading', { name: /\(복제\)$/ })).toBeVisible()
   await page.getByRole('link', { name: '조건·결과' }).click()
-  await expect(page.getByLabel('시멘트 값')).toHaveValue('349') // 조건 값은 그대로
+  await expect(page.getByLabel('시멘트 값')).toHaveValue('405') // 조건 값은 그대로
   await expect(page.getByLabel('압축강도 값')).toHaveValue('') // 결과 값은 비어 있다
 
   // 2. 수행 모드에서 달라진 점을 기록한다.
@@ -51,13 +51,14 @@ test('Journey 3: 복제 → 수행하며 달라진 점 기록 → 템플릿 저�
   await expect(page.getByLabel('1번째 단계', { exact: true })).not.toHaveValue('')
 })
 
-test('백업에 템플릿과 달라진 점이 들어가고, 다른 브라우저에서 복원된다', async ({ page, browser, baseURL }) => {
+test('백업에 템플릿과 달라진 점이 들어가고, 다른 브라우저에서 복원된다', async ({ page, browser, baseURL }, testInfo) => {
+  skipBulkImportOnWindowsWebKit(test, testInfo.project.name)
   await seedDemo(page)
-  await page.goto('/experiments/concrete-47/deviations')
+  await page.goto('/experiments/concrete-395/deviations')
   await page.getByLabel('달라진 내용').fill('농도를 5% 낮춤')
   await page.getByRole('button', { name: '기록', exact: true }).click()
   await expect(page.getByRole('list', { name: '달라진 점 기록' })).toContainText('농도를 5% 낮춤')
-  await page.goto('/experiments/concrete-47')
+  await page.goto('/experiments/concrete-395')
   await page.getByRole('button', { name: '템플릿으로 저장' }).click()
   await page.getByLabel('템플릿 이름').fill('복원 확인용')
   await page.getByRole('button', { name: '저장', exact: true }).click()
@@ -77,7 +78,7 @@ test('백업에 템플릿과 달라진 점이 들어가고, 다른 브라우저�
     await importBackup(other, text)
     await other.goto('/templates')
     await expect(other.getByRole('heading', { name: '복원 확인용' })).toBeVisible()
-    await other.goto('/experiments/concrete-47/deviations')
+    await other.goto('/experiments/concrete-395/deviations')
     await expect(other.getByRole('list', { name: '달라진 점 기록' })).toContainText('농도를 5% 낮춤')
   } finally {
     await context.close()

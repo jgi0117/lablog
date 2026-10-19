@@ -85,6 +85,10 @@ function mostCommon(list: string[]): string {
   return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? ''
 }
 
+/** 값 종류가 20개 이하(그리고 실험 수의 1/4 이하)이고 실험이 30건 이상이면 "정해 둔 수준"으로 보고 이상치 판단을 하지 않는다 */
+const LEVELS_MAX_DISTINCT = 20
+const LEVELS_MIN_N = 30
+
 export function buildMatrix(bundles: ExperimentBundle[]): Matrix {
   const sorted = [...bundles].sort((a, b) => orderOf(a.experiment).localeCompare(orderOf(b.experiment)))
   const meta = new Map<string, { kind: DataKind; names: string[]; units: string[]; exps: Set<ID> }>()
@@ -113,7 +117,11 @@ export function buildMatrix(bundles: ExperimentBundle[]): Matrix {
     units: [...new Set(m.units)],
   }))
   // 조건을 먼저, 결과를 나중에. 같은 종류에서는 많이 쓴 항목부터.
-  columns.sort((a, b) => (a.kind === b.kind ? b.count - a.count || a.name.localeCompare(b.name, 'ko') : a.kind === 'condition' ? -1 : 1))
+  // 같은 횟수면 처음 입력한 순서를 따른다(시멘트, 슬래그, … 처럼 사람이 적은 차례가 유지된다).
+  const firstSeen = new Map(columns.map((c, i) => [c.key, i]))
+  columns.sort((a, b) =>
+    a.kind === b.kind ? b.count - a.count || (firstSeen.get(a.key) ?? 0) - (firstSeen.get(b.key) ?? 0) : a.kind === 'condition' ? -1 : 1,
+  )
 
   for (const col of columns) {
     const nums: { row: MatrixRow; v: number }[] = []
@@ -121,7 +129,10 @@ export function buildMatrix(bundles: ExperimentBundle[]): Matrix {
       const c = r.cells[col.key]
       if (c && c.num !== null) nums.push({ row: r, v: c.num })
     }
-    const flags = detectOutliers(nums.map((n) => n.v))
+    const values = nums.map((n) => n.v)
+    // 재령처럼 몇 가지 값(수준)을 일부러 골라 반복하는 조건은 실험이 충분히 많으면 이상치로 보지 않는다(365일은 오류가 아니라 설계한 값이다).
+    const designedLevels = values.length >= LEVELS_MIN_N && new Set(values).size <= Math.min(LEVELS_MAX_DISTINCT, values.length / 4)
+    const flags = designedLevels ? values.map(() => false) : detectOutliers(values)
     nums.forEach((n, i) => {
       const c = n.row.cells[col.key]
       if (c) c.outlier = flags[i]

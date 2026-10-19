@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
 
 const PORT = 5174
+// 처음 실행 때 예시 데이터를 자동으로 넣는 실제 설정(전체 1,030건)을 확인하는 서버. first-run 시험만 쓴다.
+const FIRST_RUN_PORT = 5175
 
 /**
  * E2E: 실제 브라우저(Chromium, Firefox, WebKit)에서 사용자 흐름을 처음부터 끝까지 따라간다.
@@ -24,25 +26,41 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  webServer: {
-    command: `npm run dev -- --port ${PORT} --strictPort`,
-    url: `http://localhost:${PORT}`,
-    reuseExistingServer: !process.env.CI,
-    // 시험은 빈 상태에서 시작해야 해서 처음 실행 때 예시 데이터를 자동으로 넣는 기능을 끈다.
-    env: { VITE_AUTO_EXAMPLE: 'off' },
-    timeout: 120_000,
-  },
+  webServer: [
+    {
+      command: `npm run dev -- --port ${PORT} --strictPort`,
+      url: `http://localhost:${PORT}`,
+      reuseExistingServer: !process.env.CI,
+      // 시험은 빈 상태에서 시작해야 해서 처음 실행 때 예시 데이터를 자동으로 넣는 기능을 끈다.
+      env: { VITE_AUTO_EXAMPLE: 'off', VITE_EXAMPLE_SET: 'curated' },
+      timeout: 120_000,
+    },
+    {
+      command: `npm run dev -- --port ${FIRST_RUN_PORT} --strictPort`,
+      url: `http://localhost:${FIRST_RUN_PORT}`,
+      reuseExistingServer: !process.env.CI,
+      env: { VITE_AUTO_EXAMPLE: 'on' },
+      timeout: 120_000,
+    },
+  ],
   projects: [
     {
+      name: 'first-run',
+      testMatch: /first-run\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 }, baseURL: `http://localhost:${FIRST_RUN_PORT}` },
+    },
+    {
       name: 'chromium-laptop',
+      testIgnore: /first-run\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
     },
     {
       name: 'firefox-laptop',
+      testIgnore: /first-run\.spec\.ts/,
       use: { ...devices['Desktop Firefox'], viewport: { width: 1440, height: 900 } },
     },
     // 태블릿: 가로 1194×834(디자인 기준), 터치
-    // Windows의 WebKit은 IndexedDB 쓰기가 느려서(예시 데이터 48건에 10초 안팎) 기다리는 시간을 늘린다. 성능 기준이 아니다.
-    { name: 'webkit-tablet', expect: { timeout: 30_000 }, use: { ...devices['iPad Pro 11 landscape'] } },
+    // Windows의 WebKit은 IndexedDB 쓰기가 느려서(예시 데이터 200건에 40초 안팎) 기다리는 시간을 늘린다. 성능 기준이 아니다.
+    { name: 'webkit-tablet', testIgnore: /first-run\.spec\.ts/, timeout: 240_000, expect: { timeout: 30_000 }, use: { ...devices['iPad Pro 11 landscape'] } },
   ],
 })

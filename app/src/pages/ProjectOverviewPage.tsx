@@ -8,6 +8,8 @@ import { statusCounts, timelineBars } from '../services/analysis'
 import { stepStats } from '../services/experimentService'
 import { formatRelative } from '../services/format'
 
+const TIMELINE_MAX = 30
+
 /** 프로젝트 현황: 진행 상태, 빠진 것 한눈에, 타임라인, 최근 실험. */
 export function ProjectOverviewPage() {
   const { project, bundles, gaps } = useProject()
@@ -22,7 +24,9 @@ export function ProjectOverviewPage() {
   }
   const counts = statusCounts(bundles)
   const stats = stepStats(bundles.flatMap((b) => b.steps))
-  const bars = timelineBars(bundles)
+  const allBars = timelineBars(bundles)
+  // 실험이 수백 건이면 막대가 화면을 가득 채우므로 가장 최근에 시작한 것만 그린다.
+  const bars = allBars.slice(-TIMELINE_MAX)
   const recent = [...bundles].sort((a, b) => b.experiment.updatedAt.localeCompare(a.experiment.updatedAt)).slice(0, 5)
 
   return (
@@ -48,7 +52,18 @@ export function ProjectOverviewPage() {
         <h2 id="h-timeline" className="panel__title">
           타임라인
         </h2>
-        {bars.length === 0 ? <p className="muted">아직 시작한 실험이 없습니다.</p> : <TimelineChart bars={bars} />}
+        {bars.length === 0 ? (
+          <p className="muted">아직 시작한 실험이 없습니다.</p>
+        ) : (
+          <>
+            <TimelineChart bars={bars} />
+            {allBars.length > bars.length && (
+              <p className="analysis__note">
+                가장 최근에 시작한 {bars.length}건만 그렸습니다(전체 {allBars.length}건). 전체는 <Link to={`/projects/${project.id}/data`}>데이터 탭</Link>의 표에서 볼 수 있습니다.
+              </p>
+            )}
+          </>
+        )}
       </section>
 
       <section className="panel proj-grid__wide" aria-labelledby="h-recent">

@@ -5,8 +5,8 @@ import { buildConcreteBackup, parseConcreteCsv } from './concreteDemo'
 /**
  * 개발·시연용 샘플 데이터.
  * - seedSample: 작은 고정 데이터(단위 테스트의 고정 입력. 필름 개발 업무 예시)
- * - seedDemo: 공개 데이터(UCI 콘크리트) 기반 시연 데이터 48건(프로젝트 화면, 차트, 빠짐 점검 시연용)
- * - seedConcreteFull: 같은 공개 데이터 전체 1,030건(성능 시험용)
+ * - seedDemo: 공개 데이터(UCI 콘크리트) 기반 예시 데이터. 기본은 전체 1,030건, 'demo'는 고른 200건
+ * - seedConcreteFull: 전체 1,030건(seedDemo의 'full')
  * - seedBulk: 성능·페이지 나눔 확인용 대량 데이터
  */
 
@@ -145,18 +145,24 @@ async function loadConcreteRows() {
   return parseConcreteCsv(csv)
 }
 
-/** 시연용 예시: 프로젝트 4개, 실험 48건(합치기). 만든 실험 수를 돌려준다. */
-export async function seedDemo(db: DataBackend): Promise<number> {
-  const file = buildConcreteBackup(await loadConcreteRows(), 'demo')
+/** 예시 데이터 구성: 'full'은 공개 데이터 전체 1,030건, 'demo'는 고른 200건(시험이 숫자를 고정해 쓰는 구성) */
+export type ExampleSet = 'demo' | 'full'
+
+/** 기본 구성은 전체. 시험(단위 테스트, E2E 서버)은 VITE_EXAMPLE_SET=curated로 200건 구성을 쓴다. */
+export function defaultExampleSet(): ExampleSet {
+  return import.meta.env.VITE_EXAMPLE_SET === 'curated' ? 'demo' : 'full'
+}
+
+/** 예시 데이터: 프로젝트 4개와 실험(기본 1,030건, 합치기). 만든 실험 수를 돌려준다. */
+export async function seedDemo(db: DataBackend, set: ExampleSet = defaultExampleSet()): Promise<number> {
+  const file = buildConcreteBackup(await loadConcreteRows(), set)
   await db.backup.importAll(file, 'merge')
   return file.experiments.length
 }
 
-/** 성능 시험용: 공개 데이터 전체 1,030건(프로젝트 4개). 화면에는 버튼이 없고 단위 테스트가 쓴다(E2E는 같은 내용을 백업 파일로 넣는다). */
+/** 공개 데이터 전체 1,030건(프로젝트 4개). seedDemo(db, 'full')과 같다. */
 export async function seedConcreteFull(db: DataBackend): Promise<number> {
-  const file = buildConcreteBackup(await loadConcreteRows(), 'full')
-  await db.backup.importAll(file, 'merge')
-  return file.experiments.length
+  return seedDemo(db, 'full')
 }
 
 /** 성능·페이지 나눔 확인용 대량 데이터. */
