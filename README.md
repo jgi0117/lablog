@@ -4,7 +4,7 @@
 
 **풀려는 문제**: 실험 기록이 여러 곳에 흩어져 찾기도 재현하기도 어려운 문제
 
-현재 단계: Phase 2(기반 구축) 완료. 다음은 Phase 3(s1 모으기). 데이터는 지금 브라우저 로컬(IndexedDB)에만 저장하고, 이후 Supabase로 옮길 예정입니다.
+현재 단계: Phase 3(s1 모으기) 구현 완료(연구원 확인과 E2E가 남음). 다음은 Phase 4(s2 찾기). 데이터는 지금 브라우저 로컬(IndexedDB)에만 저장하고, 이후 Supabase로 옮길 예정입니다.
 
 ## 디렉토리 구조
 
@@ -32,6 +32,7 @@ lab/
 │  ├─ phase0/                준비: 결정 기록, 인터뷰 가이드, 샘플 수집, 기준선 측정
 │  ├─ phase1/                설계: 데이터 모델, 수행 모드 사전 검증, 테스트 계획
 │  ├─ phase2/                기반 구축 완료 기록
+│  ├─ phase3/                s1 모으기 완료 기록
 │  └─ summary/               각 문서의 짧은 요약본
 ├─ .github/workflows/        CI (린트, 타입 검사, 테스트, 빌드)
 └─ .claude/skills/           기획 작업에 쓴 스킬 (create-prd, information-architecture, user-journeys)

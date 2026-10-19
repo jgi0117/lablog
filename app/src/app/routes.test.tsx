@@ -5,13 +5,18 @@ import { afterEach, describe, expect, it } from 'vitest'
 import App from '../App'
 import { createLocalBackend, type LocalBackend } from '../data/local/localBackend'
 import { seedSample } from '../data/seed'
+import { createExperiment } from '../services/experimentService'
 
 const opened: LocalBackend[] = []
 let seq = 0
 
-function setup(path: string) {
+export function makeBackend(): LocalBackend {
   const backend = createLocalBackend(`lablog-routes-${Date.now()}-${seq++}`)
   opened.push(backend)
+  return backend
+}
+
+function setup(path: string, backend: LocalBackend = makeBackend()) {
   render(
     <MemoryRouter initialEntries={[path]}>
       <App backend={backend} />
@@ -48,16 +53,25 @@ describe('라우팅과 앱 셸', () => {
     expect(await screen.findByRole('heading', { name: /^검색/ })).toBeInTheDocument()
   })
 
-  it('실험 상세에는 개요/절차/조건·결과 탭이 있다', async () => {
-    setup('/experiments/abc/steps')
+  it('실험 상세에는 개요/절차/조건·결과 탭과 수행 모드 버튼이 있다', async () => {
+    const backend = makeBackend()
+    const exp = await createExperiment(backend, { title: '탭 확인 실험' })
+    setup(`/experiments/${exp.id}/steps`, backend)
     expect(await screen.findByRole('navigation', { name: '실험 상세 탭' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '절차' })).toHaveClass('is-active')
-    expect(screen.getByRole('link', { name: '수행 모드 시작' })).toHaveAttribute('href', '/experiments/abc/run')
+    expect(screen.getByRole('link', { name: /^절차/ })).toHaveClass('is-active')
+    expect(screen.getByRole('link', { name: '수행 모드 시작' })).toHaveAttribute('href', `/experiments/${exp.id}/run`)
+  })
+
+  it('없는 실험의 상세는 안내를 보여 준다', async () => {
+    setup('/experiments/nope')
+    expect(await screen.findByText('실험을 찾을 수 없습니다')).toBeInTheDocument()
   })
 
   it('수행 모드는 앱 셸 없이 전체 화면이다', async () => {
-    setup('/experiments/abc/run')
-    expect(await screen.findByRole('heading', { name: /수행 모드/ })).toBeInTheDocument()
+    const backend = makeBackend()
+    const exp = await createExperiment(backend, { title: '전체 화면 확인' })
+    setup(`/experiments/${exp.id}/run`, backend)
+    expect(await screen.findByText('아직 단계가 없습니다')).toBeInTheDocument()
     expect(screen.queryByRole('navigation', { name: '메인 메뉴' })).toBeNull()
   })
 
@@ -67,16 +81,12 @@ describe('라우팅과 앱 셸', () => {
     expect(screen.getByRole('link', { name: '홈으로' })).toHaveAttribute('href', '/')
   })
 
-  it('저장소에 진행 중 실험이 있으면 홈에 나열한다', async () => {
-    const backend = createLocalBackend(`lablog-routes-seed-${Date.now()}-${seq++}`)
-    opened.push(backend)
+  it('저장소에 진행 중 실험이 있으면 홈에 카드로 나열한다', async () => {
+    const backend = makeBackend()
     await seedSample(backend)
-    render(
-      <MemoryRouter>
-        <App backend={backend} />
-      </MemoryRouter>,
-    )
+    setup('/', backend)
     await waitFor(() => expect(screen.getByText(/진행 중 \(2\)/)).toBeInTheDocument())
-    expect(screen.getByRole('link', { name: '나노입자 합성 조건 최적화 #12' })).toBeInTheDocument()
+    expect(screen.getAllByText('나노입자 합성 조건 최적화 #12').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/남은 단계 5개/).length).toBeGreaterThan(0)
   })
 })
