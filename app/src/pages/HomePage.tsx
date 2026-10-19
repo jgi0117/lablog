@@ -8,7 +8,7 @@ import { GapList } from '../components/GapList'
 import { useToast } from '../components/Toast'
 import { useAllBundles } from '../hooks/useBundles'
 import { useBackupExport } from '../hooks/useBackupExport'
-import { seedConcreteFull, seedDemo } from '../data/seed'
+import { seedDemo } from '../data/seed'
 import { findGaps, type Gap } from '../services/analysis'
 import { backupReminder, backupSnoozedUntil, lastBackupAt, snoozeBackupReminder } from '../services/backup'
 import { dataTimestamps } from '../services/projectData'
@@ -79,13 +79,6 @@ export function HomePage() {
     await reload()
   }
 
-  // 개발 서버에서만: 공개 데이터 전체 1,030건으로 성능을 본다.
-  const onSeedFull = async () => {
-    const n = await seedConcreteFull(backend)
-    toast.show({ message: `공개 데이터 전체 ${n}건을 넣었습니다 (성능 시험용)` })
-    await reload()
-  }
-
   if (!view) return <p className="muted">불러오는 중…</p>
 
   const card = (r: (typeof view.running)[number]) => (
@@ -123,11 +116,6 @@ export function HomePage() {
           <button type="button" className="btn" onClick={onSeed}>
             예시 데이터 넣기 (둘러보기용)
           </button>
-          {import.meta.env.DEV && (
-            <button type="button" className="btn" onClick={() => void onSeedFull()}>
-              전체 1,030건 넣기 (성능 시험용)
-            </button>
-          )}
           <p className="muted">데이터는 이 브라우저에만 저장됩니다. 설정에서 백업 파일을 자주 내려받아 두세요. 예시 데이터는 프로젝트·실험 삭제로 지울 수 있습니다.</p>
         </EmptyState>
       ) : (

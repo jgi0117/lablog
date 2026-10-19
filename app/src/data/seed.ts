@@ -152,7 +152,7 @@ export async function seedDemo(db: DataBackend): Promise<number> {
   return file.experiments.length
 }
 
-/** 성능 시험용: 공개 데이터 전체 1,030건(프로젝트 4개). 개발 서버의 홈 화면 버튼과 E2E가 쓴다. */
+/** 성능 시험용: 공개 데이터 전체 1,030건(프로젝트 4개). 화면에는 버튼이 없고 단위 테스트가 쓴다(E2E는 같은 내용을 백업 파일로 넣는다). */
 export async function seedConcreteFull(db: DataBackend): Promise<number> {
   const file = buildConcreteBackup(await loadConcreteRows(), 'full')
   await db.backup.importAll(file, 'merge')

@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import App from '../App'
 import { createLocalBackend, type LocalBackend } from '../data/local/localBackend'
+import { seedDemo } from '../data/seed'
 import type { Experiment } from '../domain/types'
 import { parseBackup } from '../services/backup'
 import {
@@ -279,5 +280,21 @@ describe('백업 파일 검사 (템플릿·편차)', () => {
     expect(parseBackup(base({ templates: [{ id: 't1', updatedAt: at }] }))).toMatchObject({ ok: false, error: expect.stringContaining('이름') })
     const dup = { id: 'd1', experimentId: 'e1', change: 'x', updatedAt: at }
     expect(parseBackup(base({ deviations: [dup, dup] }))).toMatchObject({ ok: false, error: expect.stringContaining('중복') })
+  })
+})
+
+describe('예시 데이터 지우기 (설정)', () => {
+  it('확인을 거쳐 예시만 지우고, 지운 뒤에는 버튼이 사라진다', async () => {
+    const user = userEvent.setup()
+    const b = make()
+    await seedDemo(b)
+    const mine = await finishedExperiment(b, '내 실험')
+    open('/settings', b)
+    await user.click(await screen.findByRole('button', { name: '예시 데이터 지우기 (실험 48건)' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: '예시 데이터 지우기' }))
+    expect(await screen.findByText('예시 실험 48건을 지웠습니다')).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('button', { name: /예시 데이터 지우기/ })).toBeNull())
+    expect((await b.experiments.list()).items.map((e) => e.id)).toEqual([mine.id])
   })
 })

@@ -8,6 +8,7 @@ import { useToast } from '../components/Toast'
 import { useBackupExport } from '../hooks/useBackupExport'
 import { lastBackupAt, parseBackup, type BackupSummary } from '../services/backup'
 import { downloadText } from '../services/download'
+import { countExampleData, removeExampleData } from '../services/firstRun'
 import { clearErrors, readErrors, type ErrorEntry } from '../services/errorLog'
 import { formatDateTime, formatRelative } from '../services/format'
 import { getSettings, saveSettings, type AppSettings } from '../services/settings'
@@ -51,6 +52,8 @@ export function SettingsPage() {
   const [currentCount, setCurrentCount] = useState<number | null>(null)
   const [usage, setUsage] = useState<UsageSummary>(() => summarizeUsage(readUsage()))
   const [errors, setErrors] = useState<ErrorEntry[]>(() => readErrors())
+  const [example, setExample] = useState<{ projects: number; experiments: number } | null>(null)
+  const [confirmExample, setConfirmExample] = useState(false)
 
   const loadCount = useCallback(async () => {
     try {
@@ -62,7 +65,10 @@ export function SettingsPage() {
 
   useEffect(() => {
     void loadCount()
-  }, [loadCount])
+    countExampleData(backend)
+      .then(setExample)
+      .catch(() => setExample(null))
+  }, [loadCount, backend])
 
   const doExport = async () => {
     if (await exportNow()) setLast(lastBackupAt())
@@ -331,11 +337,35 @@ export function SettingsPage() {
           프로젝트 이름과 제품 코드, 날짜, 진행 상태, 절차, 담당자는 예시로 지어낸 것입니다. 시연을 위해 실험 3건의 값을 바꿨고(압축강도 비움, 소수점 위치 실수, 고성능 감수제 항목 삭제),
           해당 실험의 목적 칸에 "시연용으로 바꾼 값"이라고 적혀 있습니다.
         </p>
+        {example && example.experiments > 0 && (
+          <div className="panel__actions">
+            <button type="button" className="btn btn--quiet" onClick={() => setConfirmExample(true)}>
+              예시 데이터 지우기 (실험 {example.experiments}건)
+            </button>
+          </div>
+        )}
       </section>
 
       <p className="muted settings__about">
         lablog {__APP_VERSION__} · 데이터는 이 브라우저(IndexedDB)에 저장 · 파일 형식 버전 {BACKUP_SCHEMA_VERSION}
       </p>
+
+      <ConfirmDialog
+        open={confirmExample}
+        danger
+        title="예시 데이터를 지울까요?"
+        message="예시로 들어 있는 프로젝트와 실험을 지웁니다(휴지통을 거치지 않습니다). 직접 만든 실험은 그대로입니다."
+        confirmLabel="예시 데이터 지우기"
+        onConfirm={() => {
+          setConfirmExample(false)
+          void removeExampleData(backend).then(async (n) => {
+            toast.show({ message: `예시 실험 ${n}건을 지웠습니다` })
+            setExample(await countExampleData(backend))
+            await loadCount()
+          })
+        }}
+        onCancel={() => setConfirmExample(false)}
+      />
 
       <ConfirmDialog
         open={confirmReplace}

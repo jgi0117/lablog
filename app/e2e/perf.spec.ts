@@ -1,4 +1,6 @@
+import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
+import { buildConcreteBackup, parseConcreteCsv } from '../src/data/concreteDemo'
 import { bulkBackupJson, createExperiment, importBackup } from './helpers'
 
 // 성능은 브라우저마다 달라서 세 브라우저 모두에서 같은 기준으로 잰다. 기준은 넉넉하게 두고 실제 값을 기록한다.
@@ -70,9 +72,9 @@ test('단계를 체크하면 곧바로 반응한다 (수행 모드)', async ({ p
 test('공개 데이터 전체 1,030건에서 홈, 프로젝트 표, 분석이 5초 안에 뜬다', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name.startsWith('webkit') && process.platform === 'win32', 'Windows WebKit의 IndexedDB 쓰기 속도 한계')
   test.setTimeout(180_000)
-  await page.goto('/')
-  await page.getByRole('button', { name: /전체 1,030건 넣기/ }).click()
-  await expect(page.getByText(/공개 데이터 전체 1030건을 넣었습니다/)).toBeVisible({ timeout: 90_000 })
+  // 공개 데이터 전체를 백업 파일로 만들어 설정의 가져오기로 넣는다(화면에 성능 시험용 버튼을 두지 않는다).
+  const rows = parseConcreteCsv(readFileSync('src/data/concrete/concrete.csv', 'utf-8'))
+  await importBackup(page, JSON.stringify(buildConcreteBackup(rows, 'full')))
   const numbers: Record<string, number> = {}
   // 다른 시험과 함께 돌면 느려질 수 있어 기준은 넉넉히 5초로 둔다(혼자 돌리면 Chromium 0.7~1.4초, Firefox 0.5~1.3초).
   const timed = async (name: string, path: string, limit: number, ready: () => Promise<void>) => {

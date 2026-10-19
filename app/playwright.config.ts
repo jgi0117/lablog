@@ -28,6 +28,8 @@ export default defineConfig({
     command: `npm run dev -- --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
+    // 시험은 빈 상태에서 시작해야 해서 처음 실행 때 예시 데이터를 자동으로 넣는 기능을 끈다.
+    env: { VITE_AUTO_EXAMPLE: 'off' },
     timeout: 120_000,
   },
   projects: [
