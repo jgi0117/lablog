@@ -18,24 +18,24 @@ import type { Step } from '../domain/types'
 
 describe('parseSteps', () => {
   it('줄마다 한 단계로 나누고 번호 접두어를 지운다', () => {
-    const text = `1. 시약 A를 계량한다
-2) 용기에 투입한다
-3단계: 80°C로 가열한다
-- 냉각한다
-① pH를 측정한다
+    const text = `1. 코팅액을 조제한다
+2) 기재에 도포한다
+3단계: 80°C로 건조한다
+- UV로 경화한다
+① 연필경도를 측정한다
 
    `
     expect(parseSteps(text)).toEqual([
-      '시약 A를 계량한다',
-      '용기에 투입한다',
-      '80°C로 가열한다',
-      '냉각한다',
-      'pH를 측정한다',
+      '코팅액을 조제한다',
+      '기재에 도포한다',
+      '80°C로 건조한다',
+      'UV로 경화한다',
+      '연필경도를 측정한다',
     ])
   })
 
   it('번호가 아닌 숫자로 시작하는 문장은 지우지 않는다', () => {
-    expect(parseSteps('80°C로 가열한다\n50 mL를 계량한다')).toEqual(['80°C로 가열한다', '50 mL를 계량한다'])
+    expect(parseSteps('80°C로 건조한다\n3 µm로 도포한다')).toEqual(['80°C로 건조한다', '3 µm로 도포한다'])
   })
 
   it('빈 입력은 빈 배열', () => {
@@ -45,7 +45,7 @@ describe('parseSteps', () => {
 
 describe('parseTags / roman', () => {
   it('태그는 쉼표·줄바꿈으로 나누고 중복과 빈 값을 뺀다', () => {
-    expect(parseTags('합성, 나노입자,, 합성\n측정')).toEqual(['합성', '나노입자', '측정'])
+    expect(parseTags('하드코팅, UV경화,, 하드코팅\n측정')).toEqual(['하드코팅', 'UV경화', '측정'])
   })
   it('로마 숫자', () => {
     expect([1, 4, 5, 9, 14, 24, 39].map(roman)).toEqual(['I', 'IV', 'V', 'IX', 'XIV', 'XXIV', 'XXXIX'])

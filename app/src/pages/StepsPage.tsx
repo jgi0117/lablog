@@ -155,7 +155,7 @@ export function StepsPage() {
           rows={6}
           value={bulk}
           onChange={(e) => setBulk(e.target.value)}
-          placeholder={'1. 시약 A를 50 mL 계량한다\n2. 반응 용기에 투입한다\n3. 80°C로 가열하며 교반한다'}
+          placeholder={'1. 코팅액을 조제한다\n2. 바 코터로 도포한다\n3. 80°C 오븐에서 건조한다'}
         />
         <button type="button" className="btn" onClick={() => void addBulk()} disabled={parseSteps(bulk).length === 0}>
           {parseSteps(bulk).length > 0 ? `${parseSteps(bulk).length}개 단계 추가` : '단계 추가'}

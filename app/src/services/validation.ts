@@ -33,4 +33,4 @@ export function valueWarning(value: string, history: number[] = []): string | nu
 }
 
 /** 자주 쓰는 단위. 입력칸에서 고르거나 직접 입력할 수 있다. */
-export const COMMON_UNITS = ['°C', 'K', 'min', 'h', 's', 'rpm', 'g', 'mg', 'mL', 'L', 'mM', 'M', '%', 'pH', 'MPa', 'mS/cm', 'nm', 'µm']
+export const COMMON_UNITS = ['µm', 'nm', 'mm', '°C', 'min', 's', 'm/min', 'mJ/cm²', 'wt%', '%', 'H', 'YI', 'GU', 'cP', 'g', 'mL', 'MPa', '만회']

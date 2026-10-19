@@ -69,7 +69,7 @@ describe('실험 목록', () => {
 
     await user.selectOptions(screen.getByLabelText('태그'), '측정')
     await waitFor(() => expect(cards()).toHaveLength(1))
-    expect(screen.getByText('고분자 필름 인장 강도 측정')).toBeInTheDocument()
+    expect(screen.getByText('AG 방현 필름 헤이즈 측정')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '필터 초기화' }))
     await waitFor(() => expect(cards()).toHaveLength(5))
@@ -142,7 +142,7 @@ describe('통합 검색', () => {
   it('띄어쓰기를 무시하고 찾는다', async () => {
     const backend = backendWith()
     await seedSample(backend)
-    open(`/search?q=${encodeURIComponent('나노입자합성')}`, backend)
+    open(`/search?q=${encodeURIComponent('HC-300하드코팅')}`, backend)
     expect(await screen.findByText(/2건 ·/)).toBeInTheDocument()
   })
 
@@ -161,9 +161,9 @@ describe('통합 검색', () => {
   it('결과가 없으면 비슷한 낱말을 제안한다 (E4)', async () => {
     const backend = backendWith()
     await seedSample(backend)
-    open(`/search?q=${encodeURIComponent('나노입잔')}`, backend)
+    open(`/search?q=${encodeURIComponent('하드코딩')}`, backend)
     expect(await screen.findByText('일치하는 실험이 없습니다')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '나노입자' })).toHaveAttribute('href', `/search?q=${encodeURIComponent('나노입자')}`)
+    expect(screen.getByRole('link', { name: '하드코팅' })).toHaveAttribute('href', `/search?q=${encodeURIComponent('하드코팅')}`)
     expect(screen.getByRole('link', { name: '새 실험 만들기' })).toBeInTheDocument()
   })
 
@@ -235,13 +235,13 @@ describe('Journey 2: 지난 실험 찾기', () => {
 
     // 프로젝트로 좁힌다
     const projects = await backend.projects.list()
-    const a = projects.find((p) => p.name === 'PROJECT-A')
+    const a = projects.find((p) => p.name === '하드코팅 필름 HC-300')
     await user.selectOptions(screen.getByLabelText('프로젝트'), a?.id ?? '')
     await screen.findByText(/2건 ·/)
 
     // 결과를 눌러 실험을 연다
-    await user.click(screen.getByRole('link', { name: /나노입자 합성 조건 최적화 #12/ }))
-    expect(await screen.findByRole('heading', { name: /나노입자 합성 조건 최적화 #12/ })).toBeInTheDocument()
+    await user.click(screen.getByRole('link', { name: /HC-300 하드코팅 조건 탐색 #4/ }))
+    expect(await screen.findByRole('heading', { name: /HC-300 하드코팅 조건 탐색 #4/ })).toBeInTheDocument()
 
     // KR1 기준: 검색부터 열기까지 10초 이내 (테스트 환경에서는 훨씬 짧다)
     expect(performance.now() - started).toBeLessThan(10000)

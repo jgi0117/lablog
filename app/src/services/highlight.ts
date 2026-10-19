@@ -5,7 +5,7 @@ export interface Range {
 
 /**
  * text 안에서 query와 일치하는 구간을 찾는다.
- * 대소문자와 띄어쓰기를 무시한다. ("나노입자합성"으로 "나노입자 합성"을 찾는다.)
+ * 대소문자와 띄어쓰기를 무시한다. ("하드코팅조건"으로 "하드코팅 조건"을 찾는다.)
  * 저장소의 검색(normalize)과 같은 규칙이라 검색에 걸린 결과는 항상 강조할 구간이 있다.
  */
 export function findRanges(text: string, query: string): Range[] {

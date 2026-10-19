@@ -17,7 +17,7 @@ export function runBackendContract(name: string, create: () => Promise<DataBacke
 
     const exp = (o: Partial<NewEntity<Experiment>> = {}): NewEntity<Experiment> => ({
       projectId: null,
-      title: '나노입자 합성 조건 최적화 #12',
+      title: 'HC-300 하드코팅 조건 탐색 #12',
       purpose: '',
       owner: '지윤',
       tags: [],
@@ -151,7 +151,7 @@ export function runBackendContract(name: string, create: () => Promise<DataBacke
         const s = await db.steps.create({
           experimentId: e.id,
           order: 1,
-          content: '시약 A 계량',
+          content: '코팅액 조제',
           done: false,
           doneAt: null,
           note: '',
@@ -210,14 +210,14 @@ export function runBackendContract(name: string, create: () => Promise<DataBacke
 
     describe('검색', () => {
       it('단계 메모와 조건 값에서도 찾고, 일치한 위치를 알려 준다', async () => {
-        const e = await db.experiments.create(exp({ title: '합성 실험' }))
+        const e = await db.experiments.create(exp({ title: '코팅 실험' }))
         await db.steps.create({
           experimentId: e.id,
           order: 5,
-          content: '용액을 가열한다',
+          content: '오븐에서 건조한다',
           done: false,
           doneAt: null,
-          note: '교반 속도 450 rpm 유지',
+          note: '라인 속도 450 mm/min 유지',
         })
         await db.dataItems.create({
           experimentId: e.id,
@@ -227,7 +227,7 @@ export function runBackendContract(name: string, create: () => Promise<DataBacke
           value: '80',
           unit: '°C',
         })
-        const byNote = await db.experiments.search('450 rpm')
+        const byNote = await db.experiments.search('450 mm/min')
         expect(byNote[0].experimentId).toBe(e.id)
         expect(byNote[0].matches.some((m) => m.field === 'note' && m.stepOrder === 5)).toBe(true)
         const byValue = await db.experiments.search('80')
@@ -235,9 +235,9 @@ export function runBackendContract(name: string, create: () => Promise<DataBacke
       })
 
       it('띄어쓰기가 달라도 부분 일치로 찾는다', async () => {
-        await db.experiments.create(exp({ title: '나노입자 합성 조건 최적화' }))
-        expect(await db.experiments.search('나노입자합성')).toHaveLength(1)
-        expect(await db.experiments.search('합성 조건')).toHaveLength(1)
+        await db.experiments.create(exp({ title: 'HC-300 하드코팅 조건 탐색' }))
+        expect(await db.experiments.search('HC-300하드코팅')).toHaveLength(1)
+        expect(await db.experiments.search('하드코팅 조건')).toHaveLength(1)
       })
 
       it('수정·삭제·되돌린 뒤에도 검색 결과가 최신이다', async () => {
@@ -284,12 +284,12 @@ export function runBackendContract(name: string, create: () => Promise<DataBacke
     })
 
     describe('복제 (s3, E8)', () => {
-      it('절차·조건은 복사하고 체크·메모·결과는 비운다', async () => {
+      it('절차·조건은 복사하고 체크·메모는 비우며 결과는 항목만 남긴다', async () => {
         const e = await db.experiments.create(exp({ status: 'done' }))
         await db.steps.create({
           experimentId: e.id,
           order: 1,
-          content: '가열',
+          content: '건조',
           done: true,
           doneAt: new Date().toISOString(),
           note: '메모',
@@ -316,9 +316,13 @@ export function runBackendContract(name: string, create: () => Promise<DataBacke
         expect(copy.sourceExperimentId).toBe(e.id)
         const steps = await db.steps.listByExperiment(copy.id)
         expect(steps).toHaveLength(1)
-        expect(steps[0]).toMatchObject({ content: '가열', done: false, doneAt: null, note: '' })
+        expect(steps[0]).toMatchObject({ content: '건조', done: false, doneAt: null, note: '' })
         const items = await db.dataItems.listByExperiment(copy.id)
-        expect(items.map((i) => [i.kind, i.value])).toEqual([['condition', '80']])
+        // 조건은 값까지, 결과는 항목 이름·단위만 가져오고 값은 비운다.
+        expect(items.map((i) => [i.kind, i.name, i.value, i.unit])).toEqual([
+          ['condition', '온도', '80', '°C'],
+          ['result', '수율', '', '%'],
+        ])
       })
     })
 

@@ -86,7 +86,7 @@ describe('라우팅과 앱 셸', () => {
     await seedSample(backend)
     setup('/', backend)
     await waitFor(() => expect(screen.getByText(/진행 중 \(2\)/)).toBeInTheDocument())
-    expect(screen.getAllByText('나노입자 합성 조건 최적화 #12').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('HC-300 하드코팅 조건 탐색 #4').length).toBeGreaterThan(0)
     expect(screen.getAllByText(/남은 단계 5개/).length).toBeGreaterThan(0)
   })
 })

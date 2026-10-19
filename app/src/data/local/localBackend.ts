@@ -194,12 +194,18 @@ export function createLocalBackend(name = 'lablog'): LocalBackend {
             ),
           )
           const srcData = await db.dataItems.where('experimentId').equals(id).toArray()
+          // 조건은 값까지 가져오고, 결과는 항목 이름과 단위만 가져와 값을 비운다(결과를 빠뜨리지 않게).
           await db.dataItems.bulkAdd(
-            srcData
-              .filter((d) => d.kind === 'condition')
-              .map((d) =>
-                makeEntity<DataItem>({ experimentId: copy.id, kind: 'condition', order: d.order, name: d.name, value: d.value, unit: d.unit }),
-              ),
+            srcData.map((d) =>
+              makeEntity<DataItem>({
+                experimentId: copy.id,
+                kind: d.kind,
+                order: d.order,
+                name: d.name,
+                value: d.kind === 'condition' ? d.value : '',
+                unit: d.unit,
+              }),
+            ),
           )
           return copy
         }),

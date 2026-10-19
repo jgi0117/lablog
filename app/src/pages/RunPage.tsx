@@ -18,17 +18,20 @@ import {
   stepStats,
 } from '../services/experimentService'
 import { roman } from '../services/text'
+import { catalogNames, findCatalogUnit, type CatalogItem } from '../services/catalog'
+import { useItemCatalog } from '../hooks/useItemCatalog'
 import { COMMON_UNITS, valueWarning } from '../services/validation'
 
 interface PanelProps {
   step: Step
   items: DataItem[]
+  catalog: CatalogItem[]
   onStep: (s: Step) => void
   onItem: (d: DataItem) => void
 }
 
 /** 지금 보고 있는 단계 아래의 입력: 값(조건·결과)과 단계 메모. 입력은 잠깐 뒤 자동 저장된다. */
-function CurrentStepPanel({ step, items, onStep, onItem }: PanelProps) {
+function CurrentStepPanel({ step, items, catalog, onStep, onItem }: PanelProps) {
   const backend = useBackend()
   const [note, setNote] = useState(step.note)
   const [kind, setKind] = useState<DataKind>('condition')
@@ -69,7 +72,24 @@ function CurrentStepPanel({ step, items, onStep, onItem }: PanelProps) {
         </div>
         <div className="field entry__grow">
           <label htmlFor="run-name">항목</label>
-          <input id="run-name" className="input" placeholder="예) 온도" value={name} onChange={(e) => setName(e.target.value)} />
+          <input
+            id="run-name"
+            className="input"
+            placeholder="예) 건조 온도"
+            list="run-names"
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value)
+              // 같은 프로젝트에서 쓴 항목과 이름이 같고 단위를 비워 뒀으면 단위를 채운다.
+              const known = unit.trim() === '' ? findCatalogUnit(catalog, kind, e.target.value) : null
+              if (known) setUnit(known)
+            }}
+          />
+          <datalist id="run-names">
+            {catalogNames(catalog, kind).map((n) => (
+              <option key={n} value={n} />
+            ))}
+          </datalist>
         </div>
         <div className="field entry__num">
           <label htmlFor="run-value">값</label>
@@ -99,7 +119,7 @@ function CurrentStepPanel({ step, items, onStep, onItem }: PanelProps) {
           id="run-note"
           className="input input--area"
           rows={2}
-          placeholder="예) 교반 속도 450 rpm 유지, 색 변화 없음"
+          placeholder="예) 도포 후 줄무늬 없음, 건조 오븐 편차 ±2°C"
           value={note}
           onChange={(e) => {
             setNote(e.target.value)
@@ -123,6 +143,7 @@ export function RunPage() {
   const { experiment, steps, items, status, setSteps, setItems, setExperiment } = data
   const [focus, setFocus] = useState<number | null>(null)
   const started = useRef(false)
+  const catalog = useItemCatalog(experiment?.projectId)
 
   // 진입하면 준비 → 진행으로 바꾼다.
   useEffect(() => {
@@ -289,7 +310,7 @@ export function RunPage() {
                     <span className="step__no">{roman(i + 1)}.</span> {s.content}
                   </span>
                 </button>
-                {isCur && <CurrentStepPanel key={s.id} step={s} items={items} onStep={replaceStep} onItem={(d) => setItems((xs) => [...xs, d])} />}
+                {isCur && <CurrentStepPanel key={s.id} step={s} items={items} catalog={catalog} onStep={replaceStep} onItem={(d) => setItems((xs) => [...xs, d])} />}
               </li>
             )
           })}

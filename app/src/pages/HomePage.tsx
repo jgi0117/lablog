@@ -1,105 +1,94 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useBackend } from '../app/BackendContext'
 import { EmptyState } from '../components/EmptyState'
 import { ExperimentCard } from '../components/ExperimentCard'
+import { GapList } from '../components/GapList'
 import { useToast } from '../components/Toast'
-import { seedSample } from '../data/seed'
-import type { Experiment } from '../domain/types'
+import { useAllBundles } from '../hooks/useBundles'
+import { seedDemo } from '../data/seed'
+import { findGaps, type Gap } from '../services/analysis'
 import { stepStats } from '../services/experimentService'
 
-interface Row {
-  experiment: Experiment
-  percent: number
-  open: number
-}
-
-interface Dashboard {
-  running: Row[]
-  recent: Row[]
-  projects: Map<string, string>
-  total: number
-}
-
-/** 홈(대시보드): 진행 중 실험(남은 단계 포함), 최근 실험. 실험이 없으면 첫 실험 안내. */
+/** 홈: 진행 중인 실험, 놓친 것(모든 프로젝트), 최근 실험. 실험이 없으면 첫 실험 안내. */
 export function HomePage() {
   const backend = useBackend()
   const toast = useToast()
-  const [data, setData] = useState<Dashboard | null>(null)
+  const { state, reload } = useAllBundles()
 
-  const load = useCallback(async (): Promise<Dashboard> => {
-    const [runningRes, recentRes, projects] = await Promise.all([
-      backend.experiments.list({ status: 'running' }, 'updated_desc'),
-      backend.experiments.list({}, 'updated_desc', { limit: 6, offset: 0 }),
-      backend.projects.list(),
-    ])
-    const toRow = async (experiment: Experiment): Promise<Row> => {
-      const stats = stepStats(await backend.steps.listByExperiment(experiment.id))
-      return { experiment, percent: stats.percent, open: stats.total - stats.done }
+  const view = useMemo(() => {
+    if (!state) return null
+    const names = new Map(state.projects.map((p) => [p.id, p.name]))
+    const rows = state.bundles.map((b) => {
+      const s = stepStats(b.steps)
+      return { b, percent: s.percent, open: s.total - s.done }
+    })
+    const running = rows.filter((r) => r.b.experiment.status === 'running')
+    const recent = [...rows].sort((a, c) => c.b.experiment.updatedAt.localeCompare(a.b.experiment.updatedAt)).slice(0, 6)
+    // 프로젝트별로 점검하고 합친다. 프로젝트에 속하지 않은 실험은 점검 대상에서 뺀다(비교할 기준이 없다).
+    const gapProject = new Map<string, string>()
+    const gaps: Gap[] = []
+    for (const p of state.projects) {
+      for (const g of findGaps(state.bundles.filter((b) => b.experiment.projectId === p.id))) {
+        gaps.push(g)
+        gapProject.set(g.id, p.id)
+      }
     }
-    const [running, recent] = await Promise.all([
-      Promise.all(runningRes.items.map(toRow)),
-      Promise.all(recentRes.items.map(toRow)),
-    ])
-    return { running, recent, projects: new Map(projects.map((p) => [p.id, p.name])), total: recentRes.total }
-  }, [backend])
-
-  useEffect(() => {
-    let alive = true
-    load()
-      .then((d) => alive && setData(d))
-      .catch(() => {
-        // 저장소를 읽지 못해도 화면은 비어 있는 상태로 둔다. 저장 실패 안내는 Phase 5에서 다룬다.
-        if (alive) setData({ running: [], recent: [], projects: new Map(), total: 0 })
-      })
-    return () => {
-      alive = false
-    }
-  }, [load])
+    const order = { high: 0, mid: 1, low: 2 } as const
+    gaps.sort((a, c) => order[a.severity] - order[c.severity])
+    return { names, running, recent, gaps, gapProject, total: state.bundles.length }
+  }, [state])
 
   const onSeed = async () => {
-    const n = await seedSample(backend)
-    toast.show({ message: `샘플 실험 ${n}건을 넣었습니다` })
-    setData(await load())
+    const n = await seedDemo(backend)
+    toast.show({ message: `데모 실험 ${n}건을 넣었습니다 (필름 개발 프로젝트 3개)` })
+    await reload()
   }
 
-  if (data === null) return <p className="muted">불러오는 중…</p>
+  if (!view) return <p className="muted">불러오는 중…</p>
 
-  const card = (r: Row) => (
+  const card = (r: (typeof view.running)[number]) => (
     <ExperimentCard
-      key={r.experiment.id}
-      experiment={r.experiment}
-      projectName={r.experiment.projectId ? data.projects.get(r.experiment.projectId) : undefined}
+      key={r.b.experiment.id}
+      experiment={r.b.experiment}
+      projectName={r.b.experiment.projectId ? view.names.get(r.b.experiment.projectId) : undefined}
       percent={r.percent}
-      openSteps={r.experiment.status === 'running' ? r.open : undefined}
+      openSteps={r.b.experiment.status === 'running' ? r.open : undefined}
     />
   )
 
   return (
     <section>
       <h1 className="page-title">오늘의 실험</h1>
-      {data.total === 0 ? (
-        <EmptyState title="첫 실험을 만들어 보세요" description="실험 기록을 한 곳에 모읍니다.">
+      {view.total === 0 ? (
+        <EmptyState title="첫 실험을 만들어 보세요" description="맡은 프로젝트의 실험 기록을 한곳에 모읍니다.">
           <Link to="/experiments/new" className="btn btn--primary">
             + 새 실험
           </Link>
           {import.meta.env.DEV && (
             <button type="button" className="btn" onClick={onSeed}>
-              샘플 데이터 넣기 (개발용)
+              데모 데이터 넣기 (개발용)
             </button>
           )}
         </EmptyState>
       ) : (
         <>
-          <h2 className="section-title section-title--first">진행 중 ({data.running.length})</h2>
-          {data.running.length === 0 ? (
-            <p className="muted">진행 중인 실험이 없습니다.</p>
-          ) : (
-            <div className="card-grid">{data.running.map(card)}</div>
-          )}
+          <h2 className="section-title section-title--first">진행 중 ({view.running.length})</h2>
+          {view.running.length === 0 ? <p className="muted">진행 중인 실험이 없습니다.</p> : <div className="card-grid">{view.running.map(card)}</div>}
+
+          <h2 className="section-title">놓친 것 ({view.gaps.length})</h2>
+          <div className="panel">
+            <GapList gaps={view.gaps} limit={5} prefix={(g) => view.names.get(view.gapProject.get(g.id) ?? '')} />
+            {view.gaps.length > 0 && (
+              <p className="gaps__foot">
+                프로젝트별로 자세히 보려면 <Link to="/projects">프로젝트</Link>를 여세요.
+              </p>
+            )}
+          </div>
+
           <h2 className="section-title">최근 실험</h2>
-          <div className="card-grid">{data.recent.map(card)}</div>
-          <p className="muted home__total">전체 실험 {data.total}건</p>
+          <div className="card-grid">{view.recent.map(card)}</div>
+          <p className="muted home__total">전체 실험 {view.total}건</p>
         </>
       )}
     </section>

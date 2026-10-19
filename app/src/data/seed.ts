@@ -1,6 +1,15 @@
-import type { DataBackend } from './repositories'
-import type { ExperimentStatus } from '../domain/types'
+import type { BackupFile, DataBackend } from './repositories'
+import { BACKUP_SCHEMA_VERSION } from './repositories'
+import type { DataItem, Experiment, ExperimentStatus, Project, Step } from '../domain/types'
 
+/**
+ * 개발·시연용 샘플 데이터. 필름 제품 개발(하드코팅, 방현, 유연 코팅) 업무를 기준으로 한다.
+ * - seedSample: 작은 고정 데이터(테스트와 화면 확인용)
+ * - seedDemo: 몇 주에 걸친 이력이 있는 데이터(프로젝트 화면, 차트, 빠짐 점검 시연용)
+ * - seedBulk: 성능·페이지 나눔 확인용 대량 데이터
+ */
+
+// ---------- 작은 고정 데이터 ----------
 interface SampleExperiment {
   project: string
   title: string
@@ -13,75 +22,77 @@ interface SampleExperiment {
   results: [string, string, string][]
 }
 
+const HC_STEPS = [
+  'PET 기재(100 µm)를 세척하고 정전기를 제거한다',
+  '코팅액(UV 경화 아크릴, 고형분 40%)을 조제한다',
+  '코팅액 점도를 측정한다',
+  '바 코터로 기재에 도포한다',
+  '오븐에서 80°C로 용제를 건조한다',
+  'UV 램프로 경화한다',
+  '연필경도를 측정한다',
+  '투과율과 헤이즈를 측정한다',
+  '밀착성(크로스컷)을 평가한다',
+]
+
 const SAMPLES: SampleExperiment[] = [
   {
-    project: 'PROJECT-A',
-    title: '나노입자 합성 조건 최적화 #12',
+    project: '하드코팅 필름 HC-300',
+    title: 'HC-300 하드코팅 조건 탐색 #4',
     status: 'running',
     owner: '지윤',
-    tags: ['합성', '나노입자'],
-    steps: [
-      '반응 용기를 세척하고 건조한다',
-      '용매 100 mL를 준비한다',
-      '시약 A를 50 mL 계량한다',
-      '반응 용기에 시약 A를 천천히 투입한다',
-      '용액을 80°C로 가열하며 교반한다',
-      '냉각 후 pH를 측정한다',
-      '원심분리 후 상층액을 분리한다',
-      '세척 후 건조한다',
-      '수율을 계산하고 결과를 정리한다',
-    ],
+    tags: ['하드코팅', 'UV경화'],
+    steps: HC_STEPS,
     doneCount: 4,
-    conditions: [['온도', '80', '°C'], ['시간', '30', 'min'], ['교반 속도', '450', 'rpm']],
-    results: [['pH', '—', '']],
+    conditions: [['건조 온도', '80', '°C'], ['건조 시간', '2', 'min'], ['UV 조사량', '500', 'mJ/cm²']],
+    results: [['헤이즈', '—', '%']],
   },
   {
-    project: 'PROJECT-A',
-    title: '나노입자 합성 조건 최적화 #11',
+    project: '하드코팅 필름 HC-300',
+    title: 'HC-300 하드코팅 조건 탐색 #3',
     status: 'done',
     owner: '지윤',
-    tags: ['합성', '나노입자'],
-    steps: ['시약 계량', '가열 교반', '냉각', '분리'],
-    doneCount: 4,
-    conditions: [['온도', '80', '°C'], ['교반 속도', '400', 'rpm']],
-    results: [['수율', '88', '%']],
+    tags: ['하드코팅', 'UV경화'],
+    steps: ['기재 세척', '코팅액 조제', '도포', '80°C 건조', 'UV 경화', '물성 측정'],
+    doneCount: 6,
+    conditions: [['건조 온도', '80', '°C'], ['UV 조사량', '500', 'mJ/cm²']],
+    results: [['투과율', '90.6', '%']],
   },
   {
-    project: 'PROJECT-B',
-    title: '촉매 활성 비교 시험',
+    project: 'AG 방현 필름',
+    title: 'AG 방현 필름 필러 함량 비교',
     status: 'ready',
-    owner: '민호',
-    tags: ['촉매'],
-    steps: ['촉매 3종을 준비한다', '반응기에 충전한다', '온도별 활성을 측정한다'],
+    owner: '지윤',
+    tags: ['방현'],
+    steps: ['필러 분산액 3종을 조제한다', '바 코터로 도포한다', '건조 후 경화한다'],
     doneCount: 0,
-    conditions: [['온도', '250', '°C']],
+    conditions: [['필러 함량', '3', 'wt%']],
     results: [],
   },
   {
-    project: 'PROJECT-B',
-    title: '고분자 필름 인장 강도 측정',
+    project: 'AG 방현 필름',
+    title: 'AG 방현 필름 헤이즈 측정',
     status: 'running',
-    owner: '서연',
-    tags: ['고분자', '측정'],
-    steps: ['시편을 재단한다', '80°C에서 열처리한다', '인장 시험기에 장착한다'],
+    owner: '지윤',
+    tags: ['방현', '측정'],
+    steps: ['시편을 50 mm × 50 mm로 재단한다', '헤이즈미터를 보정한다', '3회 측정해 평균을 낸다'],
     doneCount: 1,
-    conditions: [['열처리 온도', '80', '°C']],
-    results: [['평균 인장 강도', '42.3', 'MPa']],
+    conditions: [['건조 온도', '80', '°C']],
+    results: [['헤이즈', '12.3', '%']],
   },
   {
-    project: 'PROJECT-C',
-    title: '전해질 이온전도도 측정 #3',
+    project: '접이식 유연 코팅',
+    title: '유연 코팅 필름 굴곡 시험 #1',
     status: 'done',
     owner: '지윤',
-    tags: ['전해질', '측정'],
-    steps: ['전해질을 조제한다', '80°C 오븐에서 건조한 뒤 글러브박스로 옮긴다', '임피던스를 측정한다'],
+    tags: ['유연', '측정'],
+    steps: ['시편을 재단한다', '굴곡 시험기(R=3 mm)에 장착한다', '굴곡 횟수를 기록한다'],
     doneCount: 3,
     conditions: [['건조 온도', '80', '°C']],
-    results: [['이온전도도', '1.2', 'mS/cm']],
+    results: [['굴곡 횟수', '20', '만회']],
   },
 ]
 
-/** 개발용 샘플 데이터. 만든 실험 수를 돌려준다. */
+/** 작은 고정 샘플(실험 5건). 만든 실험 수를 돌려준다. */
 export async function seedSample(db: DataBackend): Promise<number> {
   const projectIds = new Map<string, string>()
   for (const s of SAMPLES) {
@@ -122,6 +133,262 @@ export async function seedSample(db: DataBackend): Promise<number> {
     }
   }
   return SAMPLES.length
+}
+
+// ---------- 이력이 있는 시연 데이터 ----------
+function daysAgo(n: number, hour = 10): string {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  d.setHours(hour, 0, 0, 0)
+  return d.toISOString()
+}
+
+type Cond = [name: string, value: string, unit: string]
+interface DemoExperiment {
+  key: string
+  project: string
+  title: string
+  status: ExperimentStatus
+  tags: string[]
+  startedAgo: number
+  /** 마지막으로 손댄 시점(며칠 전). 완료한 실험은 완료 시점과 같다. */
+  touchedAgo: number
+  steps: string[]
+  doneCount: number
+  conditions: Cond[]
+  results: Cond[]
+  note?: { step: number; text: string }
+}
+
+const P_HC = '하드코팅 필름 HC-300'
+const P_AG = 'AG 방현 필름'
+const P_FLEX = '접이식 유연 코팅'
+
+/** 하드코팅 8건: 두께·건조·UV 조건을 바꿔 가며 경도, 투과율, 헤이즈를 본다. #8에는 일부러 빠진 것과 이상치를 넣었다. */
+const HC_RUNS: {
+  n: number
+  ago: number
+  thick: string
+  temp: string
+  time: string | null
+  uv: string
+  hard: string
+  tr: string
+  haze: string
+  adh: string
+  yi: string
+}[] = [
+  { n: 1, ago: 42, thick: '3', temp: '80', time: '2', uv: '300', hard: '1', tr: '91.2', haze: '0.6', adh: '100', yi: '0.8' },
+  { n: 2, ago: 35, thick: '3', temp: '90', time: '2', uv: '500', hard: '2', tr: '91.0', haze: '0.6', adh: '100', yi: '0.9' },
+  { n: 3, ago: 28, thick: '5', temp: '80', time: '2', uv: '300', hard: '2', tr: '90.8', haze: '0.7', adh: '100', yi: '0.9' },
+  { n: 4, ago: 21, thick: '5', temp: '90', time: '2', uv: '500', hard: '3', tr: '90.6', haze: '0.7', adh: '100', yi: '1.0' },
+  { n: 5, ago: 17, thick: '5', temp: '100', time: '3', uv: '700', hard: '3', tr: '90.3', haze: '0.8', adh: '95', yi: '1.2' },
+  { n: 6, ago: 13, thick: '7', temp: '90', time: '3', uv: '500', hard: '3', tr: '90.1', haze: '0.9', adh: '100', yi: '1.1' },
+  { n: 7, ago: 9, thick: '7', temp: '100', time: '3', uv: '700', hard: '4', tr: '89.8', haze: '1.0', adh: '90', yi: '1.4' },
+  { n: 8, ago: 6, thick: '7', temp: '90', time: null, uv: '500', hard: '3', tr: '90.0', haze: '3.9', adh: '', yi: '1.1' },
+]
+
+function demoExperiments(): DemoExperiment[] {
+  const out: DemoExperiment[] = []
+  for (const r of HC_RUNS) {
+    const conditions: Cond[] = [
+      ['코팅 두께', r.thick, 'µm'],
+      ['건조 온도', r.temp, '°C'],
+      ...(r.time ? ([['건조 시간', r.time, 'min']] as Cond[]) : []),
+      ['UV 조사량', r.uv, 'mJ/cm²'],
+    ]
+    out.push({
+      key: `hc${r.n}`,
+      project: P_HC,
+      title: `HC-300 하드코팅 조건 탐색 #${r.n}`,
+      status: 'done',
+      tags: ['하드코팅', 'UV경화'],
+      startedAgo: r.ago,
+      touchedAgo: r.ago - 1,
+      steps: HC_STEPS,
+      doneCount: HC_STEPS.length,
+      conditions,
+      results: [
+        ['연필경도', r.hard, 'H'],
+        ['투과율', r.tr, '%'],
+        ['헤이즈', r.haze, '%'],
+        ['밀착성', r.adh, '%'],
+        ['황색도', r.yi, 'YI'],
+      ],
+      note: r.n === 8 ? { step: 4, text: '도포 중 기포 발생, 건조 시간 기록 누락' } : undefined,
+    })
+  }
+  out.push(
+    {
+      key: 'hc9',
+      project: P_HC,
+      title: 'HC-300 하드코팅 조건 탐색 #9',
+      status: 'running',
+      tags: ['하드코팅', 'UV경화'],
+      startedAgo: 12,
+      touchedAgo: 10,
+      steps: HC_STEPS,
+      doneCount: 5,
+      conditions: [['코팅 두께', '7', 'µm'], ['건조 온도', '90', '°C'], ['UV 조사량', '700', 'mJ/cm²']],
+      results: [],
+    },
+    {
+      key: 'hc10',
+      project: P_HC,
+      title: 'HC-300 하드코팅 조건 탐색 #10',
+      status: 'running',
+      tags: ['하드코팅', 'UV경화'],
+      startedAgo: 2,
+      touchedAgo: 1,
+      steps: HC_STEPS,
+      doneCount: 3,
+      conditions: [['코팅 두께', '5', 'µm'], ['건조 온도', '90', '°C'], ['건조 시간', '2', 'min'], ['UV 조사량', '600', 'mJ/cm²']],
+      results: [],
+    },
+  )
+
+  const AG_STEPS = ['필러 분산액을 조제한다', '바 코터로 도포한다', '80°C로 건조한다', 'UV 경화한다', '헤이즈와 광택도를 측정한다']
+  const ag: [number, number, string, string, string, string, number][] = [
+    [1, 30, '2', '6.1', '92', '90.8', 29],
+    [2, 22, '4', '12.4', '78', '90.1', 21],
+    [3, 14, '6', '19.8', '61', '89.4', 13],
+  ]
+  for (const [n, ago, filler, haze, gloss, tr, touched] of ag) {
+    out.push({
+      key: `ag${n}`,
+      project: P_AG,
+      title: `AG 방현 필름 필러 함량 비교 #${n}`,
+      status: 'done',
+      tags: ['방현', '필러'],
+      startedAgo: ago,
+      touchedAgo: touched,
+      steps: AG_STEPS,
+      doneCount: AG_STEPS.length,
+      conditions: [['필러 함량', filler, 'wt%'], ['코팅 두께', '4', 'µm'], ['건조 온도', '80', '°C']],
+      results: [['헤이즈', haze, '%'], ['광택도', gloss, 'GU'], ['투과율', tr, '%']],
+    })
+  }
+  out.push({
+    key: 'ag4',
+    project: P_AG,
+    title: 'AG 방현 필름 필러 함량 비교 #4',
+    status: 'ready',
+    tags: ['방현', '필러'],
+    startedAgo: 0,
+    touchedAgo: 3,
+    steps: AG_STEPS,
+    doneCount: 0,
+    conditions: [['필러 함량', '8', 'wt%'], ['코팅 두께', '4', 'µm'], ['건조 온도', '80', '°C']],
+    results: [],
+  })
+
+  const FLEX_STEPS = ['시편을 재단한다', '굴곡 시험기(R=3 mm)에 장착한다', '굴곡을 반복하며 크랙을 확인한다', '연필경도를 측정한다']
+  const flex: [number, number, string, string, string, string, number][] = [
+    [1, 26, '3', '300', '15', '1', 25],
+    [2, 18, '5', '500', '8', '3', 17],
+    [3, 8, '4', '400', '12', '2', 7],
+  ]
+  for (const [n, ago, thick, uv, bends, hard, touched] of flex) {
+    out.push({
+      key: `fx${n}`,
+      project: P_FLEX,
+      title: `유연 코팅 굴곡 내구 평가 #${n}`,
+      status: 'done',
+      tags: ['유연', '굴곡'],
+      startedAgo: ago,
+      touchedAgo: touched,
+      steps: FLEX_STEPS,
+      doneCount: FLEX_STEPS.length,
+      conditions: [['코팅 두께', thick, 'µm'], ['UV 조사량', uv, 'mJ/cm²']],
+      results: [['굴곡 횟수', bends, '만회'], ['연필경도', hard, 'H']],
+    })
+  }
+  return out
+}
+
+/** 이력이 있는 시연 데이터를 가져온다(병합). 만든 실험 수를 돌려준다. */
+export async function seedDemo(db: DataBackend): Promise<number> {
+  const exps = demoExperiments()
+  const projects: Project[] = []
+  const projectId = new Map<string, string>()
+  for (const name of [P_HC, P_AG, P_FLEX]) {
+    const id = `demo-project-${projects.length + 1}`
+    projectId.set(name, id)
+    projects.push({
+      id,
+      name,
+      description:
+        name === P_HC
+          ? 'PET 기재 위 UV 경화 하드코팅. 목표: 연필경도 3H 이상, 투과율 90% 이상, 헤이즈 1% 이하'
+          : name === P_AG
+            ? '필러 함량으로 헤이즈와 광택도를 조절하는 방현 코팅'
+            : '접이식 디스플레이용. 경도와 굴곡 내구의 균형',
+      createdAt: daysAgo(45),
+      updatedAt: daysAgo(45),
+      deletedAt: null,
+      version: 1,
+    })
+  }
+  const experiments: Experiment[] = []
+  const steps: Step[] = []
+  const dataItems: DataItem[] = []
+  for (const e of exps) {
+    const id = `demo-${e.key}`
+    const started = e.status === 'ready' ? null : daysAgo(e.startedAgo)
+    const touched = daysAgo(Math.max(0, e.touchedAgo), 15)
+    experiments.push({
+      id,
+      createdAt: daysAgo(e.startedAgo + 1),
+      updatedAt: touched,
+      deletedAt: null,
+      version: 1,
+      projectId: projectId.get(e.project) ?? null,
+      title: e.title,
+      purpose: '',
+      owner: '지윤',
+      tags: e.tags,
+      status: e.status,
+      startedAt: started,
+      completedAt: e.status === 'done' ? touched : null,
+      sourceExperimentId: null,
+    })
+    e.steps.forEach((content, i) => {
+      const done = i < e.doneCount
+      steps.push({
+        id: `${id}-s${i + 1}`,
+        createdAt: daysAgo(e.startedAgo + 1),
+        updatedAt: touched,
+        deletedAt: null,
+        version: 1,
+        experimentId: id,
+        order: i + 1,
+        content,
+        done,
+        doneAt: done ? touched : null,
+        note: e.note && e.note.step === i + 1 ? e.note.text : '',
+      })
+    })
+    ;(['condition', 'result'] as const).forEach((kind) => {
+      ;(kind === 'condition' ? e.conditions : e.results).forEach(([name, value, unit], i) => {
+        dataItems.push({
+          id: `${id}-${kind[0]}${i + 1}`,
+          createdAt: daysAgo(e.startedAgo + 1),
+          updatedAt: touched,
+          deletedAt: null,
+          version: 1,
+          experimentId: id,
+          kind,
+          order: i + 1,
+          name,
+          value,
+          unit,
+        })
+      })
+    })
+  }
+  const file: BackupFile = { schemaVersion: BACKUP_SCHEMA_VERSION, exportedAt: new Date().toISOString(), projects, experiments, steps, dataItems }
+  await db.backup.importAll(file, 'merge')
+  return experiments.length
 }
 
 /** 성능·페이지 나눔 확인용 대량 데이터. */

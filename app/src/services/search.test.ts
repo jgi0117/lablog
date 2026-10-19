@@ -4,29 +4,29 @@ import { editDistance, suggestQueries, vocabularyFrom } from './suggest'
 
 describe('findRanges / splitByRanges', () => {
   it('대소문자와 띄어쓰기를 무시하고 원문 위치를 돌려준다', () => {
-    const text = '나노입자 합성 조건 최적화'
-    const ranges = findRanges(text, '나노입자합성')
-    expect(ranges).toEqual([{ start: 0, end: 7 }])
-    expect(text.slice(ranges[0].start, ranges[0].end)).toBe('나노입자 합성')
+    const text = 'HC-300 하드코팅 조건 탐색'
+    const ranges = findRanges(text, 'HC-300하드코팅')
+    expect(ranges).toEqual([{ start: 0, end: 11 }])
+    expect(text.slice(ranges[0].start, ranges[0].end)).toBe('HC-300 하드코팅')
   })
 
   it('여러 곳에서 일치하면 모두 찾는다', () => {
-    const ranges = findRanges('80°C로 가열하고 80°C를 유지한다', '80°c')
+    const ranges = findRanges('80°C로 건조하고 80°C를 유지한다', '80°c')
     expect(ranges).toHaveLength(2)
   })
 
   it('일치하지 않거나 검색어가 비면 빈 배열', () => {
-    expect(findRanges('가열한다', '냉각')).toEqual([])
-    expect(findRanges('가열한다', '  ')).toEqual([])
+    expect(findRanges('건조한다', '경화')).toEqual([])
+    expect(findRanges('건조한다', '  ')).toEqual([])
   })
 
   it('조각으로 나누면 일치한 조각만 match=true', () => {
-    const text = '용액을 80°C로 가열한다'
+    const text = '오븐을 80°C로 설정한다'
     const pieces = splitByRanges(text, findRanges(text, '80°C'))
     expect(pieces.map((p) => [p.text, p.match])).toEqual([
-      ['용액을 ', false],
+      ['오븐을 ', false],
       ['80°C', true],
-      ['로 가열한다', false],
+      ['로 설정한다', false],
     ])
     expect(pieces.map((p) => p.text).join('')).toBe(text)
   })
@@ -54,21 +54,21 @@ describe('검색어 제안 (E4)', () => {
   })
 
   const vocab = vocabularyFrom([
-    { title: '나노입자 합성 조건 최적화 #12', tags: ['합성', '나노입자'] },
-    { title: '고분자 필름 인장 강도 측정', tags: ['고분자', '측정'] },
+    { title: 'HC-300 하드코팅 조건 탐색 #12', tags: ['하드코팅', 'UV경화'] },
+    { title: 'AG 방현 필름 헤이즈 측정', tags: ['방현', '측정'] },
   ])
 
   it('제목과 태그에서 낱말을 뽑는다', () => {
-    expect(vocab).toEqual(expect.arrayContaining(['나노입자', '합성', '고분자', '인장', '측정']))
+    expect(vocab).toEqual(expect.arrayContaining(['하드코팅', '조건', '탐색', '방현', '헤이즈', '측정']))
   })
 
   it('철자가 한 글자 다른 낱말을 제안한다', () => {
-    expect(suggestQueries('나노입잔', vocab)).toEqual(['나노입자'])
-    expect(suggestQueries('고분잔 필름', vocab)).toContain('고분자')
+    expect(suggestQueries('하드코딩', vocab)).toEqual(['하드코팅'])
+    expect(suggestQueries('헤이스 측정', vocab)).toContain('헤이즈')
   })
 
   it('이미 있는 낱말이나 전혀 다른 낱말은 제안하지 않는다', () => {
-    expect(suggestQueries('합성', vocab)).toEqual([])
+    expect(suggestQueries('탐색', vocab)).toEqual([])
     expect(suggestQueries('전혀다른말', vocab)).toEqual([])
   })
 })

@@ -8,6 +8,11 @@ import { HomePage } from '../pages/HomePage'
 import { NewExperimentPage } from '../pages/NewExperimentPage'
 import { OverviewPage } from '../pages/OverviewPage'
 import { PlaceholderPage } from '../pages/PlaceholderPage'
+import { ProjectAnalysisPage } from '../pages/ProjectAnalysisPage'
+import { ProjectDataPage } from '../pages/ProjectDataPage'
+import { ProjectLayout } from '../pages/ProjectLayout'
+import { ProjectOverviewPage } from '../pages/ProjectOverviewPage'
+import { ProjectsPage } from '../pages/ProjectsPage'
 import { RunPage } from '../pages/RunPage'
 import { SearchPage } from '../pages/SearchPage'
 import { StepsPage } from '../pages/StepsPage'
@@ -33,6 +38,12 @@ export function AppRoutes() {
       <Route path="/experiments/:id/run" element={<RunPage />} />
       <Route element={<AppShell />}>
         <Route index element={<HomePage />} />
+        <Route path="projects" element={<ProjectsPage />} />
+        <Route path="projects/:id" element={<ProjectLayout />}>
+          <Route index element={<ProjectOverviewPage />} />
+          <Route path="data" element={<ProjectDataPage />} />
+          <Route path="analysis" element={<ProjectAnalysisPage />} />
+        </Route>
         <Route path="experiments" element={<ExperimentsPage />} />
         <Route path="experiments/new" element={<NewExperimentPage />} />
         <Route path="experiments/:id" element={<ExperimentLayout />}>

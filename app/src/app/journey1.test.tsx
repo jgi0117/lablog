@@ -30,22 +30,22 @@ describe('Journey 1: 새 실험 수행', () => {
 
     // 1. 홈 → 새 실험
     await user.click(await screen.findByRole('link', { name: '+ 새 실험' }, { timeout: 3000 }))
-    await user.type(await screen.findByLabelText('제목 (필수)'), '나노입자 합성 #13')
-    await user.type(screen.getByLabelText('태그'), '합성, 나노입자')
+    await user.type(await screen.findByLabelText('제목 (필수)'), 'HC-300 하드코팅 조건 탐색 #11')
+    await user.type(screen.getByLabelText('태그'), '하드코팅, UV경화')
     await user.click(screen.getByRole('button', { name: /만들고 절차 입력하기/ }))
 
     // 2. 절차 붙여넣기
-    expect(await screen.findByRole('heading', { name: /나노입자 합성 #13/ })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /HC-300 하드코팅 조건 탐색 #11/ })).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('붙여넣을 절차'), {
-      target: { value: '1. 시약 A를 계량한다\n2. 80°C로 가열한다\n3. 냉각 후 pH를 잰다' },
+      target: { value: '1. 코팅액을 조제한다\n2. 80°C로 건조한다\n3. 경화 후 연필경도를 잰다' },
     })
     await user.click(screen.getByRole('button', { name: '3개 단계 추가' }))
-    expect(await screen.findByLabelText('3번째 단계')).toHaveValue('냉각 후 pH를 잰다')
+    expect(await screen.findByLabelText('3번째 단계')).toHaveValue('경화 후 연필경도를 잰다')
     expect(screen.getByRole('link', { name: /^절차 \(3\)/ })).toBeInTheDocument()
 
     // 3. 수행 모드 시작 (앱 셸 없는 전체 화면, 준비 → 진행)
     await user.click(screen.getByRole('link', { name: '수행 모드 시작 ▶' }))
-    const first = await screen.findByRole('button', { name: 'I. 시약 A를 계량한다' })
+    const first = await screen.findByRole('button', { name: 'I. 코팅액을 조제한다' })
     expect(first).toHaveAttribute('aria-pressed', 'false')
     expect(screen.queryByRole('navigation', { name: '메인 메뉴' })).toBeNull()
     await waitFor(async () => {
@@ -55,14 +55,14 @@ describe('Journey 1: 새 실험 수행', () => {
     })
 
     // 4. 첫 단계: 메모와 조건 값 입력 후 다음 단계로
-    await user.type(screen.getByLabelText('단계 메모'), '정확히 50 mL')
-    await user.type(screen.getByLabelText('항목'), '온도')
+    await user.type(screen.getByLabelText('단계 메모'), '고형분 40% 확인')
+    await user.type(screen.getByLabelText('항목'), '건조 온도')
     await user.type(screen.getByLabelText('값'), '80')
     await user.type(screen.getByLabelText('단위'), '°C')
     await user.click(screen.getByRole('button', { name: '추가' }))
     expect(await screen.findByText('80 °C')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '완료하고 다음 단계' }))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'I. 시약 A를 계량한다' })).toHaveAttribute('aria-pressed', 'true'))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'I. 코팅액을 조제한다' })).toHaveAttribute('aria-pressed', 'true'))
     expect(screen.getByText(/1 \/ 3 단계 · 33%/)).toBeInTheDocument()
 
     // 메모는 자동 저장된다 (E1 대응의 정상 경로)
@@ -70,18 +70,18 @@ describe('Journey 1: 새 실험 수행', () => {
       async () => {
         const exp = (await backend.experiments.list()).items[0]
         const steps = await backend.steps.listByExperiment(exp.id)
-        expect(steps[0].note).toBe('정확히 50 mL')
+        expect(steps[0].note).toBe('고형분 40% 확인')
         expect(steps[0].done).toBe(true)
       },
       { timeout: 3000 },
     )
 
     // 5. 실수로 체크했다가 되돌리기 (E2)
-    await user.click(screen.getByRole('button', { name: 'III. 냉각 후 pH를 잰다' }))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'III. 냉각 후 pH를 잰다' })).toHaveAttribute('aria-pressed', 'true'))
+    await user.click(screen.getByRole('button', { name: 'III. 경화 후 연필경도를 잰다' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'III. 경화 후 연필경도를 잰다' })).toHaveAttribute('aria-pressed', 'true'))
     const toast = (await screen.findByText('III단계를 체크했습니다')).closest('.toast') as HTMLElement
     await user.click(within(toast).getByRole('button', { name: '되돌리기' }))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'III. 냉각 후 pH를 잰다' })).toHaveAttribute('aria-pressed', 'false'))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'III. 경화 후 연필경도를 잰다' })).toHaveAttribute('aria-pressed', 'false'))
 
     // 6. 남은 단계를 마치고 완료 화면으로
     await user.click(screen.getByRole('button', { name: '완료하고 다음 단계' })) // II 체크
@@ -94,10 +94,10 @@ describe('Journey 1: 새 실험 수행', () => {
       const exp = (await backend.experiments.list()).items[0]
       expect(exp.status).toBe('done')
       expect(exp.completedAt).not.toBeNull()
-      expect(exp.tags).toEqual(['합성', '나노입자'])
+      expect(exp.tags).toEqual(['하드코팅', 'UV경화'])
     })
     expect((await backend.dataItems.listByExperiment((await backend.experiments.list()).items[0].id))[0]).toMatchObject({
-      name: '온도',
+      name: '건조 온도',
       value: '80',
       unit: '°C',
       kind: 'condition',

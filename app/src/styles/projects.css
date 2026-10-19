@@ -1,0 +1,436 @@
+/* 프로젝트 화면, 차트, 빠짐 점검, 데이터 표. 색·크기는 tokens.css의 변수만 쓴다. */
+
+.check-option {
+  display: flex;
+  gap: var(--space-md);
+  align-items: flex-start;
+  padding: var(--space-md) var(--space-lg);
+  background: var(--paper-raised);
+  border: var(--line) dashed var(--rule);
+  cursor: pointer;
+}
+
+.check-option input {
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  flex: none;
+  accent-color: var(--verdigris);
+}
+
+.project-card .card__title {
+  font-size: var(--text-title);
+}
+
+.project-card__desc {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+.project-card__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-lg);
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.project-card__gaps {
+  font-size: 14px;
+  color: var(--ink-3);
+}
+
+.project-card__gaps.has-gaps {
+  color: var(--wax);
+  font-weight: 700;
+}
+
+.project-form {
+  margin-bottom: var(--space-xl);
+  max-width: 640px;
+}
+
+.project-desc {
+  margin: var(--space-sm) 0 var(--space-md);
+  color: var(--ink-2);
+}
+
+.project-edit {
+  margin-bottom: var(--space-lg);
+}
+
+.project-edit summary {
+  cursor: pointer;
+  min-height: var(--touch-min);
+  display: flex;
+  align-items: center;
+  color: var(--verdigris-strong);
+}
+
+.project-edit .field,
+.project-edit .save {
+  margin-top: var(--space-md);
+  max-width: 640px;
+}
+
+.proj-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-xl);
+  align-items: start;
+}
+
+.proj-grid__wide {
+  grid-column: 1 / -1;
+}
+
+.recent-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.statusbar {
+  display: flex;
+  height: 22px;
+  border: var(--line) solid var(--rule);
+  background: var(--paper-field);
+}
+
+.statusbar__seg {
+  min-width: 6px;
+}
+
+.statusbar__seg--done,
+.statusbar__dot--done {
+  background: var(--verdigris);
+}
+
+.statusbar__seg--running,
+.statusbar__dot--running {
+  background: var(--wax);
+}
+
+.statusbar__seg--ready,
+.statusbar__dot--ready {
+  background: var(--paper-sunken);
+}
+
+.statusbar__legend {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-lg);
+  margin: var(--space-sm) 0 0;
+  padding: 0;
+  font-size: 14px;
+}
+
+.statusbar__dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--rule);
+}
+
+/* 빠짐 점검 */
+.gaps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.gap {
+  display: flex;
+  gap: var(--space-md);
+  align-items: flex-start;
+  padding: var(--space-sm) var(--space-md);
+  border-left: 5px solid var(--ink-3);
+  background: var(--paper-field);
+}
+
+.gap--high {
+  border-left-color: var(--wax);
+}
+
+.gap--mid {
+  border-left-color: var(--color-warn);
+}
+
+.gap__tag {
+  flex: none;
+  min-width: 6.5em;
+  font-family: var(--font-mono);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.gap--high .gap__tag {
+  color: var(--wax);
+  font-weight: 700;
+}
+
+.gap__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.gap__msg {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.gaps__ok {
+  margin: 0;
+  color: var(--verdigris-strong);
+}
+
+.gaps__more {
+  margin-top: var(--space-md);
+}
+
+.gaps__more summary {
+  cursor: pointer;
+  min-height: var(--touch-min);
+  display: flex;
+  align-items: center;
+}
+
+.gaps__foot {
+  margin: var(--space-md) 0 0;
+  font-size: 14px;
+  color: var(--ink-3);
+}
+
+/* 차트 */
+.chart {
+  width: 100%;
+  height: auto;
+  display: block;
+  font-family: var(--font-mono);
+}
+
+.chart__grid {
+  stroke: var(--paper-sunken);
+  stroke-width: 1;
+}
+
+.chart__grid--v {
+  stroke-dasharray: 2 4;
+}
+
+.chart__axis {
+  stroke: var(--rule);
+  stroke-width: 1.5;
+}
+
+.chart__tick {
+  font-size: 11px;
+  fill: var(--ink-2);
+}
+
+.chart__label {
+  font-size: 12px;
+  fill: var(--ink);
+}
+
+.chart__note {
+  font-size: 11px;
+  fill: var(--wax);
+  font-style: italic;
+}
+
+.chart__pt {
+  cursor: pointer;
+  outline: none;
+}
+
+.chart__pt circle {
+  fill: var(--verdigris);
+  stroke: var(--paper-raised);
+  stroke-width: 2;
+}
+
+.chart__pt--out circle {
+  fill: var(--wax);
+}
+
+.chart__pt:hover circle,
+.chart__pt:focus-visible circle {
+  stroke: var(--ink);
+}
+
+.chart__fit {
+  stroke: var(--brass);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+
+.chart__line {
+  fill: none;
+  stroke: var(--verdigris);
+  stroke-width: 2;
+}
+
+.chart__median {
+  stroke: var(--brass);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+
+.chart__bar {
+  cursor: pointer;
+  outline: none;
+}
+
+.chart__bar rect {
+  fill: var(--verdigris);
+}
+
+.chart__bar--running rect {
+  fill: var(--wax);
+}
+
+.chart__bar--ready rect {
+  fill: var(--paper-sunken);
+}
+
+.chart__bar:hover rect,
+.chart__bar:focus-visible rect {
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+.chart__today {
+  stroke: var(--wax);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+}
+
+.analysis {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.analysis__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-lg);
+}
+
+.analysis__note {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+/* 데이터 표 */
+.data-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.data-toolbar p {
+  margin: 0;
+  max-width: 70ch;
+}
+
+.matrix-wrap {
+  overflow-x: auto;
+  border: var(--line-double);
+  background: var(--paper-raised);
+}
+
+.matrix {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 14px;
+}
+
+.matrix th,
+.matrix td {
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--paper-sunken);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.matrix thead th {
+  background: var(--paper-sunken);
+  font-family: var(--font-display);
+  font-weight: 400;
+}
+
+.matrix .matrix__exp,
+.matrix td:nth-child(2) {
+  text-align: left;
+}
+
+.matrix .matrix__exp {
+  position: sticky;
+  left: 0;
+  background: var(--paper-raised);
+  font-weight: 500;
+}
+
+.matrix thead .matrix__exp {
+  background: var(--paper-sunken);
+}
+
+.matrix__group {
+  text-align: center !important;
+  color: var(--verdigris-strong);
+  border-bottom: var(--line) solid var(--rule) !important;
+}
+
+.matrix__group--result {
+  color: var(--wax);
+}
+
+.matrix__unit {
+  color: var(--ink-3);
+  font-size: 12px;
+}
+
+.matrix__warn {
+  color: var(--wax);
+  font-size: 12px;
+}
+
+.cell--none {
+  color: var(--ink-3);
+  background: repeating-linear-gradient(135deg, transparent 0 6px, var(--paper-sunken) 6px 7px);
+}
+
+.cell--empty {
+  color: var(--ink-3);
+}
+
+.cell--out {
+  background: var(--wax-soft);
+  color: var(--wax);
+  font-weight: 700;
+}
+
+.cell__flag {
+  font-size: 11px;
+}
+
+@media (max-width: 860px) {
+  .proj-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

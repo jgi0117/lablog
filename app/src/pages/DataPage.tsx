@@ -7,6 +7,8 @@ import { useExperiment } from '../hooks/useExperimentContext'
 import { completionWarnings } from '../domain/rules'
 import type { DataItem, DataKind } from '../domain/types'
 import { completeExperiment, numericHistory, reopenExperiment } from '../services/experimentService'
+import { catalogNames, findCatalogUnit, type CatalogItem } from '../services/catalog'
+import { useItemCatalog } from '../hooks/useItemCatalog'
 import { COMMON_UNITS, valueWarning } from '../services/validation'
 
 const KIND_LABEL: Record<DataKind, string> = { condition: '조건', result: '결과' }
@@ -14,12 +16,13 @@ const KIND_LABEL: Record<DataKind, string> = { condition: '조건', result: '결
 interface RowProps {
   item: DataItem
   items: DataItem[]
+  catalog: CatalogItem[]
   autoFocus: boolean
   onChanged: (d: DataItem) => void
   onRemove: () => void
 }
 
-function DataRow({ item, items, autoFocus, onChanged, onRemove }: RowProps) {
+function DataRow({ item, items, catalog, autoFocus, onChanged, onRemove }: RowProps) {
   const backend = useBackend()
   const [name, setName] = useState(item.name)
   const [value, setValue] = useState(item.value)
@@ -35,12 +38,16 @@ function DataRow({ item, items, autoFocus, onChanged, onRemove }: RowProps) {
       <input
         className="input"
         aria-label={`${KIND_LABEL[item.kind]} 이름`}
-        placeholder="항목 (예: 온도)"
+        placeholder="항목 (예: 건조 온도)"
         value={name}
         autoFocus={autoFocus}
+        list={`item-names-${item.kind}`}
         onChange={(e) => {
           setName(e.target.value)
-          save(e.target.value, value, unit)
+          // 같은 프로젝트에서 쓴 항목과 이름이 같고 단위를 비워 뒀으면 단위를 채운다.
+          const known = unit.trim() === '' ? findCatalogUnit(catalog, item.kind, e.target.value) : null
+          if (known) setUnit(known)
+          save(e.target.value, value, known ?? unit)
         }}
         onBlur={() => void saver.flush()}
       />
@@ -96,6 +103,7 @@ export function DataPage() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const [focusId, setFocusId] = useState<string | null>(null)
+  const catalog = useItemCatalog(experiment.projectId)
   const finishing = params.get('finish') === '1'
 
   const replace = (d: DataItem) => setItems((xs) => xs.map((x) => (x.id === d.id ? d : x)))
@@ -134,6 +142,13 @@ export function DataPage() {
 
   return (
     <div className="data-page">
+      {(['condition', 'result'] as const).map((k) => (
+        <datalist key={k} id={`item-names-${k}`}>
+          {catalogNames(catalog, k).map((n) => (
+            <option key={n} value={n} />
+          ))}
+        </datalist>
+      ))}
       <datalist id="units">
         {COMMON_UNITS.map((u) => (
           <option key={u} value={u} />
@@ -149,7 +164,7 @@ export function DataPage() {
               {rows.length === 0 && <p className="muted">아직 {KIND_LABEL[kind]}이 없습니다.</p>}
               <ul className="plain-list">
                 {rows.map((r) => (
-                  <DataRow key={r.id} item={r} items={items} autoFocus={r.id === focusId} onChanged={replace} onRemove={() => void remove(r)} />
+                  <DataRow key={r.id} item={r} items={items} catalog={catalog} autoFocus={r.id === focusId} onChanged={replace} onRemove={() => void remove(r)} />
                 ))}
               </ul>
               <button type="button" className="btn btn--dashed" onClick={() => void add(kind)}>

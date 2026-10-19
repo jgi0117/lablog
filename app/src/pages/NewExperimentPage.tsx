@@ -1,9 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useBackend } from '../app/BackendContext'
 import { ValidationError, createExperiment } from '../services/experimentService'
 import { parseTags } from '../services/text'
-import type { Project } from '../domain/types'
+import type { Experiment, Project } from '../domain/types'
 
 const NEW_PROJECT = '__new__'
 
@@ -11,11 +11,14 @@ const NEW_PROJECT = '__new__'
 export function NewExperimentPage() {
   const backend = useBackend()
   const navigate = useNavigate()
+  const [params] = useSearchParams()
   const [projects, setProjects] = useState<Project[]>([])
   const [title, setTitle] = useState('')
   const [purpose, setPurpose] = useState('')
   const [tags, setTags] = useState('')
-  const [projectId, setProjectId] = useState('')
+  const [projectId, setProjectId] = useState(params.get('project') ?? '')
+  const [last, setLast] = useState<Experiment | null>(null)
+  const [fromLast, setFromLast] = useState(true)
   const [newProject, setNewProject] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -31,6 +34,22 @@ export function NewExperimentPage() {
     }
   }, [backend])
 
+  // 프로젝트를 고르면 그 프로젝트의 마지막 실험을 찾아 "이어받기" 선택지를 보여 준다.
+  useEffect(() => {
+    let alive = true
+    if (!projectId || projectId === NEW_PROJECT) {
+      setLast(null)
+      return
+    }
+    backend.experiments
+      .list({ projectId }, 'updated_desc', { limit: 1, offset: 0 })
+      .then((r) => alive && setLast(r.items[0] ?? null))
+      .catch(() => alive && setLast(null))
+    return () => {
+      alive = false
+    }
+  }, [backend, projectId])
+
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (busy) return
@@ -43,6 +62,14 @@ export function NewExperimentPage() {
       let pid: string | null = projectId && projectId !== NEW_PROJECT ? projectId : null
       if (projectId === NEW_PROJECT && newProject.trim()) {
         pid = (await backend.projects.create({ name: newProject.trim(), description: '' })).id
+      }
+      if (fromLast && last && pid === last.projectId) {
+        // 마지막 실험의 절차와 조건을 이어받는다. 결과는 항목만 남기고 값은 비워 빠뜨리지 않게 한다.
+        const copy = await backend.experiments.duplicate(last.id, { title: title.trim() })
+        const patch = { ...(purpose.trim() ? { purpose: purpose.trim() } : {}), ...(tags.trim() ? { tags: parseTags(tags) } : {}) }
+        if (Object.keys(patch).length > 0) await backend.experiments.update(copy.id, patch)
+        navigate(`/experiments/${copy.id}/steps`)
+        return
       }
       const exp = await createExperiment(backend, { title, purpose, tags: parseTags(tags), projectId: pid })
       navigate(`/experiments/${exp.id}/steps`)
@@ -69,7 +96,7 @@ export function NewExperimentPage() {
               setTitle(e.target.value)
               if (error) setError('')
             }}
-            placeholder="예) 나노입자 합성 조건 최적화 #13"
+            placeholder="예) HC-300 하드코팅 조건 탐색 #11"
             autoFocus
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? 'title-error' : undefined}
@@ -111,6 +138,15 @@ export function NewExperimentPage() {
             <input id="tags" className="input" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="쉼표로 구분" />
           </div>
         </div>
+        {last && (
+          <label className="check-option">
+            <input type="checkbox" checked={fromLast} onChange={(e) => setFromLast(e.target.checked)} />
+            <span>
+              마지막 실험(<strong>{last.title}</strong>)의 절차와 조건·결과 항목을 이어받기
+              <span className="muted"> — 조건 값은 그대로, 결과 값은 비워서 가져옵니다</span>
+            </span>
+          </label>
+        )}
         <div className="form__actions">
           <button type="submit" className="btn btn--primary" disabled={busy}>
             만들고 절차 입력하기 →
