@@ -15,7 +15,8 @@
     - 실험 만들기 `/experiments/new` (s1)
     - 실험 상세 `/experiments/:id`
       - 개요 `/experiments/:id` (s1)
-      - 절차·수행 모드 `/experiments/:id/steps` (s1)
+      - 절차 편집 `/experiments/:id/steps` (s1)
+      - 수행 모드 `/experiments/:id/run` (s1, 앱 셸 없는 전체 화면)
       - 조건·결과 `/experiments/:id/data` (s1)
       - 첨부 `/experiments/:id/files` (s2, P1)
       - 편차 기록 `/experiments/:id/deviations` (s3, P1)

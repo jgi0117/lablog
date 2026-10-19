@@ -4,7 +4,7 @@
 
 **풀려는 문제**: 실험 기록이 여러 곳에 흩어져 찾기도 재현하기도 어려운 문제
 
-현재 단계: Phase 1(설계) 완료. 다음은 Phase 2(기반 구축). 데이터는 지금 브라우저 로컬(IndexedDB)에만 저장하고, 이후 Supabase로 옮길 예정입니다.
+현재 단계: Phase 2(기반 구축) 완료. 다음은 Phase 3(s1 모으기). 데이터는 지금 브라우저 로컬(IndexedDB)에만 저장하고, 이후 Supabase로 옮길 예정입니다.
 
 ## 디렉토리 구조
 
@@ -16,11 +16,12 @@ lab/
 │  │  ├─ domain/             타입과 규칙 (저장소와 무관한 순수 코드)
 │  │  ├─ data/
 │  │  │  ├─ repositories/    저장소 인터페이스 (DataBackend)
-│  │  │  ├─ local/           IndexedDB 구현 (Phase 2)
+│  │  │  ├─ local/           IndexedDB 구현 (Dexie)
 │  │  │  └─ supabase/        Supabase 구현 (Phase 9)
 │  │  ├─ services/           검색 색인, 백업 같은 도메인 서비스
 │  │  ├─ hooks/              화면용 훅
 │  │  ├─ components/         공통 UI
+│  │  ├─ app/                라우트 정의, BackendContext
 │  │  ├─ pages/              라우트 단위 화면 (IA의 URL과 1:1)
 │  │  ├─ styles/             디자인 토큰 (tokens.css)
 │  │  └─ tests/              테스트 설정, 계약 테스트, 픽스처
@@ -30,7 +31,9 @@ lab/
 │  ├─ design/                디자인: 시안(4종), 와이어프레임, 디자인 기준
 │  ├─ phase0/                준비: 결정 기록, 인터뷰 가이드, 샘플 수집, 기준선 측정
 │  ├─ phase1/                설계: 데이터 모델, 수행 모드 사전 검증, 테스트 계획
+│  ├─ phase2/                기반 구축 완료 기록
 │  └─ summary/               각 문서의 짧은 요약본
+├─ .github/workflows/        CI (린트, 타입 검사, 테스트, 빌드)
 └─ .claude/skills/           기획 작업에 쓴 스킬 (create-prd, information-architecture, user-journeys)
 ```
 
