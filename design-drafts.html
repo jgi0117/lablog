@@ -1,0 +1,312 @@
+<title>실험 기록 디자인 시안</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Serif+KR:wght@400;500;700&family=IM+Fell+DW+Pica:ital@0;1&family=Black+Han+Sans&family=Gothic+A1:wght@400;500;700&family=DM+Mono:wght@400;500&family=Do+Hyeon&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* Layout concept: neutral gallery chrome on top, one tablet-sized app stage below that re-skins entirely per style. */
+:root{--pbg:#EEF0F3;--pfg:#15191F;--pmute:#5B6572;--pline:#CDD3DB;--pacc:#15191F;--pacc-fg:#FFFFFF;--psurf:#FFFFFF}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--pbg:#14171C;--pfg:#EDEFF2;--pmute:#9AA4B1;--pline:#2C323B;--pacc:#EDEFF2;--pacc-fg:#14171C;--psurf:#1D2128;color-scheme:dark}}
+:root[data-theme="dark"]{--pbg:#14171C;--pfg:#EDEFF2;--pmute:#9AA4B1;--pline:#2C323B;--pacc:#EDEFF2;--pacc-fg:#14171C;--psurf:#1D2128;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--pbg);color:var(--pfg);font-family:'IBM Plex Sans KR',system-ui,sans-serif;padding-inline:16px;padding-block:20px 48px}
+button{font:inherit;color:inherit}
+.chrome{max-width:1240px;margin:0 auto 20px;display:flex;flex-direction:column;gap:14px}
+.chrome h1{font-size:20px;font-weight:600;margin:0}
+.chrome p{margin:0;color:var(--pmute);font-size:14px;line-height:1.55;max-width:70ch}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+.pill{border:1.5px solid var(--pline);background:var(--psurf);border-radius:999px;padding:9px 16px;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.pill[aria-pressed="true"]{background:var(--pacc);color:var(--pacc-fg);border-color:var(--pacc)}
+.pill:focus-visible,.step:focus-visible,.btn:focus-visible{outline:3px solid #2F7BFF;outline-offset:2px}
+.sw{width:14px;height:14px;border-radius:50%;border:1.5px solid currentColor;display:inline-block}
+.tabs{display:flex;gap:4px;border-bottom:1.5px solid var(--pline)}
+.tab{border:0;background:none;padding:10px 14px;font-size:14px;cursor:pointer;color:var(--pmute);border-bottom:3px solid transparent;margin-bottom:-1.5px}
+.tab[aria-selected="true"]{color:var(--pfg);border-bottom-color:var(--pfg);font-weight:600}
+.note{font-size:13px;color:var(--pmute)}
+
+/* ---------- stage ---------- */
+.wrap{max-width:1240px;margin:0 auto}
+.stage{position:relative;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--font-b);border-radius:var(--frame-r);isolation:isolate}
+.d{position:absolute;pointer-events:none;z-index:0;display:none}
+.app{position:relative;z-index:1;display:grid;grid-template-columns:96px minmax(0,1fr);min-height:780px}
+.app.run{grid-template-columns:minmax(0,1fr)}
+.rail{background:var(--rail-bg);color:var(--rail-ink);display:flex;flex-direction:column;align-items:center;gap:8px;padding:24px 0}
+.logo{width:44px;height:44px;border-radius:50%;margin-bottom:20px;display:grid;place-items:center}
+.ri{width:72px;height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12px;border-radius:var(--r);border:0;background:none;color:inherit;cursor:default}
+.ri.on{background:var(--rail-on-bg);color:var(--rail-on-ink)}
+.ri svg{width:24px;height:24px}
+.main{position:relative;padding:0 32px 36px;min-width:0}
+.topbar{display:flex;flex-wrap:wrap;gap:16px;align-items:center;padding-block:24px}
+.search{flex:1;min-width:220px;max-width:520px;display:flex;align-items:center;gap:12px;height:52px;padding:0 16px;background:var(--surface);border:var(--bw) solid var(--line);border-radius:var(--r);color:var(--ink3);font-size:15px}
+.search svg{width:22px;height:22px;flex:none}
+.search.q{color:var(--ink);border-color:var(--acc)}
+.search kbd{margin-left:auto;font-family:var(--font-m);font-size:12px;color:var(--ink3)}
+.grow{flex:1}
+.btn{height:52px;padding:0 24px;display:inline-flex;align-items:center;justify-content:center;font:600 16px var(--font-b);border-radius:var(--r);border:var(--bw) solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;white-space:nowrap}
+.btn.pri{background:var(--acc);color:var(--acc-ink);border-color:var(--acc);box-shadow:var(--shadow-acc)}
+.head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.h1{font-family:var(--font-d);font-size:var(--h1);font-weight:var(--h1w);margin:0;line-height:1.2;text-wrap:balance}
+.count{font-family:var(--font-m);color:var(--ink3);font-size:14px}
+.sort{margin-left:auto;font-size:13px;color:var(--ink2)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-block:16px 22px}
+.chip{padding:8px 16px;border:var(--bw) solid var(--line);border-radius:var(--pill);background:var(--surface);font-size:13px;color:var(--ink2)}
+.chip.on{background:var(--acc-soft);border-color:var(--acc);color:var(--acc-strong);font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:24px}
+.card{position:relative;background:var(--surface);border:var(--bw) solid var(--line);border-radius:var(--r-lg);padding:24px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px;min-width:0}
+.card .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.proj{font-family:var(--font-m);font-size:13px;color:var(--acc-strong)}
+.ttl{font-family:var(--font-d);font-size:18px;font-weight:600;margin:0;text-wrap:balance;line-height:1.35}
+.badge{display:inline-flex;align-items:center;gap:8px;padding:4px 12px;border-radius:var(--pill);font-size:12px;font-weight:600;background:var(--surface2);color:var(--ink2);white-space:nowrap}
+.badge::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ink3)}
+.badge.run{background:var(--acc-soft);color:var(--acc-strong)}.badge.run::before{background:var(--acc)}
+.badge.done{background:var(--ok-soft);color:var(--ok)}.badge.done::before{background:var(--ok)}
+.prog{display:flex;align-items:center;gap:12px}
+.track{flex:1;height:8px;background:var(--surface2);border-radius:var(--pill);overflow:hidden}
+.fill{height:100%;width:var(--p);background:var(--acc)}
+.pct{font-family:var(--font-m);font-size:13px;color:var(--ink2);min-width:3.4ch;text-align:right}
+.meta{font-size:12px;color:var(--ink3)}
+/* run */
+.runhead{display:flex;flex-wrap:wrap;align-items:center;gap:20px 24px;padding:22px 32px;background:var(--surface);border-bottom:var(--bw) solid var(--line)}
+.runhead .btn{height:48px}
+.tt .proj{display:block;margin-bottom:2px}
+.runprog{margin-left:auto;display:flex;flex-direction:column;gap:8px;min-width:200px}
+.runprog .lab{font-family:var(--font-m);font-size:13px;color:var(--ink2);text-align:right}
+.runbody{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:24px;padding:30px 32px 36px}
+.steps{display:flex;flex-direction:column;gap:12px;min-width:0}
+.step{display:flex;gap:16px;align-items:center;padding:16px;background:var(--surface);border:var(--bw) solid var(--line);border-radius:var(--r);cursor:pointer;text-align:left;width:100%;font-size:16px;color:var(--ink)}
+.box{width:36px;height:36px;border-radius:var(--box-r);border:2.5px solid var(--ink3);flex:none;display:grid;place-items:center;color:transparent}
+.box svg{width:20px;height:20px}
+.step .lab{flex:1;min-width:0;font-family:var(--font-b)}
+.step .num{color:var(--ink3);margin-right:6px;font-family:var(--font-m)}
+.step .ro{display:none}
+.step .sub{display:block;font-size:12px;color:var(--ink3);margin-top:2px}
+.step.done .box{background:var(--ok);border-color:var(--ok);color:var(--ok-ink)}
+.step.done .lab{text-decoration:line-through;color:var(--ink3)}
+.step.cur{background:var(--cur-bg);border-color:var(--acc);padding:20px 16px;box-shadow:var(--shadow-acc)}
+.step.cur .box{width:44px;height:44px;border-color:var(--acc);border-width:3.5px}
+.step.cur .lab{font-size:22px;font-weight:500;line-height:1.35;color:var(--ink)}
+.entry{background:var(--surface);border:var(--bw) solid var(--line);border-radius:var(--r);padding:16px;display:grid;grid-template-columns:minmax(0,1fr) 120px 120px;gap:12px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label{font-size:12px;color:var(--ink3)}
+.inp{min-height:48px;display:flex;align-items:center;padding:0 14px;border:var(--bw) solid var(--line);border-radius:var(--r);background:var(--surface);font-size:15px}
+.inp.ph{color:var(--ink3)}.inp.mono{font-family:var(--font-m)}
+.entry .wide{grid-column:1/-1}
+.actions{display:flex;gap:12px}.actions .pri{flex:1}
+.side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.panel{background:var(--surface);border:var(--bw) solid var(--line);border-radius:var(--r-lg);padding:20px 22px;box-shadow:var(--shadow)}
+.panel h3{font-family:var(--font-d);font-size:17px;margin:0 0 10px}
+.panel p{font-size:13px;color:var(--ink3);margin:0 0 14px;line-height:1.5}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:7px 0;font-size:15px;color:var(--ink2)}
+.kv b{font-family:var(--font-m);font-weight:500;color:var(--ink)}
+.panel .btn{width:100%}
+.saved{font-family:var(--font-m);font-size:13px;color:var(--ink3);display:flex;align-items:center;gap:8px}
+.saved::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ok)}
+/* search */
+.results{display:flex;flex-direction:column;gap:14px}
+.res{background:var(--surface);border:var(--bw) solid var(--line);border-radius:var(--r);padding:20px 24px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px}
+.res .top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.res .where{margin-left:auto;font-family:var(--font-m);font-size:13px;color:var(--acc-strong)}
+.snip{margin:0;font-size:15px;color:var(--ink2);line-height:1.55}
+mark{background:none;color:var(--acc-strong);font-weight:700}
+
+/* ================= 1. 깔끔한 미래 과학 ================= */
+.stage[data-style="sci"]{--bg:#F2F7FB;--surface:#fff;--surface2:#E8F0F7;--ink:#0B1B2B;--ink2:#496278;--ink3:#7B90A3;--line:#D3E0EB;--acc:#0A9FD8;--acc-strong:#0679B0;--acc-soft:#DDF3FB;--acc-ink:#fff;--ok:#14B88F;--ok-soft:#DDF6EE;--ok-ink:#fff;--cur-bg:#DDF3FB;--rail-bg:#0B1B2B;--rail-ink:#9FB5C8;--rail-on-bg:rgba(10,159,216,.22);--rail-on-ink:#fff;--font-d:'IBM Plex Sans KR',sans-serif;--font-b:'IBM Plex Sans KR',sans-serif;--font-m:'IBM Plex Mono',monospace;--r:12px;--r-lg:18px;--pill:999px;--box-r:50%;--bw:1.5px;--shadow:0 6px 20px rgba(10,50,90,.06);--shadow-acc:0 8px 22px rgba(10,159,216,.28);--h1:30px;--h1w:600;--frame-r:20px;background-image:linear-gradient(rgba(10,100,160,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(10,100,160,.045) 1px,transparent 1px);background-size:32px 32px}
+[data-style="sci"] .d1{display:block;width:460px;height:460px;right:-140px;top:-190px;background:radial-gradient(circle,rgba(34,227,242,.28),transparent 65%)}
+[data-style="sci"] .logo{border:2.5px solid #22E3F2}
+[data-style="sci"] .logo::after{content:"";width:14px;height:14px;border-radius:50%;background:#22E3F2;box-shadow:0 0 14px #22E3F2}
+[data-style="sci"] .fill{box-shadow:0 0 10px rgba(34,227,242,.7)}
+
+/* ================= 2. 엔틱 ================= */
+.stage[data-style="antique"]{--bg:#E6DABF;--surface:#F3EAD6;--surface2:#D9CBA8;--ink:#2A2016;--ink2:#5A4733;--ink3:#86724F;--line:#6F583B;--acc:#2E6B5C;--acc-strong:#1F4D42;--acc-soft:#D5E0CE;--acc-ink:#F3EAD6;--ok:#2E6B5C;--ok-soft:#D5E0CE;--ok-ink:#F3EAD6;--cur-bg:#EFE0BE;--seal:#8E2F2A;--rail-bg:#22302B;--rail-ink:#C7A35A;--rail-on-bg:#34493F;--rail-on-ink:#EBCF8A;--font-d:'IM Fell DW Pica','Noto Serif KR',serif;--font-b:'Noto Serif KR',serif;--font-m:'IM Fell DW Pica','Noto Serif KR',serif;--r:2px;--r-lg:3px;--pill:2px;--box-r:50%;--bw:1.5px;--shadow:3px 3px 0 rgba(42,32,22,.16);--shadow-acc:3px 3px 0 rgba(142,47,42,.28);--h1:36px;--h1w:400;--frame-r:4px;background-image:radial-gradient(ellipse at center,rgba(255,250,235,.5),rgba(120,90,50,.22) 120%),repeating-linear-gradient(0deg,rgba(90,70,40,.035) 0 2px,transparent 2px 5px);border:7px double #6F583B}
+[data-style="antique"] .d1{display:block;inset:8px;border:1.5px solid #6F583B;z-index:2}
+[data-style="antique"] .ri svg{stroke-width:1.4}
+[data-style="antique"] .logo{border:2px solid #C7A35A;color:#C7A35A;font-family:'IM Fell DW Pica',serif;font-size:22px;font-style:italic}
+[data-style="antique"] .logo::after{content:"L"}
+[data-style="antique"] .h1::after{content:" ❦";color:var(--seal);font-size:.7em}
+[data-style="antique"] .card,[data-style="antique"] .panel,[data-style="antique"] .res,[data-style="antique"] .entry{border:4px double var(--line)}
+[data-style="antique"] .step{border:2px solid var(--line)}
+[data-style="antique"] .step.cur{border:3px double var(--seal);background:var(--cur-bg)}
+[data-style="antique"] .step.cur .box{background:var(--seal);border-color:var(--seal);box-shadow:inset 0 0 0 4px #A94A43}
+[data-style="antique"] .step .ar{display:none}[data-style="antique"] .step .ro{display:inline}
+[data-style="antique"] .btn.pri{background:var(--seal);border-color:#5E1C19;color:#F3EAD6;letter-spacing:.04em}
+[data-style="antique"] .btn,[data-style="antique"] .chip,[data-style="antique"] .badge{border-style:solid;letter-spacing:.03em}
+[data-style="antique"] .badge{border:1.5px solid currentColor;background:transparent}
+[data-style="antique"] .badge.run{color:var(--seal);background:transparent}.badge.run::before{background:var(--seal)}
+[data-style="antique"] .badge.run::before{background:var(--seal)}
+[data-style="antique"] .fill{background:repeating-linear-gradient(135deg,var(--acc) 0 6px,#3F8271 6px 9px)}
+[data-style="antique"] .track{border:1.5px solid var(--line);background:var(--surface)}
+[data-style="antique"] .search,[data-style="antique"] .inp{background:#F8F1E0}
+[data-style="antique"] mark{background:rgba(201,160,70,.38);color:var(--ink);padding:0 3px}
+[data-style="antique"] .proj,[data-style="antique"] .count{font-style:italic;letter-spacing:.04em}
+
+/* ================= 3. 포스트모더니즘 ================= */
+.stage[data-style="pm"]{--bg:#F1E9FF;--surface:#fff;--surface2:#FFE066;--ink:#111;--ink2:#222;--ink3:#555;--line:#111;--acc:#FF5CAA;--acc-strong:#C2185B;--acc-soft:#FFD0E8;--acc-ink:#111;--ok:#17C3B2;--ok-soft:#B6F2EA;--ok-ink:#111;--cur-bg:#FFE066;--rail-bg:#111;--rail-ink:#fff;--rail-on-bg:#FFD23F;--rail-on-ink:#111;--font-d:'Black Han Sans',sans-serif;--font-b:'Gothic A1',sans-serif;--font-m:'DM Mono',monospace;--r:0;--r-lg:0;--pill:0;--box-r:0;--bw:3px;--shadow:6px 6px 0 #111;--shadow-acc:6px 6px 0 #111;--h1:48px;--h1w:400;--frame-r:0;background-image:radial-gradient(rgba(17,17,17,.2) 1.6px,transparent 1.7px);background-size:22px 22px;border:4px solid #111}
+[data-style="pm"] .d1{display:block;width:150px;height:150px;border-radius:50%;background:#FFD23F;border:4px solid #111;right:70px;top:-48px}
+[data-style="pm"] .d2{display:block;width:120px;height:104px;background:#17C3B2;clip-path:polygon(50% 0,100% 100%,0 100%);left:100px;bottom:-26px}
+[data-style="pm"] .d3{display:block;width:170px;height:44px;right:36px;bottom:92px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='44' viewBox='0 0 170 44'%3E%3Cpath d='M4 22 Q14 2 24 22 T44 22 T64 22 T84 22 T104 22 T124 22 T144 22 T164 22' fill='none' stroke='%23111' stroke-width='7' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat}
+[data-style="pm"] .logo{background:#FF5CAA;border:3px solid #fff;border-radius:0;transform:rotate(-8deg)}
+[data-style="pm"] .logo::after{content:"";width:16px;height:16px;background:#FFD23F;border-radius:50%;border:3px solid #111}
+[data-style="pm"] .ri{border-radius:0}
+[data-style="pm"] .ri.on{box-shadow:4px 4px 0 #FF5CAA}
+[data-style="pm"] .h1{text-shadow:3px 3px 0 #FFD23F;letter-spacing:.01em}
+[data-style="pm"] .btn.pri{box-shadow:5px 5px 0 #111}
+[data-style="pm"] .btn{box-shadow:4px 4px 0 #111}
+[data-style="pm"] .chip{box-shadow:3px 3px 0 #111;font-weight:700;color:#111}
+[data-style="pm"] .chip.on{background:#17C3B2}
+[data-style="pm"] .card:nth-child(3n+1){background:#fff}[data-style="pm"] .card:nth-child(3n+2){background:#FFD0E8;transform:rotate(-.7deg)}[data-style="pm"] .card:nth-child(3n){background:#B6F2EA;transform:rotate(.6deg)}
+[data-style="pm"] .badge{border:2.5px solid #111;background:#fff;color:#111;transform:rotate(-3deg);font-weight:700}
+[data-style="pm"] .badge.run{background:#FF5CAA;color:#111}.badge.run::before{background:#111}
+[data-style="pm"] .badge.done{background:#17C3B2;color:#111}
+[data-style="pm"] .badge::before{border-radius:0;background:#111}
+[data-style="pm"] .track{border:3px solid #111;height:16px;background:#fff;border-radius:0}
+[data-style="pm"] .fill{background:repeating-linear-gradient(45deg,#FF5CAA 0 8px,#FFD23F 8px 16px)}
+[data-style="pm"] .proj{color:#111;background:#FFD23F;padding:1px 8px;border:2px solid #111;align-self:flex-start}
+[data-style="pm"] .step.cur{transform:rotate(-.5deg)}
+[data-style="pm"] .step.done .box{border-color:#111}
+[data-style="pm"] .step.cur .box{background:#fff;border-color:#111}
+[data-style="pm"] .step .num{color:#111;font-weight:700}
+[data-style="pm"] .step .lab{font-weight:500}
+[data-style="pm"] .panel h3{font-size:22px;display:inline-block;background:#FFD23F;padding:0 8px;transform:rotate(-1.5deg)}
+[data-style="pm"] .runhead{background:#FFD23F}
+[data-style="pm"] .runhead .btn{background:#fff}
+[data-style="pm"] mark{background:#FFD23F;color:#111;padding:0 3px}
+[data-style="pm"] .search{box-shadow:4px 4px 0 #111}
+[data-style="pm"] .search.q{border-color:#111;background:#FFF6C2}
+[data-style="pm"] .res:nth-child(odd){background:#fff}[data-style="pm"] .res:nth-child(even){background:#FFD0E8}
+
+/* ================= 4. 추상주의 미술풍 ================= */
+.stage[data-style="abs"]{--bg:#FBFAF5;--surface:#fff;--surface2:#EDEAE0;--ink:#111;--ink2:#2A2A2A;--ink3:#666;--line:#111;--acc:#1F4FD8;--acc-strong:#1F4FD8;--acc-soft:#FFE15A;--acc-ink:#fff;--ok:#E4312B;--ok-soft:#fff;--ok-ink:#fff;--cur-bg:#FFE15A;--rail-bg:#F5C400;--rail-ink:#111;--rail-on-bg:#111;--rail-on-ink:#F5C400;--font-d:'Do Hyeon','Noto Sans KR',sans-serif;--font-b:'Noto Sans KR',sans-serif;--font-m:'DM Mono',monospace;--r:0;--r-lg:0;--pill:0;--box-r:0;--bw:4px;--shadow:none;--shadow-acc:none;--h1:54px;--h1w:400;--frame-r:0;border:4px solid #111}
+[data-style="abs"] .d1{display:block;width:330px;height:330px;border-radius:50%;background:#E4312B;right:-90px;top:-120px;mix-blend-mode:multiply;opacity:.92}
+[data-style="abs"] .d2{display:block;width:4px;height:980px;background:#111;left:62%;top:-120px;transform:rotate(27deg);transform-origin:top}
+[data-style="abs"] .d3{display:block;width:130px;height:130px;background:#1F4FD8;right:150px;bottom:40px;transform:rotate(14deg);mix-blend-mode:multiply}
+[data-style="abs"] .d4{display:block;width:110px;height:96px;background:#F5C400;clip-path:polygon(50% 0,100% 100%,0 100%);left:46%;bottom:-24px}
+[data-style="abs"] .logo{background:#111}
+[data-style="abs"] .logo::after{content:"";width:18px;height:18px;border-radius:50%;background:#E4312B}
+[data-style="abs"] .rail{border-right:4px solid #111}
+[data-style="abs"] .h1{letter-spacing:.01em}
+[data-style="abs"] .btn.pri{background:#E4312B;border-color:#111;color:#fff}
+[data-style="abs"] .chip{font-weight:700;color:#111}
+[data-style="abs"] .chip.on{background:#F5C400;border-color:#111;color:#111}
+[data-style="abs"] .card{overflow:hidden;padding-right:64px}
+[data-style="abs"] .card::before{content:"";position:absolute;right:0;top:0;width:44px;height:44px}
+[data-style="abs"] .card:nth-child(3n+1)::before{background:#E4312B;border-radius:0 0 0 44px}
+[data-style="abs"] .card:nth-child(3n+2)::before{background:#1F4FD8;border-radius:50%;right:10px;top:10px;width:30px;height:30px}
+[data-style="abs"] .card:nth-child(3n)::before{background:#F5C400;clip-path:polygon(100% 0,0 0,100% 100%)}
+[data-style="abs"] .card .top{padding-right:0}
+[data-style="abs"] .badge{background:none;padding:0;color:#111;font-weight:700;gap:8px}
+[data-style="abs"] .badge::before{width:16px;height:16px;border-radius:0;background:none;border:3px solid #111;border-radius:50%}
+[data-style="abs"] .badge.run{background:none;color:#1F4FD8}.badge.run::before{background:#1F4FD8;border-color:#1F4FD8;border-radius:0}
+[data-style="abs"] .badge.done{background:none;color:#E4312B}.badge.done::before{background:#E4312B;border:0;border-radius:0;clip-path:polygon(50% 0,100% 100%,0 100%)}
+[data-style="abs"] .track{height:6px;background:#111;border-radius:0;overflow:visible}
+[data-style="abs"] .fill{background:#1F4FD8;height:14px;margin-top:-4px;position:relative}
+[data-style="abs"] .fill::after{content:"";position:absolute;right:-9px;top:-3px;width:20px;height:20px;border-radius:50%;background:#E4312B;border:3px solid #111}
+[data-style="abs"] .proj{color:#111;font-weight:500}
+[data-style="abs"] .step.done .box{background:#111;border-color:#111;color:#F5C400}
+[data-style="abs"] .step.cur .box{background:#fff}
+[data-style="abs"] .step.cur{box-shadow:10px 10px 0 #1F4FD8}
+[data-style="abs"] .step .num{color:#E4312B;font-weight:700}
+[data-style="abs"] .runhead{background:#fff;border-bottom-width:4px}
+[data-style="abs"] .panel,[data-style="abs"] .entry,[data-style="abs"] .res{border-width:4px}
+[data-style="abs"] .panel:nth-child(1){border-left:18px solid #1F4FD8}
+[data-style="abs"] .panel:nth-child(2){border-left:18px solid #F5C400}
+[data-style="abs"] .res:nth-child(4n+1){border-left:18px solid #E4312B}.res:nth-child(4n+2){border-left:18px solid #1F4FD8}
+[data-style="abs"] .res:nth-child(4n+2){border-left:18px solid #1F4FD8}
+[data-style="abs"] .res:nth-child(4n+3){border-left:18px solid #F5C400}
+[data-style="abs"] .res:nth-child(4n){border-left:18px solid #111}
+[data-style="abs"] mark{background:#F5C400;color:#111;padding:0 3px}
+[data-style="abs"] .search.q{border-color:#111;background:#FFF3A8}
+[data-style="abs"] .saved::before{background:#E4312B;border-radius:0;clip-path:polygon(50% 0,100% 100%,0 100%)}
+
+@media (max-width:860px){
+  .app{grid-template-columns:minmax(0,1fr);min-height:0}
+  .rail{flex-direction:row;justify-content:space-around;padding:8px;gap:0;order:2}
+  .logo{display:none}
+  .ri{width:64px;height:60px}
+  [data-style="abs"] .rail{border-right:0;border-top:4px solid #111}
+  .main{padding-inline:16px}
+  .runbody{grid-template-columns:minmax(0,1fr);padding-inline:16px}
+  .runhead{padding-inline:16px}
+  .runprog{margin-left:0;width:100%}.runprog .lab{text-align:left}
+  .entry{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .entry .field:first-child{grid-column:1/-1}
+  .h1{font-size:calc(var(--h1) * .75)}
+  .sort{margin-left:0}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="chrome">
+  <h1>실험 기록 서비스 디자인 시안 4종</h1>
+  <p>같은 화면 3개(수행 모드, 실험 목록, 검색 결과)를 네 가지 분위기로 입혀 비교합니다. 스타일을 바꿔 가며 같은 화면을 보세요.</p>
+  <div class="row" id="styles" role="group" aria-label="디자인 스타일"></div>
+  <p id="desc"></p>
+  <div class="tabs" role="tablist" id="tabs"></div>
+  <span class="note">수행 모드에서는 단계를 눌러 체크해 볼 수 있습니다.</span>
+</div>
+<div class="wrap"><div class="stage" id="stage" data-style="sci"></div></div>
+
+<script>
+var STYLES=[
+ {k:'sci',n:'깔끔한 미래 과학',d:'맑은 얼음색 바탕에 시안 포인트를 쓰고, 수치와 ID는 고정폭 글꼴로 보여 줍니다. 장비 화면처럼 정돈된 느낌입니다.',sw:'#0A9FD8'},
+ {k:'antique',n:'엔틱',d:'바랜 종이 질감과 이중 테두리, 세리프 글꼴을 쓰고, 단계 번호는 로마 숫자로 적습니다. 현재 단계는 붉은 밀랍 도장으로 표시합니다.',sw:'#8E2F2A'},
+ {k:'pm',n:'포스트모더니즘',d:'굵은 검정 윤곽선, 어긋난 그림자, 충돌하는 색, 기울어진 라벨로 규칙을 일부러 깨는 화면입니다.',sw:'#FF5CAA'},
+ {k:'abs',n:'추상주의 미술풍',d:'원, 사각형, 삼각형과 굵은 선으로 구성합니다. 상태는 도형(원, 사각형, 삼각형)으로 구분합니다.',sw:'#E4312B'}
+];
+var SCREENS=[{k:'run',n:'수행 모드'},{k:'list',n:'실험 목록'},{k:'search',n:'검색 결과'}];
+var state={style:'sci',screen:'run'};
+try{var s=localStorage.getItem('lab-style'); if(STYLES.some(function(x){return x.k===s})) state.style=s;}catch(e){}
+var ICON={
+ home:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>',
+ lab:'<path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4A2 2 0 0 0 19 18l-5-9V3"/>',
+ search:'<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
+ tpl:'<rect x="4" y="4" width="16" height="6" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="14" y="13" width="6" height="7" rx="1.5"/>'
+};
+function svg(k){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+ICON[k]+'</svg>';}
+var CHECK='<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var ROMAN=['','I','II','III','IV','V','VI','VII','VIII','IX','X'];
+function rail(on){
+  var items=[['home','홈'],['lab','실험'],['search','검색'],['tpl','템플릿']];
+  return '<nav class="rail" aria-label="메인 메뉴"><div class="logo"></div>'+items.map(function(i){return '<button class="ri'+(i[0]===on?' on':'')+'" tabindex="-1">'+svg(i[0])+'<span>'+i[1]+'</span></button>';}).join('')+'</nav>';
+}
+function topbar(q){
+  return '<div class="topbar"><div class="search'+(q?' q':'')+'">'+svg('search')+'<span>'+(q||'제목 · 단계 · 조건 · 결과 검색')+'</span><kbd>Ctrl K</kbd></div><div class="grow"></div><button class="btn pri" tabindex="-1">+ 새 실험</button></div>';
+}
+function badge(s){var m={ready:'준비',run:'진행',done:'완료'};return '<span class="badge '+s+'">'+m[s]+'</span>';}
+var CARDS=[['PROJECT-A','나노입자 합성 조건 최적화 #12','run',60,'지윤 · 2시간 전 수정'],['PROJECT-A','나노입자 합성 조건 최적화 #11','done',100,'지윤 · 어제 수정'],['PROJECT-B','촉매 활성 비교 시험','ready',0,'민호 · 2일 전 수정'],['PROJECT-B','고분자 필름 인장 강도 측정','run',33,'서연 · 3일 전 수정'],['PROJECT-C','전해질 이온전도도 측정 #3','done',100,'지윤 · 1주 전 수정'],['PROJECT-C','세포 배양 배지 조성 비교','ready',0,'민호 · 1주 전 수정']];
+var RES=[['나노입자 합성 조건 최적화 #12','run','단계 5','용액을 <mark>80°C</mark>로 가열하며 교반한다 · 450 rpm 유지','PROJECT-A · 지윤 · 2시간 전 수정'],['나노입자 합성 조건 최적화 #11','done','조건','온도 <mark>80</mark> °C · 교반 시간 30 min · 교반 속도 400 rpm','PROJECT-A · 지윤 · 어제 수정'],['전해질 이온전도도 측정 #3','done','단계 2','전해질을 <mark>80°C</mark> 오븐에서 건조한 뒤 글러브박스로 옮긴다','PROJECT-C · 지윤 · 1주 전 수정'],['고분자 필름 인장 강도 측정','run','결과','<mark>80°C</mark> 열처리 시편 평균 인장 강도 42.3 MPa','PROJECT-B · 서연 · 3일 전 수정']];
+var STEPS=[{n:3,t:'시약 A를 50 mL 계량한다',d:true},{n:4,t:'반응 용기에 시약 A를 천천히 투입한다',d:true},{n:5,t:'용액을 80°C로 가열하며 교반한다',d:false},{n:6,t:'냉각 후 pH를 측정한다',d:false},{n:7,t:'원심분리 후 상층액을 분리한다',d:false}];
+function chips(list){return '<div class="chips">'+list.map(function(c){return '<span class="chip'+(c[1]?' on':'')+'">'+c[0]+'</span>';}).join('')+'</div>';}
+function screenRun(){
+  var done=2+STEPS.filter(function(x){return x.d}).length, pct=Math.round(done/9*100);
+  var cur=STEPS.findIndex(function(x){return !x.d});
+  var rows=STEPS.map(function(x,i){
+    var cls=x.d?'done':(i===cur?'cur':'todo');
+    var row='<button class="step '+cls+'" data-i="'+i+'" aria-pressed="'+x.d+'"><span class="box">'+(x.d?CHECK:'')+'</span><span class="lab"><span class="num"><span class="ar">'+x.n+'.</span><span class="ro">'+ROMAN[x.n]+'.</span></span>'+x.t+(cls==='cur'?'<span class="sub">메모 · 수치 입력</span>':'')+'</span></button>';
+    if(cls==='cur') row+='<div class="entry"><div class="field"><label>항목</label><div class="inp ph">예) 온도</div></div><div class="field"><label>값</label><div class="inp mono">80</div></div><div class="field"><label>단위</label><div class="inp mono">°C</div></div><div class="field wide"><label>단계 메모</label><div class="inp ph">예) 교반 속도 450 rpm 유지, 색 변화 없음</div></div></div><div class="actions"><button class="btn" tabindex="-1">이전</button><button class="btn pri" data-next="1">완료하고 다음 단계</button></div>';
+    return row;}).join('');
+  return '<div class="app run"><div class="main" style="padding:0"><div class="runhead"><button class="btn" tabindex="-1">← 나가기</button><div class="tt"><span class="proj">PROJECT-A · 수행 모드</span><h2 class="h1" style="font-size:calc(var(--h1) * .7)">나노입자 합성 조건 최적화 #12</h2></div>'+badge('run')+'<div class="runprog"><span class="lab">'+done+' / 9 단계 · '+pct+'%</span><div class="track"><div class="fill" style="--p:'+pct+'%"></div></div></div></div><div class="runbody"><div class="steps">'+rows+'</div><aside class="side"><div class="panel"><h3>조건 · 결과</h3><div class="kv"><span>온도</span><b>80 °C</b></div><div class="kv"><span>시간</span><b>30 min</b></div><div class="kv"><span>교반 속도</span><b>450 rpm</b></div><div class="kv"><span>pH (결과)</span><b>—</b></div></div><div class="panel"><h3>절차와 달라진 점</h3><p>계획과 다르게 진행했다면 바로 기록하세요.</p><button class="btn" tabindex="-1">+ 달라진 점 기록</button></div><div class="saved">저장됨 · 14:32:08</div></aside></div></div></div>';
+}
+function screenList(){
+  return '<div class="app">'+rail('lab')+'<div class="main">'+topbar()+'<div class="head"><h2 class="h1">실험</h2><span class="count">24건</span><span class="sort">정렬: 최근 수정순</span></div>'+chips([['전체',1],['프로젝트 ▾'],['태그 ▾'],['상태: 진행'],['기간 ▾']])+'<div class="grid">'+CARDS.map(function(c){return '<article class="card"><div class="top"><span class="proj">'+c[0]+'</span>'+badge(c[2])+'</div><h3 class="ttl">'+c[1]+'</h3><div class="prog"><div class="track"><div class="fill" style="--p:'+c[3]+'%"></div></div><span class="pct">'+c[3]+'%</span></div><span class="meta">'+c[4]+'</span></article>';}).join('')+'</div></div></div>';
+}
+function screenSearch(){
+  return '<div class="app">'+rail('search')+'<div class="main">'+topbar('80°C 교반')+'<div class="head"><h2 class="h1">검색 결과</h2><span class="count">6건 · 0.18초</span></div>'+chips([['전체 6',1],['단계 3'],['조건 2'],['결과 1'],['프로젝트 ▾'],['기간 ▾']])+'<div class="results">'+RES.map(function(r){return '<article class="res"><div class="top"><h3 class="ttl">'+r[0]+'</h3>'+badge(r[1])+'<span class="where">'+r[2]+'</span></div><p class="snip">'+r[3]+'</p><span class="meta">'+r[4]+'</span></article>';}).join('')+'</div></div></div>';
+}
+function render(){
+  var st=document.getElementById('stage'); st.setAttribute('data-style',state.style);
+  var fn={run:screenRun,list:screenList,search:screenSearch}[state.screen];
+  st.innerHTML='<i class="d d1"></i><i class="d d2"></i><i class="d d3"></i><i class="d d4"></i>'+fn();
+  Array.prototype.forEach.call(document.querySelectorAll('#styles .pill'),function(b){b.setAttribute('aria-pressed',String(b.dataset.k===state.style));});
+  Array.prototype.forEach.call(document.querySelectorAll('#tabs .tab'),function(b){b.setAttribute('aria-selected',String(b.dataset.k===state.screen));});
+  document.getElementById('desc').textContent=STYLES.filter(function(x){return x.k===state.style})[0].d;
+}
+document.getElementById('styles').innerHTML=STYLES.map(function(x){return '<button class="pill" data-k="'+x.k+'"><span class="sw" style="background:'+x.sw+'"></span>'+x.n+'</button>';}).join('');
+document.getElementById('tabs').innerHTML=SCREENS.map(function(x){return '<button class="tab" role="tab" data-k="'+x.k+'">'+x.n+'</button>';}).join('');
+document.getElementById('styles').addEventListener('click',function(e){var b=e.target.closest('.pill'); if(!b) return; state.style=b.dataset.k; try{localStorage.setItem('lab-style',state.style);}catch(x){} render();});
+document.getElementById('tabs').addEventListener('click',function(e){var b=e.target.closest('.tab'); if(!b) return; state.screen=b.dataset.k; render();});
+document.getElementById('stage').addEventListener('click',function(e){
+  var n=e.target.closest('[data-next]'); var s=e.target.closest('.step');
+  if(n){var c=STEPS.findIndex(function(x){return !x.d}); if(c>-1){STEPS[c].d=true; if(c===STEPS.length-1){STEPS.push({n:STEPS[c].n+1,t:'결과를 정리하고 실험을 완료한다',d:false});}} render(); return;}
+  if(s){var i=+s.dataset.i; STEPS[i].d=!STEPS[i].d; render();}
+});
+render();
+</script>
