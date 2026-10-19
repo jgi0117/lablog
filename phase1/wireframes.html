@@ -1,0 +1,147 @@
+<title>실험 노트 화면 설계</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Serif+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* Layout concept: left a screen picker, center a low-fidelity tablet frame, right the numbered behavior notes. */
+:root{--bg:#EFEBE0;--fg:#2A2016;--mute:#6B5A44;--line:#6F583B;--paper:#F6F0E0;--sunk:#E4DAC2;--wax:#8E2F2A;--green:#2E6B5C;--note:#FFFFFF}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1B1914;--fg:#EDE6D6;--mute:#A89A80;--line:#8A7550;--paper:#26231C;--sunk:#322E24;--wax:#D67A72;--green:#6FB6A3;--note:#2B2820;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1B1914;--fg:#EDE6D6;--mute:#A89A80;--line:#8A7550;--paper:#26231C;--sunk:#322E24;--wax:#D67A72;--green:#6FB6A3;--note:#2B2820;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:'Noto Serif KR',serif;padding-inline:16px;padding-block:20px 56px;line-height:1.5}
+h1{font-size:20px;margin:0 0 4px}
+.sub{color:var(--mute);font-size:14px;margin:0 0 18px;max-width:72ch}
+.shell{max-width:1320px;margin:0 auto;display:grid;grid-template-columns:200px minmax(0,1fr) 300px;gap:20px;align-items:start}
+.pick{display:flex;flex-direction:column;gap:6px;position:sticky;top:12px}
+.pick button{text-align:left;border:1.5px solid var(--line);background:var(--paper);color:var(--fg);padding:10px 12px;font:inherit;font-size:14px;cursor:pointer}
+.pick button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.pick small{display:block;color:inherit;opacity:.7;font-size:11px}
+.sizes{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.sizes button{border:1.5px solid var(--line);background:var(--paper);color:var(--fg);padding:6px 12px;font:inherit;font-size:13px;cursor:pointer}
+.sizes button[aria-pressed="true"]{background:var(--green);color:#fff;border-color:var(--green)}
+button:focus-visible{outline:3px solid #2F7BFF;outline-offset:2px}
+.viewport{overflow-x:auto;border:1.5px solid var(--line);background:var(--sunk)}
+.frame{background:var(--paper);margin:0 auto;border:0;position:relative;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--fg);min-height:560px}
+.wf{display:grid;min-height:560px}
+.wf.tab{width:1194px;grid-template-columns:96px 1fr}.wf.pc{width:1440px;grid-template-columns:96px 1fr}.wf.nar{width:520px;grid-template-columns:1fr}
+.wf.full{grid-template-columns:1fr}
+.rail{background:var(--fg);color:var(--bg);display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 0;font-size:11px}
+.nar .rail{flex-direction:row;justify-content:space-around;order:2;padding:6px}
+.ri{width:72px;height:60px;display:grid;place-items:center;border:1.5px dashed currentColor;opacity:.6}
+.ri.on{opacity:1;border-style:solid}
+.logo{width:36px;height:36px;border:2px solid currentColor;border-radius:50%;margin-bottom:12px}
+.nar .logo{display:none}
+.main{padding:14px 20px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.box{border:1.5px solid var(--line);background:var(--paper);padding:8px 10px;min-width:0}
+.box.dash{border-style:dashed}
+.box.fill{background:var(--sunk)}
+.box.cur{border:3px double var(--wax)}
+.box.btn{font-weight:700;text-align:center;min-height:44px;display:grid;place-items:center}
+.box.pri{background:var(--wax);color:#F6F0E0;border-color:var(--wax)}
+.grow{flex:1}
+.t{font-weight:700;font-size:14px}.m{color:var(--mute)}
+.row{display:flex;gap:10px}.col{display:flex;flex-direction:column;gap:8px}
+.g2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.nar .g3,.nar .g2{grid-template-columns:1fr}
+.nar .runcols{grid-template-columns:1fr!important}
+.runcols{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:12px}
+.ph{height:10px;background:var(--line);opacity:.35;margin:3px 0}
+.ph.s{width:60%}.ph.l{width:90%}
+.n{position:absolute;z-index:3;width:22px;height:22px;border-radius:50%;background:var(--wax);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center;transform:translate(-6px,-6px)}
+.rel{position:relative}
+.notes{background:var(--note);border:1.5px solid var(--line);padding:14px 16px;position:sticky;top:12px;font-size:13px}
+.notes h2{font-size:15px;margin:0 0 8px}
+.notes ol{margin:0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+.notes li{display:grid;grid-template-columns:22px 1fr;gap:8px}
+.notes li b{width:22px;height:22px;border-radius:50%;background:var(--wax);color:#fff;font-size:11px;display:grid;place-items:center}
+.notes .ref{color:var(--mute);font-size:12px;margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+@media (max-width:1080px){.shell{grid-template-columns:minmax(0,1fr)}.pick{position:static;flex-direction:row;flex-wrap:wrap}.notes{position:static}}
+</style>
+
+<h1>실험 노트 화면 설계</h1>
+<p class="sub">저충실도 와이어프레임 8종과 동작 메모입니다. 번호 표시는 오른쪽 설명과 짝입니다. 폭을 바꿔 가며 레이아웃이 어떻게 접히는지 볼 수 있습니다. 엔틱 스타일이 입혀지기 전의 구조 설계입니다.</p>
+<div class="shell">
+  <nav class="pick" id="pick" aria-label="화면 선택"></nav>
+  <section>
+    <div class="sizes" id="sizes" role="group" aria-label="화면 폭"></div>
+    <div class="viewport"><div class="frame" id="frame"></div></div>
+  </section>
+  <aside class="notes" id="notes" aria-live="polite"></aside>
+</div>
+
+<script>
+var state={s:'home',w:'tab'};
+var SIZES=[{k:'tab',n:'태블릿 가로 1194'},{k:'pc',n:'PC 1440'},{k:'nar',n:'좁은 화면 520'}];
+var RAIL=function(on){var it=[['홈','home'],['실험','list'],['검색','search'],['템플릿','tpl']];return '<div class="rail"><div class="logo"></div>'+it.map(function(i){return '<div class="ri'+(i[1]===on?' on':'')+'">'+i[0]+'</div>';}).join('')+'</div>';};
+var TOP=function(q){return '<div class="bar rel"><div class="box grow" style="max-width:520px;min-height:44px">'+(q||'🔍 제목 · 단계 · 조건 · 결과 검색  (Ctrl K)')+'</div><div class="grow"></div><div class="box btn pri" style="padding:0 18px">+ 새 실험</div></div>';};
+var CARD=function(t,st,p){return '<div class="box col"><div class="row" style="justify-content:space-between"><span class="m">PROJECT-A</span><span class="box" style="padding:1px 8px">'+st+'</span></div><div class="t">'+t+'</div><div class="row" style="align-items:center"><div class="box fill grow" style="height:10px;padding:0"><div style="width:'+p+'%;height:100%;background:var(--green)"></div></div><span>'+p+'%</span></div><span class="m">담당자 · 수정일</span></div>';};
+var N=function(n,x,y){return '<span class="n" style="left:'+x+';top:'+y+'">'+n+'</span>';};
+var SCREENS={
+home:{n:'홈 (대시보드)',s:'진행 중 · 미완료 단계 · 최근',ref:'journey 1·2 / IA 홈',
+ html:function(){return '<div class="wf '+state.w+'">'+RAIL('home')+'<div class="main">'+TOP()+'<div class="t" style="font-size:18px">오늘의 실험</div>'+
+  '<div class="rel col"><span class="t">진행 중</span><div class="g3">'+CARD('나노입자 합성 조건 최적화 #12','진행',44)+CARD('고분자 필름 인장 강도 측정','진행',33)+'</div>'+N(1,'0','-4px')+'</div>'+
+  '<div class="rel box dash col"><span class="t">미완료 단계가 있는 실험</span><div class="row"><span>#12 · 5~9단계 남음</span><span class="grow"></span><span class="m">이어서 하기 →</span></div>'+N(2,'0','-4px')+'</div>'+
+  '<div class="rel col"><span class="t">최근 본 실험</span><div class="row"><div class="box grow">나노입자 합성 #11</div><div class="box grow">촉매 활성 비교</div><div class="box grow">전해질 이온전도도 #3</div></div>'+N(3,'0','-4px')+'</div></div></div>';},
+ notes:['진행 중 실험을 가장 위에. 카드를 누르면 수행 모드로 이어서 들어간다.','미완료 단계가 있는 실험을 따로 보여 준다(놓친 것을 바로 알림). 없으면 이 영역은 숨긴다.','최근 본 실험 최대 6개. 실험이 하나도 없으면 전체를 빈 상태("첫 실험을 만들어 보세요" + + 새 실험)로 바꾼다.']},
+list:{n:'실험 목록',s:'필터 · 정렬 · 카드',ref:'journey 2 / s2 찾기',
+ html:function(){return '<div class="wf '+state.w+'">'+RAIL('list')+'<div class="main">'+TOP()+'<div class="bar"><span class="t" style="font-size:20px">실험</span><span class="m">24건</span><span class="grow"></span><span class="rel box" style="padding:3px 10px">정렬: 최근 수정순 ▾'+N(3,'0','-8px')+'</span></div>'+
+  '<div class="bar rel"><span class="box fill">전체</span><span class="box">프로젝트 ▾</span><span class="box">태그 ▾</span><span class="box">상태 ▾</span><span class="box">기간 ▾</span><span class="m">필터 초기화</span>'+N(1,'0','-8px')+'</div>'+
+  '<div class="g3 rel">'+CARD('나노입자 합성 #12','진행',60)+CARD('나노입자 합성 #11','완료',100)+CARD('촉매 활성 비교','준비',0)+CARD('고분자 필름 인장','진행',33)+CARD('전해질 이온전도도 #3','완료',100)+CARD('세포 배양 배지 비교','준비',0)+N(2,'0','-4px')+'</div>'+
+  '<div class="bar" style="justify-content:space-between"><span class="m">1–6 / 24</span><span class="m">휴지통 (2)</span></div></div></div>';},
+ notes:['필터 칩: 프로젝트, 태그, 상태, 기간. 선택은 주소(?project=&tag=&status=)에 반영하고 마지막 선택을 기억한다.','카드는 한 줄 3개(좁은 화면 1개). 카드 전체가 눌린다. 완료한 오래된 실험은 기본 정렬에서 뒤로.','정렬: 최근 수정순(기본), 이름순, 시작일순. 하단에서 페이지 나눔과 휴지통(30일 보관) 진입.']},
+create:{n:'실험 만들기',s:'제목만 필수 · 3번 이내 입력',ref:'journey 1 step 1',
+ html:function(){return '<div class="wf '+state.w+'">'+RAIL('list')+'<div class="main"><div class="bar"><span class="box btn" style="padding:0 16px">← 취소</span><span class="t" style="font-size:20px">새 실험</span></div>'+
+  '<div class="col" style="max-width:640px"><div class="rel col"><span class="m">제목 (필수)</span><div class="box" style="min-height:48px">예) 나노입자 합성 조건 최적화 #13</div>'+N(1,'0','-6px')+'</div>'+
+  '<div class="col"><span class="m">목적</span><div class="box" style="min-height:72px"></div></div>'+
+  '<div class="rel row"><div class="col grow"><span class="m">프로젝트</span><div class="box">PROJECT-A ▾ (+ 새 프로젝트)</div></div><div class="col grow"><span class="m">태그</span><div class="box">입력 후 Enter</div></div>'+N(2,'0','-6px')+'</div>'+
+  '<div class="rel row"><div class="box btn grow">템플릿에서 시작 (P1)</div><div class="box btn pri grow">만들고 절차 입력하기 →</div>'+N(3,'0','-6px')+'</div></div></div></div>';},
+ notes:['제목이 비어 있으면 만들기 버튼 대신 "제목을 입력하세요" 안내. 나머지는 모두 선택이다.','프로젝트는 드롭다운에서 바로 새로 만든다. 태그는 쉼표나 Enter로 추가, 자주 쓴 태그 제안.','만들면 상태는 준비, 절차 탭(단계 추가 화면)으로 이동한다. 템플릿 시작은 s3(P1).']},
+detail:{n:'실험 상세 · 개요',s:'탭 5개',ref:'IA 실험 상세',
+ html:function(){return '<div class="wf '+state.w+'">'+RAIL('list')+'<div class="main"><div class="bar"><span class="m">← 실험 목록</span></div><div class="bar rel"><span class="t" style="font-size:20px">나노입자 합성 조건 최적화 #12</span><span class="box">진행</span><span class="grow"></span><span class="box btn" style="padding:0 14px">⋯ 복제 · 삭제</span><span class="box btn pri" style="padding:0 18px">수행 모드 시작 ▶</span>'+N(2,'0','-8px')+'</div>'+
+  '<div class="bar rel"><span class="box fill">개요</span><span class="box">절차 (9)</span><span class="box">조건·결과</span><span class="box">첨부</span><span class="box">편차</span>'+N(1,'0','-8px')+'</div>'+
+  '<div class="g2 rel"><div class="box col"><span class="m">목적</span><div class="ph l"></div><div class="ph"></div><span class="m">담당자 · 프로젝트 · 태그</span><div class="ph s"></div></div><div class="box col"><span class="m">진행 현황</span><div class="row" style="align-items:center"><div class="box fill grow" style="height:10px;padding:0"><div style="width:44%;height:100%;background:var(--green)"></div></div><span>44%</span></div><span class="m">시작 · 마지막 수정</span><div class="ph s"></div></div>'+N(3,'0','-6px')+'</div></div></div>';},
+ notes:['탭: 개요 / 절차 / 조건·결과 / 첨부(P1) / 편차(s3). 절차 탭에는 단계 수를 표시한다.','주요 버튼은 상태에 따라 바뀐다: 준비 → "수행 모드 시작", 진행 → "이어서 하기", 완료 → "다시 열기(재개)". 더보기에서 복제(s3)와 삭제(휴지통).','개요는 항상 편집 가능하고 바꾸면 바로 저장한다(저장 표시). 상태 변경은 규칙(준비→진행→완료, 재개)만 허용.']},
+run:{n:'수행 모드',s:'체크+메모 한 화면 · 전체 화면',ref:'journey 1 step 2 · 최우선',
+ html:function(){return '<div class="wf full"><div class="main" style="padding:0"><div class="bar rel" style="padding:12px 20px;border-bottom:1.5px solid var(--line)"><span class="box btn" style="padding:0 16px">← 나가기</span><div class="col" style="gap:0"><span class="m">PROJECT-A · 수행 모드</span><span class="t" style="font-size:18px">나노입자 합성 조건 최적화 #12</span></div><span class="grow"></span><div class="col" style="gap:4px;min-width:200px"><span class="m" style="text-align:right">4 / 9 단계 · 44%</span><div class="box fill" style="height:10px;padding:0"><div style="width:44%;height:100%;background:var(--green)"></div></div></div>'+N(5,'0','-2px')+'</div>'+
+  '<div class="runcols" style="padding:14px 20px"><div class="col rel"><div class="box">✓ III. 시약 A를 50 mL 계량한다</div><div class="box">✓ IV. 반응 용기에 시약 A를 천천히 투입한다</div><div class="box cur col rel" style="padding:14px"><span class="t" style="font-size:16px">◯ V. 용액을 80°C로 가열하며 교반한다</span>'+N(1,'0','-6px')+'</div>'+
+  '<div class="box col rel"><div class="row"><div class="box grow">항목: 온도</div><div class="box" style="width:90px">80</div><div class="box" style="width:90px">°C</div></div><div class="box" style="min-height:48px">단계 메모</div>'+N(2,'0','-6px')+'</div>'+
+  '<div class="row rel"><div class="box btn" style="width:100px">이전</div><div class="box btn pri grow">완료하고 다음 단계</div>'+N(3,'0','-6px')+'</div><div class="box">◯ VI. 냉각 후 pH를 측정한다</div><div class="box">◯ VII. 원심분리 후 상층액을 분리한다</div></div>'+
+  '<div class="col rel"><div class="box col"><span class="t">조건 · 결과</span><span>온도 80 °C</span><span>시간 30 min</span><span>교반 속도 450 rpm</span><span class="m">pH (결과) —</span></div><div class="box col rel"><span class="t">절차와 달라진 점</span><div class="box btn">+ 달라진 점 기록</div>'+N(4,'0','-6px')+'</div><span class="m">● 저장됨 14:32:08</span></div></div></div></div>';},
+ notes:['현재 단계 하나를 크게(글자 22, 체크 44). 체크 줄 전체가 눌린다. 누르면 즉시 저장하고 진행률이 갱신된다. 실수로 눌러도 5초 되돌리기 토스트와 해제가 있다.','값·메모는 현재 단계 아래에서 입력한다. 입력은 0.3~0.5초 뒤 자동 저장, 저장 표시가 항상 보인다.','"완료하고 다음 단계"는 체크하고 다음 단계로 이동. 건너뛰기 허용. 마지막 단계에서는 "수행 완료"로 바뀌어 조건·결과 화면으로 간다.','달라진 점 기록은 두 번 탭 이내(버튼 → 내용·사유 입력 → 저장) 후 같은 단계로 돌아온다. 버튼은 s3 전까지 숨기거나 비활성.','나가기는 진행 상태를 저장하고 실험 상세로. 좁은 화면에서는 조건·결과 패널이 단계 아래로 내려간다. 화면 꺼짐 방지 옵션 제공.']},
+data:{n:'조건·결과',s:'이름-값-단위 · 완료 처리',ref:'journey 1 step 3',
+ html:function(){return '<div class="wf '+state.w+'">'+RAIL('list')+'<div class="main"><div class="bar"><span class="t" style="font-size:20px">나노입자 합성 조건 최적화 #12</span><span class="box">진행</span></div><div class="bar"><span class="box">개요</span><span class="box">절차 (9)</span><span class="box fill">조건·결과</span><span class="box">첨부</span><span class="box">편차</span></div>'+
+  '<div class="g2"><div class="col rel"><span class="t">조건</span><div class="row"><div class="box grow">온도</div><div class="box" style="width:80px">80</div><div class="box" style="width:80px">°C ▾</div><div class="box">✕</div></div><div class="row"><div class="box grow">교반 시간</div><div class="box" style="width:80px">30</div><div class="box" style="width:80px">min ▾</div><div class="box">✕</div></div><div class="box dash btn">+ 조건 추가</div>'+N(1,'0','-6px')+'</div>'+
+  '<div class="col rel"><span class="t">결과</span><div class="row"><div class="box grow">수율</div><div class="box" style="width:80px">—</div><div class="box" style="width:80px">% ▾</div><div class="box">✕</div></div><div class="box dash btn">+ 결과 추가</div>'+N(2,'0','-6px')+'</div></div>'+
+  '<div class="rel box col fill"><span class="t">완료하기 전에 확인하세요</span><span>· 미완료 단계 4개</span><span>· 비어 있는 결과 1개</span><div class="row"><div class="box btn">돌아가서 입력</div><div class="box btn pri grow">나중에 입력하고 완료</div></div>'+N(3,'0','-6px')+'</div></div></div>';},
+ notes:['이름은 자주 쓴 항목을 자동 완성, 단위는 선택식(직접 입력 가능). 숫자가 아닌 값이나 평소 범위를 크게 벗어난 값은 경고만 하고 막지 않는다(E7).','결과는 수행 중에도 입력할 수 있다. 값이 비면 "—"로 보인다.','완료를 누르면 미완료 단계 수와 빈 결과 수를 안내한다(E3, E8). "나중에 입력하고 완료"가 가능하고, 완료 후에도 다시 열 수 있다.']},
+search:{n:'검색 결과',s:'하이라이트 · 일치 위치',ref:'journey 2 / s2 찾기',
+ html:function(){return '<div class="wf '+state.w+'">'+RAIL('search')+'<div class="main">'+TOP('🔍 80°C 교반')+'<div class="bar"><span class="t" style="font-size:20px">검색 결과</span><span class="m">6건 · 0.18초</span></div><div class="bar rel"><span class="box fill">전체 6</span><span class="box">단계 3</span><span class="box">조건 2</span><span class="box">결과 1</span><span class="box">프로젝트 ▾</span><span class="box">기간 ▾</span>'+N(2,'0','-8px')+'</div>'+
+  '<div class="col rel">'+['나노입자 합성 조건 최적화 #12|단계 5|용액을 [80°C]로 가열하며 교반한다','나노입자 합성 조건 최적화 #11|조건|온도 [80] °C · 교반 시간 30 min','전해질 이온전도도 측정 #3|단계 2|전해질을 [80°C] 오븐에서 건조한다'].map(function(r){var p=r.split('|');return '<div class="box col"><div class="row"><span class="t">'+p[0]+'</span><span class="box" style="padding:1px 8px">완료</span><span class="grow"></span><span class="m">'+p[1]+'</span></div><span>'+p[2]+'</span><span class="m">PROJECT · 담당자 · 수정일</span></div>';}).join('')+N(1,'0','-6px')+'</div></div></div>';},
+ notes:['일치한 문구를 강조하고 일치 위치(제목/단계 번호/조건/결과)를 오른쪽에 표시한다. 한 실험이 여러 곳에서 일치하면 위치를 모두 보여 준다.','위치별 칩(단계/조건/결과)과 프로젝트·기간 필터로 좁힌다. 입력 후 2초 이내에 표시. 결과 없음은 아래 "상태" 화면 참고.']},
+states:{n:'빈·오류·로딩 상태',s:'E1~E8 대응',ref:'uj 오류 시나리오',
+ html:function(){return '<div class="wf '+state.w+'">'+RAIL('list')+'<div class="main"><div class="g2"><div class="box col rel" style="min-height:150px;align-items:center;justify-content:center;text-align:center"><span class="t">첫 실험을 만들어 보세요</span><span class="m">실험 기록을 한 곳에 모읍니다</span><div class="box btn pri" style="padding:0 18px">+ 새 실험</div>'+N(1,'0','-6px')+'</div>'+
+  '<div class="box col rel" style="min-height:150px;align-items:center;justify-content:center;text-align:center"><span class="t">일치하는 실험이 없습니다</span><span class="m">철자를 확인하거나 필터를 풀어 보세요</span><div class="row"><div class="box btn">필터 해제</div><div class="box btn">새 실험 만들기</div></div>'+N(2,'0','-6px')+'</div></div>'+
+  '<div class="g2"><div class="box col rel dash"><span class="t">⚠ 저장하지 못했습니다</span><span class="m">저장 공간이 가득 찼거나 브라우저가 저장을 막았습니다.</span><div class="row"><div class="box btn">다시 시도</div><div class="box btn pri">데이터 내보내기</div></div>'+N(3,'0','-6px')+'</div>'+
+  '<div class="box col rel"><span class="t">완료 전 확인</span><span class="m">건너뛴 단계 4개가 있습니다</span><div class="row"><div class="box btn">돌아가기</div><div class="box btn pri">그대로 완료</div></div>'+N(4,'0','-6px')+'</div></div>'+
+  '<div class="g2"><div class="box rel" style="padding:14px">단계 5를 체크했습니다 · <b>되돌리기</b> (5초)'+N(5,'0','-6px')+'</div><div class="box col rel"><span class="t">휴지통</span><span class="m">삭제 후 30일 보관 · 복원할 수 있습니다</span><div class="row"><span>#10 합성 실험</span><span class="grow"></span><b>복원</b></div>'+N(6,'0','-6px')+'</div></div>'+
+  '<div class="box col rel"><span class="m">로딩</span><div class="ph l"></div><div class="ph"></div><div class="ph s"></div>'+N(7,'0','-6px')+'</div></div></div>';},
+ notes:['빈 상태: 무엇이 여기에 나타날지와 첫 행동 버튼을 함께 둔다.','검색 결과 없음(E4): 철자·유사어 제안, 필터 해제, 새 실험 만들기.','저장 실패(E1): 이유와 함께 "다시 시도"와 "데이터 내보내기"를 둔다. 데이터를 잃지 않게 안내하는 것이 목적.','완료 전 확인(E3, E8): 막지 않고 선택하게 한다.','되돌리기 토스트(E2): 체크·삭제 직후 5초. 모션 최소화.','휴지통(E5): 30일 보관, 복원, 영구 삭제는 확인창을 거친다.','로딩: 로컬 저장이라 대부분 즉시이므로 0.3초 이상 걸릴 때만 보여 준다.']}
+};
+var ORDER=['home','list','create','detail','run','data','search','states'];
+function render(){
+  var sc=SCREENS[state.s];
+  document.getElementById('frame').innerHTML=sc.html();
+  document.getElementById('frame').style.width=state.s==='run'?(state.w==='nar'?'520px':state.w==='pc'?'1440px':'1194px'):(state.w==='nar'?'520px':state.w==='pc'?'1440px':'1194px');
+  var w=state.w;
+  var wf=document.querySelector('#frame .wf'); if(wf&&state.s==='run'){wf.className='wf full '+w;wf.style.width=(w==='nar'?520:w==='pc'?1440:1194)+'px';}
+  document.getElementById('notes').innerHTML='<h2>'+sc.n+'</h2><ol>'+sc.notes.map(function(t,i){return '<li><b>'+(i+1)+'</b><span>'+t+'</span></li>';}).join('')+'</ol><div class="ref">근거: '+sc.ref+'</div>';
+  Array.prototype.forEach.call(document.querySelectorAll('#pick button'),function(b){b.setAttribute('aria-pressed',String(b.dataset.k===state.s));});
+  Array.prototype.forEach.call(document.querySelectorAll('#sizes button'),function(b){b.setAttribute('aria-pressed',String(b.dataset.k===state.w));});
+}
+document.getElementById('pick').innerHTML=ORDER.map(function(k,i){return '<button data-k="'+k+'">'+(i+1)+'. '+SCREENS[k].n+'<small>'+SCREENS[k].s+'</small></button>';}).join('');
+document.getElementById('sizes').innerHTML=SIZES.map(function(x){return '<button data-k="'+x.k+'">'+x.n+'</button>';}).join('');
+document.getElementById('pick').addEventListener('click',function(e){var b=e.target.closest('button');if(b){state.s=b.dataset.k;render();}});
+document.getElementById('sizes').addEventListener('click',function(e){var b=e.target.closest('button');if(b){state.w=b.dataset.k;render();}});
+render();
+</script>

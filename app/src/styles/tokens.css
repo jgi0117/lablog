@@ -1,0 +1,73 @@
+/*
+ * 엔틱 디자인 토큰 (design-drafts.html의 엔틱 시안 기준)
+ * 색·글자·간격·터치 크기는 여기 변수만 쓴다. 컴포넌트에서 색 값을 직접 쓰지 않는다.
+ */
+:root {
+  /* 색: 바랜 종이, 잉크, 청동록(포인트), 붉은 밀랍(현재 단계·주요 버튼) */
+  --paper: #e6dabf;
+  --paper-raised: #f3ead6;
+  --paper-sunken: #d9cba8;
+  --paper-field: #f8f1e0;
+  --ink: #2a2016;
+  --ink-2: #5a4733;
+  --ink-3: #86724f;
+  --rule: #6f583b;
+  --verdigris: #2e6b5c;
+  --verdigris-strong: #1f4d42;
+  --verdigris-soft: #d5e0ce;
+  --wax: #8e2f2a;
+  --wax-strong: #5e1c19;
+  --wax-soft: #efe0be;
+  --brass: #c7a35a;
+  --leather: #22302b;
+  --leather-raised: #34493f;
+  --highlight: rgba(201, 160, 70, 0.38);
+
+  /* 의미 색 */
+  --color-ok: var(--verdigris);
+  --color-warn: #9a6b1e;
+  --color-danger: var(--wax);
+
+  /* 글꼴: 제목은 IM Fell, 본문은 Noto Serif KR */
+  --font-display: 'IM Fell DW Pica', 'Noto Serif KR', serif;
+  --font-body: 'Noto Serif KR', serif;
+  --font-mono: 'IM Fell DW Pica', 'Noto Serif KR', serif;
+
+  /* 글자 크기 (px). 수행 모드의 현재 단계는 --text-step */
+  --text-caption: 12px;
+  --text-body: 15px;
+  --text-heading: 17px;
+  --text-title: 22px;
+  --text-step: 22px;
+  --text-display: 36px;
+  --leading: 1.4;
+
+  /* 간격 */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+
+  /* 모서리와 선 */
+  --radius: 2px;
+  --radius-lg: 3px;
+  --line: 1.5px;
+  --line-double: 4px double var(--rule);
+
+  /* 그림자 */
+  --shadow: 3px 3px 0 rgba(42, 32, 22, 0.16);
+  --shadow-wax: 3px 3px 0 rgba(142, 47, 42, 0.28);
+
+  /* 터치: 장갑 낀 손 기준 최소 크기 */
+  --touch-min: 44px;
+  --touch-comfort: 52px;
+  --check-size: 36px;
+  --check-size-current: 44px;
+
+  /* 레이아웃 */
+  --rail-width: 96px;
+  --content-max: 1240px;
+  --bp-narrow: 860px;
+}
