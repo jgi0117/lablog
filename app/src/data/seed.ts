@@ -136,11 +136,12 @@ export async function seedSample(db: DataBackend): Promise<number> {
 }
 
 // ---------- 이력이 있는 시연 데이터 ----------
-function daysAgo(n: number, hour = 10): string {
-  const d = new Date()
-  d.setDate(d.getDate() - n)
-  d.setHours(hour, 0, 0, 0)
-  return d.toISOString()
+/**
+ * n일 전 시각. 하루 중 시각이나 시간대에 상관없이 "며칠 전"으로 세어지도록 정확히 n일에 한 시간을 더해 뺀다.
+ * (예전에는 날짜만 맞추고 시각을 15시로 고정해서, 한국과 UTC 서버에서 "10일 전"이 9일로 세어졌다.)
+ */
+function daysAgo(n: number): string {
+  return new Date(Date.now() - n * 86400000 - 3600000).toISOString()
 }
 
 type Cond = [name: string, value: string, unit: string]
@@ -335,7 +336,7 @@ export async function seedDemo(db: DataBackend): Promise<number> {
   for (const e of exps) {
     const id = `demo-${e.key}`
     const started = e.status === 'ready' ? null : daysAgo(e.startedAgo)
-    const touched = daysAgo(Math.max(0, e.touchedAgo), 15)
+    const touched = daysAgo(Math.max(0, e.touchedAgo))
     experiments.push({
       id,
       createdAt: daysAgo(e.startedAgo + 1),
