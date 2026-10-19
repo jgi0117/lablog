@@ -348,6 +348,8 @@
 }
 
 .matrix-wrap {
+  /* 눈에 보이지 않게 숨긴 글자(visually-hidden)가 표 밖으로 새어 나가 페이지를 가로로 넓히지 않도록 가둔다 */
+  position: relative;
   overflow-x: auto;
   border: var(--line-double);
   background: var(--paper-raised);
@@ -401,7 +403,7 @@
 }
 
 .matrix__unit {
-  color: var(--ink-3);
+  color: var(--ink-2);
   font-size: 12px;
 }
 

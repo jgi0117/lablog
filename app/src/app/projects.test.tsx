@@ -87,7 +87,7 @@ describe('프로젝트 현황 (빠진 것 한눈에)', () => {
   it('진행 현황과 타임라인을 보여 준다', async () => {
     open(HC, await demoBackend())
     expect(await screen.findByRole('img', { name: /완료 8건, 진행 2건, 준비 0건/ })).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: /프로젝트 타임라인. 실험 10건/ })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: /프로젝트 타임라인. 실험 10건/ })).toBeInTheDocument()
   })
 
   it('프로젝트 이름을 고치면 자동 저장된다', async () => {
@@ -131,8 +131,8 @@ describe('프로젝트 데이터 표', () => {
 describe('프로젝트 분석', () => {
   it('조건과 결과의 관계, 실험 순서 추세, 이상치 후보를 보여 준다', async () => {
     open(`${HC}/analysis`, await demoBackend())
-    expect(await screen.findByRole('img', { name: /에 따른 .*점 \d+개, 상관계수 -?\d\.\d\d/ })).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: /실험 순서에 따른/ })).toBeInTheDocument()
+    expect(await screen.findByRole('group', { name: /에 따른 .*점 \d+개, 상관계수 -?\d\.\d\d/ })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: /실험 순서에 따른/ })).toBeInTheDocument()
     const out = screen.getByRole('region', { name: /이상치 후보/ })
     expect(within(out).getByText(/헤이즈 3\.9/)).toBeInTheDocument()
     expect(screen.getByText(/상관이 곧 원인을 뜻하지는 않으며/)).toBeInTheDocument()
@@ -141,10 +141,10 @@ describe('프로젝트 분석', () => {
   it('가로축과 세로축을 바꾸면 차트가 바뀐다', async () => {
     const user = userEvent.setup()
     open(`${HC}/analysis`, await demoBackend())
-    await screen.findByRole('img', { name: /상관계수/ })
+    await screen.findByRole('group', { name: /상관계수/ })
     await user.selectOptions(screen.getByLabelText('가로축 (조건 또는 결과)'), 'UV 조사량 (mJ/cm²)')
     await user.selectOptions(screen.getByLabelText('세로축 (결과)'), '연필경도 (H)')
-    const chart = await screen.findByRole('img', { name: /UV 조사량 \(mJ\/cm²\)에 따른 연필경도 \(H\)/ })
+    const chart = await screen.findByRole('group', { name: /UV 조사량 \(mJ\/cm²\)에 따른 연필경도 \(H\)/ })
     expect(chart).toHaveAccessibleName(/상관계수 0\.[89]/)
   })
 

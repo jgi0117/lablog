@@ -26,10 +26,13 @@ interface FrameProps {
   height?: number
 }
 
-/** 차트 공통 틀. 스크린 리더에는 summary를 읽어 주고, 자세한 값은 "데이터" 탭의 표에 있다. */
+/**
+ * 차트 공통 틀. 스크린 리더에는 summary를 읽어 주고, 자세한 값은 "데이터" 탭의 표에 있다.
+ * 점과 막대가 눌러서 열 수 있는 링크라서 role은 img가 아니라 group이다(img 안에 조작 요소를 두면 접근성 위반).
+ */
 function Frame({ title, summary, children, height = H }: FrameProps) {
   return (
-    <svg className="chart" viewBox={`0 0 ${W} ${height}`} role="img" aria-label={`${title}. ${summary}`} preserveAspectRatio="xMidYMid meet">
+    <svg className="chart" viewBox={`0 0 ${W} ${height}`} role="group" aria-label={`${title}. ${summary}`} preserveAspectRatio="xMidYMid meet">
       {children}
     </svg>
   )
@@ -203,7 +206,7 @@ export function TimelineChart({ bars, now = new Date() }: TimelineProps) {
   const weeks: number[] = []
   for (let t = min; t <= max; t += 7 * 86400000) weeks.push(t)
   return (
-    <svg className="chart" viewBox={`0 0 ${W} ${height}`} role="img" aria-label={`프로젝트 타임라인. 실험 ${bars.length}건, ${MONTH_DAY(min)}부터 ${MONTH_DAY(max)}까지`}>
+    <svg className="chart" viewBox={`0 0 ${W} ${height}`} role="group" aria-label={`프로젝트 타임라인. 실험 ${bars.length}건, ${MONTH_DAY(min)}부터 ${MONTH_DAY(max)}까지`}>
       {weeks.map((t) => (
         <g key={t}>
           <line className="chart__grid chart__grid--v" x1={x(t)} x2={x(t)} y1={top - 4} y2={height - 28} />

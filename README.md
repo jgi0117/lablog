@@ -4,7 +4,7 @@
 
 **풀려는 문제**: 실험 기록이 여러 곳에 흩어져 찾기도 재현하기도 어려운 문제
 
-현재 단계: Phase 5(안정화: 백업·복원, 저장 실패·여러 탭 처리, 접근성, 사용 기록) 구현 완료(실기기 확인과 E2E가 남음). 다음은 Phase 6(최종 테스트). 데이터는 지금 브라우저 로컬(IndexedDB)에만 저장하고, 이후 Supabase로 옮길 예정입니다.
+현재 단계: Phase 6(최종 테스트) 자동 검증 완료(세 브라우저 E2E 81개 통과). 사용성 테스트와 실기기 확인이 남았고, 그 뒤 Phase 7(파일럿 출시). 데이터는 지금 브라우저 로컬(IndexedDB)에만 저장하고, 이후 Supabase로 옮길 예정입니다.
 
 ## 디렉토리 구조
 
@@ -36,6 +36,7 @@ lab/
 │  ├─ phase4/                s2 찾기 완료 기록
 │  ├─ phase4-5/              s4 살펴보기 완료 기록
 │  ├─ phase5/                안정화 완료 기록
+│  ├─ phase6/                최종 테스트 기록, Go/No-go
 │  └─ summary/               각 문서의 짧은 요약본
 ├─ .github/workflows/        CI (린트, 타입 검사, 테스트, 빌드)
 └─ .claude/skills/           기획 작업에 쓴 스킬 (create-prd, information-architecture, user-journeys)

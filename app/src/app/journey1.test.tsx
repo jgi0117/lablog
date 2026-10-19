@@ -136,3 +136,33 @@ describe('Journey 1: 새 실험 수행', () => {
     await waitFor(async () => expect((await backend.experiments.get(exp.id)).status).toBe('done'))
   })
 })
+
+describe('절차 입력', () => {
+  it('Enter를 빠르게 이어서 눌러도 단계가 빠지거나 순서가 섞이지 않는다', async () => {
+    const user = userEvent.setup({ delay: null })
+    const backend = createLocalBackend(`lablog-fast-${Date.now()}`)
+    opened.push(backend)
+    const exp = await backend.experiments.create({
+      projectId: null,
+      title: '빠른 입력',
+      purpose: '',
+      owner: '',
+      tags: [],
+      status: 'ready',
+      startedAt: null,
+      completedAt: null,
+      sourceExperimentId: null,
+    })
+    render(
+      <MemoryRouter initialEntries={[`/experiments/${exp.id}/steps`]}>
+        <App backend={backend} />
+      </MemoryRouter>,
+    )
+    const box = await screen.findByPlaceholderText('새 단계를 입력하고 Enter')
+    const names = ['가', '나', '다', '라', '마']
+    for (const n of names) await user.type(box, `${n}{Enter}`)
+    await waitFor(async () => {
+      expect((await backend.steps.listByExperiment(exp.id)).map((s) => s.content)).toEqual(names)
+    })
+  })
+})

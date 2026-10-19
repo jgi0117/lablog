@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useBackend } from '../app/BackendContext'
 import { EmptyState } from '../components/EmptyState'
@@ -65,6 +65,7 @@ export function StepsPage() {
   const backend = useBackend()
   const toast = useToast()
   const [draft, setDraft] = useState('')
+  const queue = useRef<Promise<void>>(Promise.resolve())
   const [bulk, setBulk] = useState('')
 
   const replace = (s: Step) => setSteps((xs) => xs.map((x) => (x.id === s.id ? s : x)))
@@ -73,9 +74,19 @@ export function StepsPage() {
     e.preventDefault()
     const content = draft.trim()
     if (!content) return
-    const created = await appendSteps(backend, experiment.id, [content], steps)
-    setSteps((xs) => [...xs, ...created])
+    // 저장을 기다리는 동안 다음 단계를 바로 쓸 수 있도록 입력칸을 먼저 비운다.
+    // (비우기를 저장 뒤로 미루면 빠르게 이어 쓴 글자가 앞 단계에 붙어 한 단계로 합쳐진다.)
     setDraft('')
+    // 빠르게 이어서 추가해도 순서가 겹치지 않도록 한 번에 하나씩, 저장소의 최신 단계를 기준으로 추가한다.
+    queue.current = queue.current.then(async () => {
+      try {
+        const existing = await backend.steps.listByExperiment(experiment.id)
+        await appendSteps(backend, experiment.id, [content], existing)
+        setSteps(await backend.steps.listByExperiment(experiment.id))
+      } catch {
+        setDraft((d) => (d ? d : content))
+      }
+    })
   }
 
   const addBulk = async () => {

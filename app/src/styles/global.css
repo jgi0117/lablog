@@ -58,7 +58,9 @@ a {
 }
 
 .page-title::after {
+  /* 장식 글자라서 스크린 리더가 제목 뒤에 읽지 않도록 대체 텍스트를 비운다(지원하지 않는 브라우저는 앞 줄만 쓴다) */
   content: ' ❦';
+  content: ' ❦' / '';
   color: var(--wax);
   font-size: 0.7em;
 }
