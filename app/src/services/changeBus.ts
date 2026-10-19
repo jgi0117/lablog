@@ -1,5 +1,5 @@
 export interface ChangeMessage {
-  table: 'projects' | 'experiments' | 'steps' | 'dataItems'
+  table: 'projects' | 'experiments' | 'steps' | 'dataItems' | 'templates' | 'deviations'
   id: string
   /** 보낸 탭의 식별자. 자기 탭의 변경은 무시하는 데 쓴다. */
   from: string

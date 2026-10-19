@@ -2,8 +2,10 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useBackend } from '../app/BackendContext'
 import { ValidationError, createExperiment } from '../services/experimentService'
+import { startFromTemplate } from '../services/templateService'
+import { logUsage } from '../services/usage'
 import { parseTags } from '../services/text'
-import type { Experiment, Project } from '../domain/types'
+import type { Experiment, Project, Template } from '../domain/types'
 
 const NEW_PROJECT = '__new__'
 
@@ -20,6 +22,8 @@ export function NewExperimentPage() {
   const [last, setLast] = useState<Experiment | null>(null)
   const [fromLast, setFromLast] = useState(true)
   const [newProject, setNewProject] = useState('')
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [templateId, setTemplateId] = useState(params.get('template') ?? '')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -28,6 +32,10 @@ export function NewExperimentPage() {
     backend.projects
       .list()
       .then((p) => alive && setProjects(p))
+      .catch(() => {})
+    backend.templates
+      .list()
+      .then((t) => alive && setTemplates(t))
       .catch(() => {})
     return () => {
       alive = false
@@ -62,6 +70,13 @@ export function NewExperimentPage() {
       let pid: string | null = projectId && projectId !== NEW_PROJECT ? projectId : null
       if (projectId === NEW_PROJECT && newProject.trim()) {
         pid = (await backend.projects.create({ name: newProject.trim(), description: '' })).id
+      }
+      const template = templates.find((t) => t.id === templateId)
+      if (template) {
+        const exp = await startFromTemplate(backend, template, { title, purpose, tags: parseTags(tags), projectId: pid })
+        logUsage('template_start')
+        navigate(`/experiments/${exp.id}/steps`)
+        return
       }
       if (fromLast && last && pid === last.projectId) {
         // 마지막 실험의 절차와 조건을 이어받는다. 결과는 항목만 남기고 값은 비워 빠뜨리지 않게 한다.
@@ -138,7 +153,20 @@ export function NewExperimentPage() {
             <input id="tags" className="input" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="쉼표로 구분" />
           </div>
         </div>
-        {last && (
+        {templates.length > 0 && (
+          <div className="field">
+            <label htmlFor="template">템플릿에서 시작</label>
+            <select id="template" className="input" value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
+              <option value="">사용 안 함</option>
+              {templates.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} (절차 {t.steps.length}개)
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        {last && !templateId && (
           <label className="check-option">
             <input type="checkbox" checked={fromLast} onChange={(e) => setFromLast(e.target.checked)} />
             <span>

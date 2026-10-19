@@ -9,6 +9,7 @@ import {
   type BackupFile,
   type DataBackend,
   type DataItemRepository,
+  type DeviationRepository,
   type ExperimentFilter,
   type ExperimentRepository,
   type ExperimentSort,
@@ -17,9 +18,10 @@ import {
   type ProjectRepository,
   type SearchHit,
   type StepRepository,
+  type TemplateRepository,
 } from '../repositories'
 import { isPurgeable } from '../../domain/rules'
-import type { DataItem, Entity, Experiment, ID, Project, Step } from '../../domain/types'
+import type { DataItem, Deviation, Entity, Experiment, ID, Project, Step, Template } from '../../domain/types'
 
 export interface LocalBackend extends DataBackend {
   /** 테스트와 앱 종료 때 DB 연결을 닫는다. */
@@ -50,6 +52,8 @@ export function createLocalBackend(name = 'lablog', options: { channel?: Paramet
     [db.experiments, 'experiments'],
     [db.steps, 'steps'],
     [db.dataItems, 'dataItems'],
+    [db.templates, 'templates'],
+    [db.deviations, 'deviations'],
   ] as const) {
     table.hook('creating', (id) => {
       bus.post({ table: key, id: String(id) })
@@ -162,22 +166,24 @@ export function createLocalBackend(name = 'lablog', options: { channel?: Paramet
 
     purge: (id) =>
       guard(async () =>
-        db.transaction('rw', db.experiments, db.steps, db.dataItems, async () => {
+        db.transaction('rw', db.experiments, db.steps, db.dataItems, db.deviations, async () => {
           const cur = await getExperiment(id)
           if (cur.deletedAt === null) throw new Error('휴지통에 있는 실험만 영구 삭제할 수 있습니다')
           await db.steps.where('experimentId').equals(id).delete()
           await db.dataItems.where('experimentId').equals(id).delete()
+          await db.deviations.where('experimentId').equals(id).delete()
           await db.experiments.delete(id)
         }),
       ),
 
     purgeExpired: (now) =>
       guard(async () =>
-        db.transaction('rw', db.experiments, db.steps, db.dataItems, async () => {
+        db.transaction('rw', db.experiments, db.steps, db.dataItems, db.deviations, async () => {
           const targets = (await db.experiments.toArray()).filter((e) => isPurgeable(e.deletedAt, now))
           for (const e of targets) {
             await db.steps.where('experimentId').equals(e.id).delete()
             await db.dataItems.where('experimentId').equals(e.id).delete()
+            await db.deviations.where('experimentId').equals(e.id).delete()
             await db.experiments.delete(e.id)
           }
           return targets.length
@@ -326,23 +332,95 @@ export function createLocalBackend(name = 'lablog', options: { channel?: Paramet
       }),
   }
 
+  const templates: TemplateRepository = {
+    list: () =>
+      guard(async () => {
+        const all = await db.templates.toArray()
+        return all.filter((t) => t.deletedAt === null).sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+      }),
+    get: (id) =>
+      guard(async () => {
+        const t = await db.templates.get(id)
+        if (!t || t.deletedAt !== null) throw new NotFoundError('Template', id)
+        return t
+      }),
+    create: (input) =>
+      guard(async () => {
+        const t = makeEntity<Template>(input)
+        await db.templates.add(t)
+        return t
+      }),
+    update: (id, patch, expectedVersion) =>
+      guard(async () =>
+        db.transaction('rw', db.templates, async () => {
+          const cur = await db.templates.get(id)
+          if (!cur || cur.deletedAt !== null) throw new NotFoundError('Template', id)
+          checkVersion('Template', cur, expectedVersion)
+          const next = bump<Template>(cur, patch)
+          await db.templates.put(next)
+          return next
+        }),
+      ),
+    softDelete: (id) =>
+      guard(async () => {
+        const cur = await db.templates.get(id)
+        if (!cur || cur.deletedAt !== null) throw new NotFoundError('Template', id)
+        await db.templates.put(bump(cur, { deletedAt: nowIso() }))
+      }),
+  }
+
+  const deviations: DeviationRepository = {
+    listByExperiment: (experimentId) =>
+      guard(async () => {
+        if (!(await visibleParent(experimentId))) return []
+        const all = await db.deviations.where('experimentId').equals(experimentId).toArray()
+        return all.filter((d) => d.deletedAt === null).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      }),
+    create: (input) =>
+      guard(async () => {
+        await getExperiment(input.experimentId)
+        const d = makeEntity<Deviation>(input)
+        await db.deviations.add(d)
+        return d
+      }),
+    update: (id, patch, expectedVersion) =>
+      guard(async () =>
+        db.transaction('rw', db.deviations, async () => {
+          const cur = await db.deviations.get(id)
+          if (!cur) throw new NotFoundError('Deviation', id)
+          checkVersion('Deviation', cur, expectedVersion)
+          const next = bump<Deviation>(cur, patch)
+          await db.deviations.put(next)
+          return next
+        }),
+      ),
+    remove: (id) =>
+      guard(async () => {
+        const cur = await db.deviations.get(id)
+        if (!cur) throw new NotFoundError('Deviation', id)
+        await db.deviations.delete(id)
+      }),
+  }
+
   const backup: DataBackend['backup'] = {
     exportAll: () =>
       guard(async (): Promise<BackupFile> => {
-        const [p, e, s, d] = await Promise.all([
+        const [p, e, s, d, t, v] = await Promise.all([
           db.projects.toArray(),
           db.experiments.toArray(),
           db.steps.toArray(),
           db.dataItems.toArray(),
+          db.templates.toArray(),
+          db.deviations.toArray(),
         ])
-        return { schemaVersion: BACKUP_SCHEMA_VERSION, exportedAt: nowIso(), projects: p, experiments: e, steps: s, dataItems: d }
+        return { schemaVersion: BACKUP_SCHEMA_VERSION, exportedAt: nowIso(), projects: p, experiments: e, steps: s, dataItems: d, templates: t, deviations: v }
       }),
     importAll: (file, mode) =>
       guard(async () => {
         if (file.schemaVersion > BACKUP_SCHEMA_VERSION) {
           throw new Error('이 백업 파일은 더 새로운 버전에서 만들어졌습니다. 앱을 업데이트한 뒤 가져오세요.')
         }
-        return db.transaction('rw', db.projects, db.experiments, db.steps, db.dataItems, async () => {
+        return db.transaction('rw', [db.projects, db.experiments, db.steps, db.dataItems, db.templates, db.deviations], async () => {
           let imported = 0
           const load = async <T extends Entity>(
             table: { toArray(): Promise<T[]>; clear(): Promise<void>; bulkPut(items: T[]): Promise<unknown> },
@@ -367,6 +445,9 @@ export function createLocalBackend(name = 'lablog', options: { channel?: Paramet
           await load(db.experiments, file.experiments)
           await load(db.steps, file.steps)
           await load(db.dataItems, file.dataItems)
+          // 편차는 실험에 딸려 있어 항상 파일 기준으로 맞춘다. 템플릿은 버전 1 파일(목록 없음)이면 건드리지 않는다.
+          await load(db.deviations, file.deviations ?? [])
+          if (file.templates !== undefined) await load(db.templates, file.templates)
           return { imported }
         })
       }),
@@ -377,6 +458,8 @@ export function createLocalBackend(name = 'lablog', options: { channel?: Paramet
     experiments,
     steps,
     dataItems,
+    templates,
+    deviations,
     backup,
     onExternalChange: (listener) => bus.subscribe(() => listener()),
     close: () => {

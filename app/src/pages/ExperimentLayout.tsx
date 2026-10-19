@@ -29,6 +29,7 @@ export function ExperimentLayout() {
     { to: `/experiments/${id}`, label: '개요', end: true },
     { to: `/experiments/${id}/steps`, label: `절차 (${data.steps.length})`, end: false },
     { to: `/experiments/${id}/data`, label: '조건·결과', end: false },
+    { to: `/experiments/${id}/deviations`, label: `달라진 점 (${data.deviations.length})`, end: false },
   ]
 
   return (

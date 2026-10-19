@@ -326,6 +326,99 @@ export function runBackendContract(name: string, create: () => Promise<DataBacke
       })
     })
 
+    describe('템플릿 (s3)', () => {
+      const tpl = { name: '하드코팅 표준', steps: [{ content: '도포' }, { content: '경화' }], defaultConditions: [{ name: '온도', value: '80', unit: '°C' }], resultItems: [{ name: '연필경도', unit: 'H' }] }
+
+      it('만들고 이름순으로 읽는다', async () => {
+        await db.templates.create({ ...tpl, name: '나 템플릿' })
+        await db.templates.create({ ...tpl, name: '가 템플릿' })
+        expect((await db.templates.list()).map((t) => t.name)).toEqual(['가 템플릿', '나 템플릿'])
+      })
+
+      it('수정하면 version이 늘고, expectedVersion이 다르면 ConflictError', async () => {
+        const t = await db.templates.create(tpl)
+        const next = await db.templates.update(t.id, { name: '바뀐 이름' }, t.version)
+        expect(next.version).toBe(2)
+        await expect(db.templates.update(t.id, { name: '충돌' }, 1)).rejects.toBeInstanceOf(ConflictError)
+      })
+
+      it('삭제하면 목록과 get에서 사라진다', async () => {
+        const t = await db.templates.create(tpl)
+        await db.templates.softDelete(t.id)
+        expect(await db.templates.list()).toEqual([])
+        await expect(db.templates.get(t.id)).rejects.toBeInstanceOf(NotFoundError)
+      })
+    })
+
+    describe('달라진 점 (s3)', () => {
+      it('실험에 기록하고 만든 순서대로 읽는다', async () => {
+        const e = await db.experiments.create(exp())
+        await db.deviations.create({ experimentId: e.id, stepId: null, change: '첫째', reason: '' })
+        await db.deviations.create({ experimentId: e.id, stepId: null, change: '둘째', reason: '사유' })
+        expect((await db.deviations.listByExperiment(e.id)).map((d) => d.change)).toEqual(['첫째', '둘째'])
+      })
+
+      it('없는 실험에는 기록할 수 없다', async () => {
+        await expect(db.deviations.create({ experimentId: 'none', stepId: null, change: 'x', reason: '' })).rejects.toBeInstanceOf(NotFoundError)
+      })
+
+      it('수정과 삭제', async () => {
+        const e = await db.experiments.create(exp())
+        const d = await db.deviations.create({ experimentId: e.id, stepId: null, change: '원래', reason: '' })
+        const next = await db.deviations.update(d.id, { change: '고침' })
+        expect(next.version).toBe(2)
+        await db.deviations.remove(d.id)
+        expect(await db.deviations.listByExperiment(e.id)).toEqual([])
+      })
+
+      it('휴지통의 실험은 빈 목록이고, 복원하면 다시 보인다', async () => {
+        const e = await db.experiments.create(exp())
+        await db.deviations.create({ experimentId: e.id, stepId: null, change: '기록', reason: '' })
+        await db.experiments.softDelete(e.id)
+        expect(await db.deviations.listByExperiment(e.id)).toEqual([])
+        await db.experiments.restore(e.id)
+        expect(await db.deviations.listByExperiment(e.id)).toHaveLength(1)
+      })
+
+      it('복제는 달라진 점을 가져가지 않고, 원본은 그대로다', async () => {
+        const e = await db.experiments.create(exp())
+        await db.deviations.create({ experimentId: e.id, stepId: null, change: '원본의 기록', reason: '' })
+        const copy = await db.experiments.duplicate(e.id)
+        expect(await db.deviations.listByExperiment(copy.id)).toEqual([])
+        expect(await db.deviations.listByExperiment(e.id)).toHaveLength(1)
+      })
+
+      it('영구 삭제하면 딸린 기록도 사라진다', async () => {
+        const e = await db.experiments.create(exp())
+        await db.deviations.create({ experimentId: e.id, stepId: null, change: '기록', reason: '' })
+        await db.experiments.softDelete(e.id)
+        await db.experiments.purge(e.id)
+        const file = await db.backup.exportAll()
+        expect(file.deviations).toEqual([])
+      })
+    })
+
+    describe('백업: 템플릿과 달라진 점', () => {
+      it('내보냈다가 replace로 가져오면 템플릿과 달라진 점도 복원된다', async () => {
+        const e = await db.experiments.create(exp())
+        const d = await db.deviations.create({ experimentId: e.id, stepId: null, change: '기록', reason: '이유' })
+        const t = await db.templates.create({ name: 'T', steps: [{ content: 'a' }], defaultConditions: [], resultItems: [{ name: 'r', unit: '%' }] })
+        const file = await db.backup.exportAll()
+        const fresh = await create()
+        await fresh.backup.importAll(file, 'replace')
+        expect(await fresh.deviations.listByExperiment(e.id)).toEqual([d])
+        expect(await fresh.templates.get(t.id)).toEqual(t)
+      })
+
+      it('버전 1 파일(템플릿 목록 없음)로 바꾸기를 해도 템플릿은 남는다', async () => {
+        const t = await db.templates.create({ name: '남아야 함', steps: [], defaultConditions: [], resultItems: [] })
+        const file = await db.backup.exportAll()
+        const v1 = { ...file, schemaVersion: 1, templates: undefined, deviations: undefined }
+        await db.backup.importAll(v1, 'replace')
+        expect(await db.templates.get(t.id)).toMatchObject({ name: '남아야 함' })
+      })
+    })
+
     describe('백업', () => {
       it('내보냈다가 replace로 가져오면 데이터가 그대로 복원된다', async () => {
         const e = await db.experiments.create(exp({ title: '백업 대상', tags: ['a', 'b'] }))

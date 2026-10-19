@@ -2,6 +2,7 @@
 @import './screens.css';
 @import './projects.css';
 @import './stability.css';
+@import './templates.css';
 
 *,
 *::before,

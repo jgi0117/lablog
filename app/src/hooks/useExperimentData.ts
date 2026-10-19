@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { useBackend } from '../app/BackendContext'
 import { NotFoundError } from '../data/repositories'
-import type { DataItem, Experiment, Step } from '../domain/types'
+import type { DataItem, Deviation, Experiment, Step } from '../domain/types'
 
 export type LoadStatus = 'loading' | 'ready' | 'notfound' | 'error'
 
@@ -10,9 +10,11 @@ export interface ExperimentData {
   experiment: Experiment | null
   steps: Step[]
   items: DataItem[]
+  deviations: Deviation[]
   setExperiment: Dispatch<SetStateAction<Experiment | null>>
   setSteps: Dispatch<SetStateAction<Step[]>>
   setItems: Dispatch<SetStateAction<DataItem[]>>
+  setDeviations: Dispatch<SetStateAction<Deviation[]>>
   reload: () => Promise<void>
 }
 
@@ -23,23 +25,29 @@ export function useExperimentData(id: string): ExperimentData {
   const [experiment, setExperiment] = useState<Experiment | null>(null)
   const [steps, setSteps] = useState<Step[]>([])
   const [items, setItems] = useState<DataItem[]>([])
+  const [deviations, setDeviations] = useState<Deviation[]>([])
 
   const fetchAll = useCallback(async () => {
     const exp = await backend.experiments.get(id)
     if (exp.deletedAt) throw new NotFoundError('Experiment', id)
-    const [s, d] = await Promise.all([backend.steps.listByExperiment(id), backend.dataItems.listByExperiment(id)])
-    return { exp, s, d }
+    const [s, d, v] = await Promise.all([
+      backend.steps.listByExperiment(id),
+      backend.dataItems.listByExperiment(id),
+      backend.deviations.listByExperiment(id),
+    ])
+    return { exp, s, d, v }
   }, [backend, id])
 
   useEffect(() => {
     let alive = true
     setStatus('loading')
     fetchAll()
-      .then(({ exp, s, d }) => {
+      .then(({ exp, s, d, v }) => {
         if (!alive) return
         setExperiment(exp)
         setSteps(s)
         setItems(d)
+        setDeviations(v)
         setStatus('ready')
       })
       .catch((e) => {
@@ -51,11 +59,12 @@ export function useExperimentData(id: string): ExperimentData {
   }, [fetchAll])
 
   const reload = useCallback(async () => {
-    const { exp, s, d } = await fetchAll()
+    const { exp, s, d, v } = await fetchAll()
     setExperiment(exp)
     setSteps(s)
     setItems(d)
+    setDeviations(v)
   }, [fetchAll])
 
-  return { status, experiment, steps, items, setExperiment, setSteps, setItems, reload }
+  return { status, experiment, steps, items, deviations, setExperiment, setSteps, setItems, setDeviations, reload }
 }

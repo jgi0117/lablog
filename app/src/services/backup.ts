@@ -1,5 +1,5 @@
 import { BACKUP_SCHEMA_VERSION, type BackupFile } from '../data/repositories'
-import type { DataItem, Experiment, Project, Step } from '../domain/types'
+import type { DataItem, Deviation, Experiment, Project, Step, Template } from '../domain/types'
 import { safeGet, safeSet } from './safeStorage'
 
 export interface BackupSummary {
@@ -7,6 +7,8 @@ export interface BackupSummary {
   experiments: number
   steps: number
   dataItems: number
+  templates: number
+  deviations: number
   exportedAt: string
 }
 
@@ -122,19 +124,46 @@ export function parseBackup(text: string): ParseResult {
       }
     })
 
+    // 버전 1 파일에는 없는 목록이다. 없으면 빈 목록으로 본다.
+    const templates: Template[] = (raw.templates === undefined ? [] : list(raw.templates, 'templates')).map((o, i) => {
+      if (!str(o.name)) throw new Invalid(`템플릿 ${i + 1}번째에 이름이 없습니다.`)
+      const stepList = Array.isArray(o.steps) ? o.steps : []
+      const condList = Array.isArray(o.defaultConditions) ? o.defaultConditions : []
+      const resultList = Array.isArray(o.resultItems) ? o.resultItems : []
+      return {
+        ...common(o, `템플릿 ${i + 1}번째`),
+        name: o.name,
+        steps: stepList.filter(isObj).map((s) => ({ content: strOr(s.content) })),
+        defaultConditions: condList.filter(isObj).map((c) => ({ name: strOr(c.name), value: strOr(c.value), unit: strOr(c.unit) })),
+        resultItems: resultList.filter(isObj).map((r) => ({ name: strOr(r.name), unit: strOr(r.unit) })),
+      }
+    })
+    const deviations: Deviation[] = (raw.deviations === undefined ? [] : list(raw.deviations, 'deviations')).map((o, i) => {
+      if (!str(o.experimentId)) throw new Invalid(`편차 ${i + 1}번째에 실험 정보가 없습니다.`)
+      return {
+        ...common(o, `편차 ${i + 1}번째`),
+        experimentId: o.experimentId,
+        stepId: strOrNull(o.stepId),
+        change: strOr(o.change),
+        reason: strOr(o.reason),
+      }
+    })
+
     unique(projects, '프로젝트')
     unique(experiments, '실험')
     unique(steps, '단계')
     unique(dataItems, '조건·결과')
+    unique(templates, '템플릿')
+    unique(deviations, '편차')
     const ids = new Set(experiments.map((e) => e.id))
-    const orphans = steps.filter((s) => !ids.has(s.experimentId)).length + dataItems.filter((d) => !ids.has(d.experimentId)).length
-    if (orphans > 0) throw new Invalid(`속한 실험이 파일에 없는 단계·조건·결과가 ${orphans}개 있습니다. 파일이 일부만 저장되었을 수 있습니다.`)
+    const orphans = steps.filter((s) => !ids.has(s.experimentId)).length + dataItems.filter((d) => !ids.has(d.experimentId)).length + deviations.filter((d) => !ids.has(d.experimentId)).length
+    if (orphans > 0) throw new Invalid(`속한 실험이 파일에 없는 단계·조건·결과·편차가 ${orphans}개 있습니다. 파일이 일부만 저장되었을 수 있습니다.`)
 
     const exportedAt = strOr(raw.exportedAt)
     return {
       ok: true,
-      file: { schemaVersion: BACKUP_SCHEMA_VERSION, exportedAt, projects, experiments, steps, dataItems },
-      summary: { projects: projects.length, experiments: experiments.length, steps: steps.length, dataItems: dataItems.length, exportedAt },
+      file: { schemaVersion: BACKUP_SCHEMA_VERSION, exportedAt, projects, experiments, steps, dataItems, templates, deviations },
+      summary: { projects: projects.length, experiments: experiments.length, steps: steps.length, dataItems: dataItems.length, templates: templates.length, deviations: deviations.length, exportedAt },
     }
   } catch (e) {
     if (e instanceof Invalid) return { ok: false, error: e.message }

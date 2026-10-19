@@ -3,15 +3,16 @@ import { Link, Route, Routes } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { EmptyState } from '../components/EmptyState'
 import { DataPage } from '../pages/DataPage'
+import { DeviationsPage } from '../pages/DeviationsPage'
 import { ExperimentsPage } from '../pages/ExperimentsPage'
 import { ExperimentLayout } from '../pages/ExperimentLayout'
 import { HomePage } from '../pages/HomePage'
 import { NewExperimentPage } from '../pages/NewExperimentPage'
 import { OverviewPage } from '../pages/OverviewPage'
-import { PlaceholderPage } from '../pages/PlaceholderPage'
 import { RunPage } from '../pages/RunPage'
 import { SearchPage } from '../pages/SearchPage'
 import { StepsPage } from '../pages/StepsPage'
+import { TemplatesPage } from '../pages/TemplatesPage'
 import { TrashPage } from '../pages/TrashPage'
 
 // 처음 화면에 필요 없는 무거운 화면(차트, 설정)은 열 때 불러온다.
@@ -55,9 +56,10 @@ export function AppRoutes() {
             <Route index element={<OverviewPage />} />
             <Route path="steps" element={<StepsPage />} />
             <Route path="data" element={<DataPage />} />
+            <Route path="deviations" element={<DeviationsPage />} />
           </Route>
           <Route path="search" element={<SearchPage />} />
-          <Route path="templates" element={<PlaceholderPage title="템플릿" phase="Phase 8 (s3)" />} />
+          <Route path="templates" element={<TemplatesPage />} />
           <Route path="trash" element={<TrashPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFound />} />

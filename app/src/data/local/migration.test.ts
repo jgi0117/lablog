@@ -16,6 +16,43 @@ class V1 extends Dexie {
   }
 }
 
+/** 배포된 v2 스키마를 그대로 재현한다. 이 블록도 고치지 않는다. */
+class V2 extends Dexie {
+  constructor(name: string) {
+    super(name)
+    this.version(1).stores({
+      projects: 'id, deletedAt',
+      experiments: 'id, status, projectId, updatedAt, deletedAt',
+      steps: 'id, experimentId, [experimentId+order], deletedAt',
+      dataItems: 'id, experimentId, [experimentId+kind], deletedAt',
+    })
+    this.version(2).stores({
+      experiments: 'id, status, projectId, updatedAt, deletedAt, [projectId+updatedAt]',
+    })
+  }
+}
+
+describe('로컬 DB 마이그레이션 (v2 → v3: 템플릿·편차)', () => {
+  it('v2 데이터가 그대로 남고 새 표를 바로 쓸 수 있다', async () => {
+    const name = `lablog-mig-v3-${Date.now()}`
+    const v2 = new V2(name)
+    const at = '2026-10-01T00:00:00.000Z'
+    await v2.table('experiments').add({ id: 'e1', projectId: null, title: 'v2 실험', purpose: '', owner: '', tags: [], sourceExperimentId: null, status: 'ready', startedAt: null, completedAt: null, createdAt: at, updatedAt: at, deletedAt: null, version: 1 })
+    v2.close()
+
+    const backend = createLocalBackend(name)
+    try {
+      expect((await backend.experiments.get('e1')).title).toBe('v2 실험')
+      expect(await backend.templates.list()).toEqual([])
+      expect(await backend.deviations.listByExperiment('e1')).toEqual([])
+      await backend.deviations.create({ experimentId: 'e1', stepId: null, change: '새 표에 기록', reason: '' })
+      expect(await backend.deviations.listByExperiment('e1')).toHaveLength(1)
+    } finally {
+      backend.close()
+    }
+  })
+})
+
 describe('로컬 DB 마이그레이션 (v1 → v2)', () => {
   const opened: LocalBackend[] = []
   afterEach(() => {
@@ -69,10 +106,10 @@ describe('로컬 DB 마이그레이션 (v1 → v2)', () => {
     expect(made.version).toBe(1)
   })
 
-  it('새로 만든 DB는 곧바로 v2다', async () => {
+  it('새로 만든 DB는 곧바로 최신 버전(v3)이다', async () => {
     const db = new LablogDB(`lablog-mig-fresh-${Date.now()}`)
     await db.open()
-    expect(db.verno).toBe(2)
+    expect(db.verno).toBe(3)
     db.close()
   })
 })

@@ -1,5 +1,6 @@
 import type {
   DataItem,
+  Deviation,
   Experiment,
   ExperimentStatus,
   ID,
@@ -8,6 +9,7 @@ import type {
   Patch,
   Project,
   Step,
+  Template,
 } from '../../domain/types'
 
 /**
@@ -135,8 +137,26 @@ export interface ProjectRepository {
   softDelete(id: ID): Promise<void>
 }
 
+export interface TemplateRepository {
+  /** 휴지통 제외, 이름순 */
+  list(): Promise<Template[]>
+  get(id: ID): Promise<Template>
+  create(input: NewEntity<Template>): Promise<Template>
+  update(id: ID, patch: Patch<Template>, expectedVersion?: number): Promise<Template>
+  softDelete(id: ID): Promise<void>
+}
+
+export interface DeviationRepository {
+  /** 만든 순서(오래된 것부터). 실험이 휴지통에 있으면 빈 목록. */
+  listByExperiment(experimentId: ID): Promise<Deviation[]>
+  create(input: NewEntity<Deviation>): Promise<Deviation>
+  update(id: ID, patch: Patch<Deviation>, expectedVersion?: number): Promise<Deviation>
+  remove(id: ID): Promise<void>
+}
+
 // ---------- 백업 ----------
-export const BACKUP_SCHEMA_VERSION = 1
+/** 2: 템플릿과 편차 추가. 1(없는 목록은 빈 목록으로 본다)도 가져올 수 있다. */
+export const BACKUP_SCHEMA_VERSION = 2
 
 export interface BackupFile {
   schemaVersion: number
@@ -145,6 +165,9 @@ export interface BackupFile {
   experiments: Experiment[]
   steps: Step[]
   dataItems: DataItem[]
+  /** 버전 1 파일에는 없다 */
+  templates?: Template[]
+  deviations?: Deviation[]
 }
 
 export interface BackupRepository {
@@ -159,6 +182,8 @@ export interface DataBackend {
   experiments: ExperimentRepository
   steps: StepRepository
   dataItems: DataItemRepository
+  templates: TemplateRepository
+  deviations: DeviationRepository
   backup: BackupRepository
   /**
    * 다른 탭(또는 다른 기기)에서 데이터가 바뀌면 알려 준다. 해제 함수를 돌려준다.

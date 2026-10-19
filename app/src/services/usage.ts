@@ -15,6 +15,10 @@ export type UsageName =
   | 'backup_export'
   | 'backup_import'
   | 'analysis_view'
+  | 'duplicate' // 복제로 새 실험 시작 (복제 사용률)
+  | 'template_save' // 템플릿으로 저장
+  | 'template_start' // 템플릿으로 새 실험 시작
+  | 'deviation_add' // 달라진 점 기록: fromRun
 
 export interface UsageEvent {
   /** ISO 시각 */

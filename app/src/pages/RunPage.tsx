@@ -4,6 +4,7 @@ import { useBackend } from '../app/BackendContext'
 import { EmptyState } from '../components/EmptyState'
 import { ExternalChangeBanner } from '../components/ExternalChangeBanner'
 import { ProgressBar } from '../components/ProgressBar'
+import { RunDeviationPanel } from '../components/RunDeviationPanel'
 import { SaverIndicator } from '../components/SaverIndicator'
 import { useLatest } from '../hooks/useLatest'
 import { StatusBadge } from '../components/StatusBadge'
@@ -145,7 +146,7 @@ export function RunPage() {
   const backend = useBackend()
   const toast = useToast()
   const navigate = useNavigate()
-  const { experiment, steps, items, status, setSteps, setItems, setExperiment } = data
+  const { experiment, steps, items, deviations, status, setSteps, setItems, setExperiment, setDeviations } = data
   const [focus, setFocus] = useState<number | null>(null)
   const started = useRef(false)
   const catalog = useItemCatalog(experiment?.projectId)
@@ -348,13 +349,13 @@ export function RunPage() {
               조건·결과 편집
             </Link>
           </div>
-          <div className="panel">
-            <h2 className="panel__title">절차와 달라진 점</h2>
-            <p className="muted">계획과 다르게 진행한 내용 기록은 다음 버전에서 추가됩니다.</p>
-            <button type="button" className="btn" disabled>
-              + 달라진 점 기록
-            </button>
-          </div>
+          <RunDeviationPanel
+            experimentId={id}
+            steps={steps}
+            currentStepId={steps[cur]?.id ?? null}
+            deviations={deviations}
+            onAdded={(d) => setDeviations((xs) => [...xs, d])}
+          />
         </aside>
       </div>
 

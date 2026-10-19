@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useBackend } from '../app/BackendContext'
 import { ProgressBar } from '../components/ProgressBar'
@@ -8,13 +8,15 @@ import { useToast } from '../components/Toast'
 import { useDebouncedSave } from '../hooks/useDebouncedSave'
 import { useExperiment } from '../hooks/useExperimentContext'
 import type { Experiment, Patch, Project } from '../domain/types'
-import { reopenExperiment, stepStats } from '../services/experimentService'
+import { ValidationError, reopenExperiment, stepStats } from '../services/experimentService'
+import { saveAsTemplate } from '../services/templateService'
+import { logUsage } from '../services/usage'
 import { formatDateTime } from '../services/format'
 import { parseTags } from '../services/text'
 
 /** 개요 탭. 바꾸면 바로 저장하고, 상태에 맞는 다음 행동을 보여 준다. */
 export function OverviewPage() {
-  const { experiment, steps, setExperiment } = useExperiment()
+  const { experiment, steps, items, setExperiment } = useExperiment()
   const backend = useBackend()
   const toast = useToast()
   const navigate = useNavigate()
@@ -27,6 +29,9 @@ export function OverviewPage() {
     projectId: experiment.projectId ?? '',
   })
   const [titleError, setTitleError] = useState('')
+  const [tplOpen, setTplOpen] = useState(false)
+  const [tplName, setTplName] = useState('')
+  const [tplError, setTplError] = useState('')
   const pending = useRef<Patch<Experiment>>({})
 
   const version = useLatest(experiment.version)
@@ -78,6 +83,28 @@ export function OverviewPage() {
       onAction: () => void backend.experiments.restore(experiment.id),
     })
     navigate('/')
+  }
+
+  // 복제: 클릭 한 번으로 만들고 새 실험의 절차 화면으로 간다. 결과 값은 비워져 있다는 것을 알려 준다.
+  const onDuplicate = async () => {
+    const copy = await backend.experiments.duplicate(experiment.id)
+    logUsage('duplicate')
+    toast.show({ message: '복제했습니다. 절차와 조건은 그대로이고, 결과 값과 체크·메모는 비워졌습니다.', durationMs: 8000 })
+    navigate(`/experiments/${copy.id}`)
+  }
+
+  const onSaveTemplate = async (e: FormEvent) => {
+    e.preventDefault()
+    try {
+      const t = await saveAsTemplate(backend, tplName, steps, items)
+      logUsage('template_save')
+      setTplOpen(false)
+      setTplName('')
+      setTplError('')
+      toast.show({ message: `템플릿 "${t.name}"을 저장했습니다`, actionLabel: '템플릿 보기', onAction: () => navigate('/templates') })
+    } catch (err) {
+      setTplError(err instanceof ValidationError ? err.message : '저장하지 못했습니다. 다시 시도하세요.')
+    }
   }
 
   const onReopen = async () => {
@@ -158,6 +185,46 @@ export function OverviewPage() {
               </button>
             )}
           </div>
+        </div>
+        <div className="panel">
+          <h2 className="panel__title">다시 쓰기</h2>
+          <p className="muted">이 실험의 절차와 조건을 그대로 가져와 새로 시작합니다. 결과 값은 비워집니다.</p>
+          <div className="panel__actions">
+            <button type="button" className="btn" onClick={() => void onDuplicate()}>
+              복제하여 새 실험
+            </button>
+            <button type="button" className="btn" aria-expanded={tplOpen} onClick={() => setTplOpen((o) => !o)}>
+              템플릿으로 저장
+            </button>
+          </div>
+          {tplOpen && (
+            <form className="form" onSubmit={onSaveTemplate} noValidate>
+              <div className="field">
+                <label htmlFor="tpl-name">템플릿 이름</label>
+                <input
+                  id="tpl-name"
+                  className="input"
+                  value={tplName}
+                  autoFocus
+                  placeholder="예) 하드코팅 표준 도포·경화"
+                  onChange={(e) => {
+                    setTplName(e.target.value)
+                    if (tplError) setTplError('')
+                  }}
+                />
+                {tplError && (
+                  <p className="field__error" role="alert">
+                    {tplError}
+                  </p>
+                )}
+              </div>
+              <div className="form__actions">
+                <button type="submit" className="btn btn--primary">
+                  저장
+                </button>
+              </div>
+            </form>
+          )}
         </div>
         <button type="button" className="btn btn--quiet" onClick={onDelete}>
           실험 삭제

@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { DataItem, Experiment, Project, Step } from '../../domain/types'
+import type { DataItem, Deviation, Experiment, Project, Step, Template } from '../../domain/types'
 
 /**
  * 로컬 DB 스키마. 버전을 올릴 때는 새 version(n) 블록을 추가하고
@@ -10,6 +10,8 @@ export class LablogDB extends Dexie {
   experiments!: Table<Experiment, string>
   steps!: Table<Step, string>
   dataItems!: Table<DataItem, string>
+  templates!: Table<Template, string>
+  deviations!: Table<Deviation, string>
 
   constructor(name = 'lablog') {
     super(name)
@@ -33,5 +35,10 @@ export class LablogDB extends Dexie {
             if (e.sourceExperimentId === undefined) e.sourceExperimentId = null
           }),
       )
+    // v3: 템플릿과 편차(Phase 8). 기존 표는 그대로 둔다.
+    this.version(3).stores({
+      templates: 'id, deletedAt',
+      deviations: 'id, experimentId, deletedAt',
+    })
   }
 }

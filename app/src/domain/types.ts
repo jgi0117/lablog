@@ -80,6 +80,8 @@ export interface Template extends Entity {
   name: string
   steps: { content: string }[]
   defaultConditions: { name: string; value: string; unit: string }[]
+  /** 결과는 항목 이름과 단위만 두고 값은 실험마다 채운다(빠뜨리지 않게 빈 칸으로 만들어 준다) */
+  resultItems: { name: string; unit: string }[]
 }
 
 /** 생성 입력: 서버/저장소가 채우는 필드를 뺀다. id는 호출자가 줄 수 있다(멱등 이전용). */
