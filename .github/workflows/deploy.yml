@@ -1,0 +1,48 @@
+name: Deploy
+
+# main에 올라가면 검사를 통과한 빌드를 GitHub Pages에 올린다.
+# 저장소 설정 → Pages → Source를 "GitHub Actions"로 한 번 바꿔 둬야 한다.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+      - name: 검사
+        run: npm run check
+      - name: 빌드
+        run: npm run build
+        env:
+          VITE_BASE: /${{ github.event.repository.name }}/
+      # 새로고침이나 직접 주소로 들어와도 앱이 열리도록, 없는 경로는 index.html로 보낸다.
+      - run: cp dist/index.html dist/404.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/dist
+      - id: deployment
+        uses: actions/deploy-pages@v4
