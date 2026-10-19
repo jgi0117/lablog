@@ -1,5 +1,5 @@
 import { useEffect, useRef, type FormEvent } from 'react'
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
 const NAV = [
   { to: '/', label: '홈', end: true },
@@ -11,7 +11,11 @@ const NAV = [
 /** 왼쪽 메뉴(좁은 화면에서는 아래), 상단 전역 검색과 + 새 실험. 수행 모드는 이 셸을 쓰지 않는다. */
 export function AppShell() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const [params] = useSearchParams()
   const input = useRef<HTMLInputElement>(null)
+  // 검색 화면에서는 현재 검색어를 검색창에 보여 준다.
+  const currentQuery = location.pathname === '/search' ? (params.get('q') ?? '') : ''
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -51,7 +55,9 @@ export function AppShell() {
         <header className="topbar">
           <form className="topbar__search" role="search" onSubmit={onSearch}>
             <input
+              key={currentQuery}
               ref={input}
+              defaultValue={currentQuery}
               type="search"
               aria-label="전역 검색"
               placeholder="제목 · 단계 · 조건 · 결과 검색"

@@ -33,3 +33,10 @@ export function completionWarnings(
     emptyResults: results.filter((r) => r.value.trim() === '' || r.value.trim() === '—').length,
   }
 }
+
+/** 휴지통에서 영구 삭제되기까지 남은 일수(0 이상). */
+export function trashDaysLeft(deletedAt: ISODate | null, now: Date): number {
+  if (!deletedAt) return TRASH_RETENTION_DAYS
+  const elapsed = Math.floor((now.getTime() - new Date(deletedAt).getTime()) / 86400000)
+  return Math.max(0, TRASH_RETENTION_DAYS - elapsed)
+}

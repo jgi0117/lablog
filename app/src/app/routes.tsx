@@ -2,13 +2,16 @@ import { Link, Route, Routes } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { EmptyState } from '../components/EmptyState'
 import { DataPage } from '../pages/DataPage'
+import { ExperimentsPage } from '../pages/ExperimentsPage'
 import { ExperimentLayout } from '../pages/ExperimentLayout'
 import { HomePage } from '../pages/HomePage'
 import { NewExperimentPage } from '../pages/NewExperimentPage'
 import { OverviewPage } from '../pages/OverviewPage'
 import { PlaceholderPage } from '../pages/PlaceholderPage'
 import { RunPage } from '../pages/RunPage'
+import { SearchPage } from '../pages/SearchPage'
 import { StepsPage } from '../pages/StepsPage'
+import { TrashPage } from '../pages/TrashPage'
 
 function NotFound() {
   return (
@@ -30,16 +33,16 @@ export function AppRoutes() {
       <Route path="/experiments/:id/run" element={<RunPage />} />
       <Route element={<AppShell />}>
         <Route index element={<HomePage />} />
-        <Route path="experiments" element={<PlaceholderPage title="실험" phase="Phase 4" />} />
+        <Route path="experiments" element={<ExperimentsPage />} />
         <Route path="experiments/new" element={<NewExperimentPage />} />
         <Route path="experiments/:id" element={<ExperimentLayout />}>
           <Route index element={<OverviewPage />} />
           <Route path="steps" element={<StepsPage />} />
           <Route path="data" element={<DataPage />} />
         </Route>
-        <Route path="search" element={<PlaceholderPage title="검색" phase="Phase 4" />} />
+        <Route path="search" element={<SearchPage />} />
         <Route path="templates" element={<PlaceholderPage title="템플릿" phase="Phase 8 (s3)" />} />
-        <Route path="trash" element={<PlaceholderPage title="휴지통" phase="Phase 4" />} />
+        <Route path="trash" element={<TrashPage />} />
         <Route path="settings" element={<PlaceholderPage title="설정" phase="Phase 5" />} />
         <Route path="*" element={<NotFound />} />
       </Route>

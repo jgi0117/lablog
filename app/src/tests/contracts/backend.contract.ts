@@ -123,6 +123,21 @@ export function runBackendContract(name: string, create: () => Promise<DataBacke
         await expect(db.experiments.get(made.id)).rejects.toBeInstanceOf(NotFoundError)
       })
 
+      it('purge는 휴지통의 실험과 딸린 데이터를 바로 영구 삭제한다', async () => {
+        const made = await db.experiments.create(exp())
+        await db.steps.create({ experimentId: made.id, order: 1, content: 'x', done: false, doneAt: null, note: '' })
+        await db.experiments.softDelete(made.id)
+        await db.experiments.purge(made.id)
+        await expect(db.experiments.get(made.id)).rejects.toBeInstanceOf(NotFoundError)
+        expect((await db.backup.exportAll()).steps).toHaveLength(0)
+      })
+
+      it('휴지통에 없는 실험은 purge할 수 없다', async () => {
+        const made = await db.experiments.create(exp())
+        await expect(db.experiments.purge(made.id)).rejects.toThrow()
+        expect(await db.experiments.get(made.id)).toBeTruthy()
+      })
+
       it('보관 기간 안이면 purgeExpired가 지우지 않는다', async () => {
         const made = await db.experiments.create(exp())
         await db.experiments.softDelete(made.id)
@@ -223,6 +238,43 @@ export function runBackendContract(name: string, create: () => Promise<DataBacke
         await db.experiments.create(exp({ title: '나노입자 합성 조건 최적화' }))
         expect(await db.experiments.search('나노입자합성')).toHaveLength(1)
         expect(await db.experiments.search('합성 조건')).toHaveLength(1)
+      })
+
+      it('수정·삭제·되돌린 뒤에도 검색 결과가 최신이다', async () => {
+        const e = await db.experiments.create(exp({ title: '색인 확인' }))
+        const step = await db.steps.create({ experimentId: e.id, order: 1, content: '처음 문장', done: false, doneAt: null, note: '' })
+        expect(await db.experiments.search('처음 문장')).toHaveLength(1) // 색인을 만든다
+
+        await db.steps.update(step.id, { content: '바뀐 문장' })
+        expect(await db.experiments.search('처음 문장')).toHaveLength(0)
+        expect(await db.experiments.search('바뀐 문장')).toHaveLength(1)
+
+        await db.steps.update(step.id, { note: '새 메모 650' })
+        expect((await db.experiments.search('650'))[0].matches[0].field).toBe('note')
+
+        await db.experiments.update(e.id, { title: '제목도 바뀜' })
+        expect(await db.experiments.search('색인 확인')).toHaveLength(0)
+        expect(await db.experiments.search('제목도 바뀜')).toHaveLength(1)
+
+        await db.steps.remove(step.id)
+        expect(await db.experiments.search('바뀐 문장')).toHaveLength(0)
+
+        const item = await db.dataItems.create({ experimentId: e.id, kind: 'result', order: 1, name: '수율', value: '91', unit: '%' })
+        expect(await db.experiments.search('수율 91')).toHaveLength(1)
+        await db.dataItems.update(item.id, { value: '55' })
+        expect(await db.experiments.search('수율 91')).toHaveLength(0)
+        expect(await db.experiments.search('수율 55')).toHaveLength(1)
+      })
+
+      it('가져오기(replace) 뒤에는 이전 색인이 남지 않는다', async () => {
+        const e = await db.experiments.create(exp({ title: '가져오기 전 실험' }))
+        expect(await db.experiments.search('가져오기 전')).toHaveLength(1)
+        const file = await db.backup.exportAll()
+        file.experiments = file.experiments.map((x) => ({ ...x, id: x.id + '-b', title: '가져온 뒤 실험' }))
+        await db.backup.importAll(file, 'replace')
+        expect(await db.experiments.search('가져오기 전')).toHaveLength(0)
+        expect(await db.experiments.search('가져온 뒤')).toHaveLength(1)
+        void e
       })
 
       it('결과가 없으면 빈 배열이다', async () => {

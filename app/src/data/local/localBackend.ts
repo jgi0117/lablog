@@ -1,5 +1,6 @@
 import { LablogDB } from './db'
-import { guard, makeEntity, normalize, nowIso } from './util'
+import { createSearchIndex } from './searchIndex'
+import { guard, makeEntity, nowIso } from './util'
 import {
   BACKUP_SCHEMA_VERSION,
   ConflictError,
@@ -40,6 +41,7 @@ function bump<T extends Entity>(cur: T, patch: Partial<T>): T {
  */
 export function createLocalBackend(name = 'lablog'): LocalBackend {
   const db = new LablogDB(name)
+  const index = createSearchIndex(db)
 
   const getExperiment = async (id: ID): Promise<Experiment> => {
     const e = await db.experiments.get(id)
@@ -139,6 +141,17 @@ export function createLocalBackend(name = 'lablog'): LocalBackend {
         await db.experiments.put(bump(cur, { deletedAt: null }))
       }),
 
+    purge: (id) =>
+      guard(async () =>
+        db.transaction('rw', db.experiments, db.steps, db.dataItems, async () => {
+          const cur = await getExperiment(id)
+          if (cur.deletedAt === null) throw new Error('휴지통에 있는 실험만 영구 삭제할 수 있습니다')
+          await db.steps.where('experimentId').equals(id).delete()
+          await db.dataItems.where('experimentId').equals(id).delete()
+          await db.experiments.delete(id)
+        }),
+      ),
+
     purgeExpired: (now) =>
       guard(async () =>
         db.transaction('rw', db.experiments, db.steps, db.dataItems, async () => {
@@ -154,42 +167,8 @@ export function createLocalBackend(name = 'lablog'): LocalBackend {
 
     search: (query, filter = {}) =>
       guard(async (): Promise<SearchHit[]> => {
-        const q = normalize(query)
-        if (!q) return []
         const { items } = await experiments.list({ ...filter, deleted: 'exclude' })
-        if (items.length === 0) return []
-        const ids = items.map((e) => e.id)
-        const [steps, data] = await Promise.all([
-          db.steps.where('experimentId').anyOf(ids).toArray(),
-          db.dataItems.where('experimentId').anyOf(ids).toArray(),
-        ])
-        const stepsBy = new Map<ID, Step[]>()
-        for (const s of steps) stepsBy.set(s.experimentId, [...(stepsBy.get(s.experimentId) ?? []), s])
-        const dataBy = new Map<ID, DataItem[]>()
-        for (const d of data) dataBy.set(d.experimentId, [...(dataBy.get(d.experimentId) ?? []), d])
-
-        const has = (text: string) => normalize(text).includes(q)
-        const hits: SearchHit[] = []
-        for (const e of items) {
-          const matches: SearchHit['matches'] = []
-          let score = 0
-          if (has(e.title)) { matches.push({ field: 'title', text: e.title }); score += 5 }
-          if (e.purpose && has(e.purpose)) { matches.push({ field: 'purpose', text: e.purpose }); score += 2 }
-          for (const t of e.tags) if (has(t)) { matches.push({ field: 'tag', text: t }); score += 3 }
-          for (const s of (stepsBy.get(e.id) ?? []).sort((a, b) => a.order - b.order)) {
-            if (has(s.content)) { matches.push({ field: 'step', text: s.content, stepOrder: s.order }); score += 2 }
-            if (s.note && has(s.note)) { matches.push({ field: 'note', text: s.note, stepOrder: s.order }); score += 2 }
-          }
-          for (const d of dataBy.get(e.id) ?? []) {
-            const text = `${d.name} ${d.value} ${d.unit}`.trim()
-            if (has(text)) { matches.push({ field: d.kind, text }); score += 2 }
-          }
-          if (matches.length) hits.push({ experimentId: e.id, matches, score })
-        }
-        const updated = new Map(items.map((e) => [e.id, e.updatedAt]))
-        return hits.sort(
-          (a, b) => b.score - a.score || (updated.get(b.experimentId) ?? '').localeCompare(updated.get(a.experimentId) ?? ''),
-        )
+        return index.search(query, items)
       }),
 
     duplicate: (id, overrides) =>
@@ -358,6 +337,7 @@ export function createLocalBackend(name = 'lablog'): LocalBackend {
             await table.bulkPut(take)
             imported += take.length
           }
+          index.invalidateAll()
           await load(db.projects, file.projects)
           await load(db.experiments, file.experiments)
           await load(db.steps, file.steps)

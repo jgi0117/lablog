@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canTransition, completionWarnings, isPurgeable } from './rules'
+import { canTransition, completionWarnings, isPurgeable, trashDaysLeft } from './rules'
 
 describe('canTransition', () => {
   it('준비 → 진행 → 완료로 간다', () => {
@@ -33,5 +33,14 @@ describe('completionWarnings', () => {
       [{ value: '42.3' }, { value: '' }, { value: '—' }],
     )
     expect(out).toEqual({ openSteps: 2, emptyResults: 2 })
+  })
+})
+
+describe('trashDaysLeft', () => {
+  const now = new Date('2026-11-20T12:00:00.000Z')
+  it('방금 삭제하면 30일, 지날수록 줄고 0 아래로 내려가지 않는다', () => {
+    expect(trashDaysLeft('2026-11-20T11:00:00.000Z', now)).toBe(30)
+    expect(trashDaysLeft('2026-11-10T12:00:00.000Z', now)).toBe(20)
+    expect(trashDaysLeft('2026-09-01T00:00:00.000Z', now)).toBe(0)
   })
 })

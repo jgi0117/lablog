@@ -100,6 +100,8 @@ export interface ExperimentRepository {
   /** 휴지통으로 보낸다. 실험에 딸린 단계·조건·결과도 함께 숨긴다. */
   softDelete(id: ID): Promise<void>
   restore(id: ID): Promise<void>
+  /** 휴지통에 있는 실험 하나를 보관 기간과 상관없이 영구 삭제한다(딸린 데이터 포함). 휴지통에 없으면 오류. */
+  purge(id: ID): Promise<void>
   /** 삭제 후 보관 기간이 지난 실험과 딸린 데이터를 영구 삭제한다. 지운 실험 수를 돌려준다. */
   purgeExpired(now: Date): Promise<number>
   /** 제목·목적·태그·단계·메모·조건·결과 전체 검색. 휴지통은 제외. */
