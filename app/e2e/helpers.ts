@@ -1,10 +1,11 @@
 import { expect, type Page } from '@playwright/test'
 
-/** 데모 데이터(필름 개발 3개 프로젝트, 실험 17건)를 넣는다. 개발 서버의 빈 홈 화면 버튼을 그대로 누른다. */
+/** 예시 데이터(UCI 콘크리트 공개 데이터 기반: 프로젝트 4개, 실험 48건, 놓친 것 4건)를 넣는다. 빈 홈 화면의 버튼을 그대로 누른다. */
 export async function seedDemo(page: Page) {
   await page.goto('/')
-  await page.getByRole('button', { name: /데모 데이터 넣기/ }).click()
-  await expect(page.getByRole('heading', { name: '놓친 것 (5)' })).toBeVisible()
+  await page.getByRole('button', { name: /예시 데이터 넣기/ }).click()
+  // 예시 48건을 넣는 데 WebKit(Windows)에서는 10초를 넘길 수 있어 넉넉히 기다린다. 이 시간은 성능 기준이 아니다.
+  await expect(page.getByRole('heading', { name: '놓친 것 (4)' })).toBeVisible({ timeout: 60_000 })
 }
 
 /** 새 실험을 만들고 절차를 붙여넣어 절차 탭까지 간다. */

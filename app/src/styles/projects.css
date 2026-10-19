@@ -24,6 +24,7 @@
 
 .project-card__desc {
   margin: 0;
+  white-space: pre-line;
   color: var(--ink-2);
   font-size: 14px;
 }
@@ -52,6 +53,7 @@
 }
 
 .project-desc {
+  white-space: pre-line;
   margin: var(--space-sm) 0 var(--space-md);
   color: var(--ink-2);
 }

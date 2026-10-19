@@ -66,3 +66,24 @@ test('단계를 체크하면 곧바로 반응한다 (수행 모드)', async ({ p
   )
   expect(median).toBeLessThan(500)
 })
+
+test('공개 데이터 전체 1,030건에서 홈, 프로젝트 표, 분석이 5초 안에 뜬다', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name.startsWith('webkit') && process.platform === 'win32', 'Windows WebKit의 IndexedDB 쓰기 속도 한계')
+  test.setTimeout(180_000)
+  await page.goto('/')
+  await page.getByRole('button', { name: /전체 1,030건 넣기/ }).click()
+  await expect(page.getByText(/공개 데이터 전체 1030건을 넣었습니다/)).toBeVisible({ timeout: 90_000 })
+  const numbers: Record<string, number> = {}
+  // 다른 시험과 함께 돌면 느려질 수 있어 기준은 넉넉히 5초로 둔다(혼자 돌리면 Chromium 0.7~1.4초, Firefox 0.5~1.3초).
+  const timed = async (name: string, path: string, limit: number, ready: () => Promise<void>) => {
+    const t = Date.now()
+    await page.goto(path)
+    await ready()
+    numbers[name + '(ms)'] = Date.now() - t
+    expect(numbers[name + '(ms)'], name).toBeLessThan(limit)
+  }
+  await timed('홈', '/', 5000, () => expect(page.getByText('전체 실험 1030건')).toBeVisible())
+  await timed('ES 프로젝트 데이터 표(334건)', '/projects/demo-project-2/data', 5000, () => expect(page.getByRole('table')).toBeVisible())
+  await timed('ES 프로젝트 분석', '/projects/demo-project-2/analysis', 5000, () => expect(page.getByRole('group', { name: /상관계수/ })).toBeVisible())
+  console.log(`[성능(1,030건) ${testInfo.project.name}] ${JSON.stringify(numbers)}`)
+})

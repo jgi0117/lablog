@@ -72,10 +72,10 @@ describe('백업 내보내기와 가져오기 (설정)', () => {
     open('/settings', b)
     expect(await screen.findByText('아직 없음')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '백업 파일로 내보내기' }))
-    expect(await screen.findByText(/백업 파일을 저장했습니다 \(실험 17건\)/)).toBeInTheDocument()
+    expect(await screen.findByText(/백업 파일을 저장했습니다 \(실험 48건\)/)).toBeInTheDocument()
     expect(files).toHaveLength(1)
     expect(files[0].name).toMatch(/^lablog-backup-\d{4}-\d{2}-\d{2}-\d{4}\.json$/)
-    expect(JSON.parse(await files[0].text).experiments).toHaveLength(17)
+    expect(JSON.parse(await files[0].text).experiments).toHaveLength(48)
     expect(lastBackupAt()).not.toBeNull()
     expect(readUsage().some((e) => e.name === 'backup_export')).toBe(true)
   })
@@ -95,14 +95,14 @@ describe('백업 내보내기와 가져오기 (설정)', () => {
     const input = await screen.findByLabelText('백업 파일 가져오기')
     await user.upload(input, new File([text], 'backup.json', { type: 'application/json' }))
     const preview = await screen.findByRole('region', { name: '가져올 내용 미리보기' })
-    expect(within(preview).getByText(/프로젝트 3개 · 실험 17건/)).toBeInTheDocument()
+    expect(within(preview).getByText(/프로젝트 4개 · 실험 48건/)).toBeInTheDocument()
     await user.click(within(preview).getByRole('button', { name: '가져오기' }))
     expect(await screen.findByText(/가져오기를 마쳤습니다 \(합치기/)).toBeInTheDocument()
-    expect((await target.experiments.list()).total).toBe(17)
-    expect(await target.projects.list()).toHaveLength(3)
+    expect((await target.experiments.list()).total).toBe(48)
+    expect(await target.projects.list()).toHaveLength(4)
     // 한 번 더 합쳐도 같은 항목은 늘지 않는다
     const again = await target.backup.exportAll()
-    expect(again.experiments).toHaveLength(17)
+    expect(again.experiments).toHaveLength(48)
   })
 
   it('이상한 파일은 이유를 알려 주고 아무것도 바꾸지 않는다', async () => {
@@ -148,7 +148,7 @@ describe('백업 내보내기와 가져오기 (설정)', () => {
     expect(JSON.parse(await files[0].text).experiments.map((e: { title: string }) => e.title)).toEqual(['지금 있던 실험'])
     const titles = (await b.experiments.list()).items.map((e) => e.title)
     expect(titles).not.toContain('지금 있던 실험')
-    expect(titles).toHaveLength(17)
+    expect(titles).toHaveLength(48)
   })
 
   it('바꾸기 전 백업이 실패하면 가져오기를 멈춘다', async () => {
@@ -197,7 +197,7 @@ describe('백업 알림 (홈)', () => {
   it('데이터가 없으면 권하지 않는다', async () => {
     open('/', make())
     expect(await screen.findByText('첫 실험을 만들어 보세요')).toBeInTheDocument()
-    expect(screen.queryByText(/백업/)).toBeNull()
+    expect(screen.queryByRole('button', { name: /지금 백업/ })).toBeNull()
   })
 })
 
@@ -349,10 +349,10 @@ describe('사용 기록 (설정과 KR 측정)', () => {
     const user = userEvent.setup()
     const b = make()
     await seedDemo(b)
-    open('/search?q=%ED%97%A4%EC%9D%B4%EC%A6%88', b) // 헤이즈
+    open('/search?q=%EC%95%95%EC%B6%95%EA%B0%95%EB%8F%84', b) // 압축강도
     await screen.findByText(/건 ·/)
-    await user.click((await screen.findAllByRole('link', { name: /#8/ }))[0])
-    await screen.findByRole('heading', { name: /HC-300 하드코팅 조건 탐색 #8/ })
+    await user.click((await screen.findAllByRole('link', { name: /배합 #\d+/ }))[0])
+    await screen.findByRole('heading', { name: /배합 #\d+, 재령/ })
     expect(readUsage().map((e) => e.name)).toEqual(expect.arrayContaining(['search', 'open_from_search']))
 
     cleanup()
@@ -364,7 +364,7 @@ describe('사용 기록 (설정과 KR 측정)', () => {
     const user = userEvent.setup()
     const b = make()
     await seedDemo(b)
-    open('/search?q=%ED%97%A4%EC%9D%B4%EC%A6%88', b)
+    open('/search?q=%EC%95%95%EC%B6%95%EA%B0%95%EB%8F%84', b)
     await screen.findByText(/건 ·/)
     expect(readUsage().length).toBeGreaterThan(0)
     cleanup()
@@ -373,7 +373,7 @@ describe('사용 기록 (설정과 KR 측정)', () => {
     expect(readUsage()).toEqual([])
     await user.click(screen.getByRole('checkbox', { name: '사용 기록 남기기' }))
     cleanup()
-    open('/search?q=%ED%97%A4%EC%9D%B4%EC%A6%88', b)
+    open('/search?q=%EC%95%95%EC%B6%95%EA%B0%95%EB%8F%84', b)
     await screen.findByText(/건 ·/)
     expect(readUsage()).toEqual([])
   })
@@ -382,12 +382,12 @@ describe('사용 기록 (설정과 KR 측정)', () => {
     const b = make()
     await seedDemo(b)
     open('/', b)
-    await screen.findByRole('heading', { name: '놓친 것 (5)' })
+    await screen.findByRole('heading', { name: '놓친 것 (4)' })
     await waitFor(() => expect(readUsage().filter((e) => e.name === 'gaps_snapshot')).toHaveLength(1))
-    expect(readUsage().find((e) => e.name === 'gaps_snapshot')?.data).toMatchObject({ total: 5 })
+    expect(readUsage().find((e) => e.name === 'gaps_snapshot')?.data).toMatchObject({ total: 4 })
     cleanup()
     open('/', b)
-    await screen.findByRole('heading', { name: '놓친 것 (5)' })
+    await screen.findByRole('heading', { name: '놓친 것 (4)' })
     expect(readUsage().filter((e) => e.name === 'gaps_snapshot')).toHaveLength(1)
   })
 

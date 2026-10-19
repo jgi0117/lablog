@@ -40,6 +40,7 @@ export default defineConfig({
       use: { ...devices['Desktop Firefox'], viewport: { width: 1440, height: 900 } },
     },
     // 태블릿: 가로 1194×834(디자인 기준), 터치
-    { name: 'webkit-tablet', use: { ...devices['iPad Pro 11 landscape'] } },
+    // Windows의 WebKit은 IndexedDB 쓰기가 느려서(예시 데이터 48건에 10초 안팎) 기다리는 시간을 늘린다. 성능 기준이 아니다.
+    { name: 'webkit-tablet', expect: { timeout: 30_000 }, use: { ...devices['iPad Pro 11 landscape'] } },
   ],
 })

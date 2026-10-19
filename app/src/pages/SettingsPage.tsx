@@ -13,7 +13,7 @@ import { formatDateTime, formatRelative } from '../services/format'
 import { getSettings, saveSettings, type AppSettings } from '../services/settings'
 import { formatBytes } from '../services/storage'
 import { clearUsage, logUsage, readUsage, summarizeUsage, type UsageSummary } from '../services/usage'
-import type { BackupFile } from '../data/repositories'
+import { BACKUP_SCHEMA_VERSION, type BackupFile } from '../data/repositories'
 
 /** 파일 내용을 글자로 읽는다. 오래된 브라우저를 위해 FileReader로도 읽을 수 있게 한다. */
 function readFileText(file: File): Promise<string> {
@@ -169,7 +169,7 @@ export function SettingsPage() {
           <div className="import-preview" role="region" aria-label="가져올 내용 미리보기">
             <h3 className="panel__sub">가져올 파일: {pending.fileName}</h3>
             <p>
-              프로젝트 {pending.summary.projects}개 · 실험 {pending.summary.experiments}건 · 단계 {pending.summary.steps}개 · 조건·결과 {pending.summary.dataItems}개
+              프로젝트 {pending.summary.projects}개 · 실험 {pending.summary.experiments}건 · 단계 {pending.summary.steps}개 · 조건·결과 {pending.summary.dataItems}개 · 템플릿 {pending.summary.templates}개 · 편차 {pending.summary.deviations}개
               {pending.summary.exportedAt && <span className="muted"> (내보낸 때 {formatDateTime(pending.summary.exportedAt)})</span>}
             </p>
             <fieldset className="radio-group">
@@ -309,8 +309,32 @@ export function SettingsPage() {
         )}
       </section>
 
+      <section className="panel" aria-labelledby="source-title">
+        <h2 id="source-title" className="panel__title">
+          예시 데이터 출처
+        </h2>
+        <p>
+          홈의 "예시 데이터 넣기"로 들어오는 콘크리트 배합 예시는 UCI Machine Learning Repository의{' '}
+          <a href="https://archive.ics.uci.edu/dataset/165/concrete" target="_blank" rel="noreferrer">
+            Concrete Compressive Strength
+          </a>{' '}
+          공개 데이터를 바탕으로 합니다.
+        </p>
+        <p className="muted">
+          Yeh, I-C. (1998). Modeling of strength of high-performance concrete using artificial neural networks. Cement and Concrete Research, 28(12), 1797–1808. 라이선스{' '}
+          <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">
+            CC BY 4.0
+          </a>
+          .
+        </p>
+        <p className="muted">
+          프로젝트 이름과 제품 코드, 날짜, 진행 상태, 절차, 담당자는 예시로 지어낸 것입니다. 시연을 위해 실험 3건의 값을 바꿨고(압축강도 비움, 소수점 위치 실수, 고성능 감수제 항목 삭제),
+          해당 실험의 목적 칸에 "시연용으로 바꾼 값"이라고 적혀 있습니다.
+        </p>
+      </section>
+
       <p className="muted settings__about">
-        lablog {__APP_VERSION__} · 데이터는 이 브라우저(IndexedDB)에 저장 · 파일 형식 버전 1
+        lablog {__APP_VERSION__} · 데이터는 이 브라우저(IndexedDB)에 저장 · 파일 형식 버전 {BACKUP_SCHEMA_VERSION}
       </p>
 
       <ConfirmDialog
