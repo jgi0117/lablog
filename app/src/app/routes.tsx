@@ -57,7 +57,7 @@ export function AppRoutes() {
             <Route path="data" element={<DataPage />} />
           </Route>
           <Route path="search" element={<SearchPage />} />
-          <Route path="templates" element={<PlaceholderPage title="템플릿" phase="Phase 9 (s3)" />} />
+          <Route path="templates" element={<PlaceholderPage title="템플릿" phase="Phase 8 (s3)" />} />
           <Route path="trash" element={<TrashPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFound />} />
