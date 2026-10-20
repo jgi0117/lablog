@@ -31,6 +31,20 @@
 
 ---
 
+## 2026-10-20 전역 하네스(Global CLAUDE.md)와 스킬 세트 (상태: 완료)
+
+**Spec / Plan**: 생략(개인 설정 작업, 앱 코드 변경 없음)
+**참조**: `docs/Intent.md` 워크플로, `write-spec-plan` 스킬, grill-with-docs(mattpocock/skills)
+
+- **문제(Problem)**: 프로젝트를 시작할 때마다 규칙·문서 체계를 다시 설명해야 하고, 긴 지시문에 의존한다.
+- **기대 결과(Proposed outcome)**: 새 프로젝트를 열면 먼저 "새 하네스를 만들까요?"를 묻고, 스킬을 불러 문제 정의(grill-with-docs)와 PRD·UJ·IA·ERD·Intent·Spec·Plan을 만든다. 코드 규칙(파일 목표 200줄/한도 300줄 등)이 전역에서 적용된다.
+- **영향 범위(Affected users and systems)**: 사용자의 모든 Claude Code 프로젝트. `~/.claude/CLAUDE.md`, `~/.claude/skills/`(grill-with-docs, grilling, domain-modeling, project-kickoff, write-intent, design-erd, write-spec-plan, create-prd, information-architecture, user-journeys). 이 저장소에는 참고용 사본 `docs/harness-global-CLAUDE.md`.
+- **제약(Constraints)**: 외부 스킬은 읽은 뒤 설치(마크다운만, 스크립트 없음). 전역 CLAUDE.md는 200줄 이하. 강제가 필요한 규칙은 린터·훅으로 옮긴다.
+- **열린 질문(Open questions)**: ① 전역은 "알아서 커밋·push"인데 이 저장소의 CLAUDE.md는 "push는 사용자가 말할 때만"이다. lablog도 자동 push로 바꿀지(사용자). ② 파일 300줄 한도를 lablog 린터(oxlint)에 켤지: 현재 300줄 초과 파일이 9개 있어 먼저 분리가 필요하다(사용자). ③ 한도 강제를 훅으로도 걸지(사용자).
+- **문서 갱신**: 전역 CLAUDE.md ✔
+
+---
+
 ## 2026-10-20 Spec·Plan 작성 절차 만들기 (상태: 완료)
 
 **Spec / Plan**: 생략(문서 틀 작업)
