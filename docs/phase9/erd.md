@@ -1,5 +1,7 @@
 # 데이터베이스 설계 (ERD)
 
+> **v2**: 표 구조는 lablog v1과 같다(7표). v2 전용 Supabase 프로젝트 `lablog-v2`(ref `wqemjezcdakwrjuztdlt`, 서울)에 같은 마이그레이션 두 개를 적용했고 보안 점검 0건, 사용자 A·B 격리 시험을 통과했다. 용어는 `GLOSSARY.md`(담당자 `assignee`, 소유자 `owner_id`)를 따른다. 구조를 바꿀 때는 새 마이그레이션과 이 문서를 같은 커밋에서 고친다.
+
 대상: Supabase(Postgres). 스키마 파일은 `supabase/migrations/20261020000000_init.sql`(기록 표)과 `20261020000100_profiles.sql`(프로필)이고, 앱의 도메인 모델(`app/src/domain/types.ts`)과 같은 모양이다.
 문서와 SQL이 다르면 SQL이 맞다. 바꿀 때는 새 마이그레이션 파일을 추가하고 이 문서도 같이 고친다.
 
