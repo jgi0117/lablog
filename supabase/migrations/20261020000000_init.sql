@@ -113,6 +113,9 @@ create index if not exists experiments_owner_status_updated on public.experiment
 create index if not exists experiments_owner_project_updated on public.experiments (owner_id, project_id, updated_at desc);
 create index if not exists experiments_owner_deleted on public.experiments (owner_id, deleted_at);
 create index if not exists steps_experiment_order on public.steps (experiment_id, step_order);
+create index if not exists steps_owner on public.steps (owner_id);
+create index if not exists data_items_owner on public.data_items (owner_id);
+create index if not exists deviations_owner on public.deviations (owner_id);
 create index if not exists data_items_experiment_kind on public.data_items (experiment_id, kind, item_order);
 create index if not exists deviations_experiment on public.deviations (experiment_id, created_at);
 create index if not exists projects_owner on public.projects (owner_id, deleted_at);
