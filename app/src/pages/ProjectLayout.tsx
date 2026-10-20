@@ -82,9 +82,10 @@ export function ProjectLayout() {
     )
   }
 
-  const ctx: ProjectContext = { project, bundles, matrix, gaps, reload }
+  const ctx: ProjectContext = { project, setProject, bundles, matrix, gaps, reload }
   const tabs = [
     { to: `/projects/${id}`, label: '현황', end: true },
+    { to: `/projects/${id}/requirements`, label: `고객 요구${project.requirements?.length ? ` (${project.requirements.length})` : ''}`, end: false },
     { to: `/projects/${id}/data`, label: '데이터', end: false },
     { to: `/projects/${id}/analysis`, label: '분석', end: false },
   ]
@@ -94,6 +95,7 @@ export function ProjectLayout() {
         <Link to="/projects">← 프로젝트 목록</Link>
       </p>
       <h1 className="page-title page-title--tight">{project.name}</h1>
+      {project.customer && <p className="muted project-customer">고객·요청: {project.customer}</p>}
       {project.description && <p className="project-desc">{project.description}</p>}
       <ProjectEditor key={project.updatedAt} project={project} onSaved={setProject} />
       <nav className="tabs" aria-label="프로젝트 탭">

@@ -23,6 +23,7 @@ const PAGES: [string, string][] = [
   ['/experiments/concrete-827/deviations', '달라진 점'],
   ['/experiments/concrete-827/run', '수행 모드'],
   ['/templates', '템플릿(빈 목록)'],
+  ['/projects/demo-project-4/requirements', '고객 요구 입력'],
   ['/data', '데이터 표'],
   ['/data/analysis', '데이터 분석'],
   ['/data/export', '데이터 내보내기'],

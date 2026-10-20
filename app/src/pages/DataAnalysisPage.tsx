@@ -29,7 +29,7 @@ export function DataAnalysisPage() {
           <p className="analysis__note analysis__scope">서로 성격이 다른 프로젝트를 합치면 경향이 섞여 흐려질 수 있습니다. 프로젝트별로도 비교해 보세요.</p>
         )}
       </div>
-      <AnalysisView key={projectId} matrix={scoped} />
+      <AnalysisView key={projectId} matrix={scoped} requirements={projects.find((p) => p.id === projectId)?.requirements} />
     </div>
   )
 }

@@ -11,6 +11,8 @@ import type { Experiment, Patch, Project } from '../domain/types'
 import { ValidationError, reopenExperiment, stepStats } from '../services/experimentService'
 import { saveAsTemplate } from '../services/templateService'
 import { logUsage } from '../services/usage'
+import { ExperimentRequirementBar } from '../components/ExperimentRequirementBar'
+import { useRequirementCheck } from '../hooks/useRequirementCheck'
 import { formatDateTime } from '../services/format'
 import { parseTags } from '../services/text'
 
@@ -73,6 +75,7 @@ export function OverviewPage() {
   }
 
   const stats = stepStats(steps)
+  const req = useRequirementCheck(experiment, items)
 
   const onDelete = async () => {
     await backend.experiments.softDelete(experiment.id)
@@ -159,6 +162,7 @@ export function OverviewPage() {
       </div>
 
       <aside className="overview__side">
+        {req && <ExperimentRequirementBar state={req} />}
         <div className="panel">
           <h2 className="panel__title">진행 현황</h2>
           <ProgressBar percent={stats.percent} />

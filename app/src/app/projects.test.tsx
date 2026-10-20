@@ -262,8 +262,8 @@ describe('이전 실험 이어받기', () => {
       ['잔골재', String(r.fine), 'kg/m³'],
       ['재령', String(r.age), '일'],
     ])
-    // 진행 중이던 실험에는 결과가 아직 없어서 가져올 결과 항목이 없다. 결과 항목 이어받기는 아래 복제에서 확인한다.
-    expect(items.filter((i) => i.kind === 'result')).toEqual([])
+    // 진행 중이던 실험에는 결과가 아직 없어서 가져올 결과 항목이 없지만, 프로젝트의 고객 요구(압축강도)에 맞춰 빈 결과 항목이 미리 만들어진다.
+    expect(items.filter((i) => i.kind === 'result').map((i) => [i.name, i.value, i.unit])).toEqual([['압축강도', '', 'MPa']])
   })
 
   it('완료한 실험을 복제하면 압축강도 항목은 남기고 값은 비운다', async () => {

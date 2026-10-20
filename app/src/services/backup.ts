@@ -1,5 +1,5 @@
 import { BACKUP_SCHEMA_VERSION, type BackupFile } from '../data/repositories'
-import type { DataItem, Deviation, Experiment, Project, Step, Template } from '../domain/types'
+import type { DataItem, Deviation, Experiment, Project, Requirement, Step, Template } from '../domain/types'
 import { safeGet, safeSet } from './safeStorage'
 
 export interface BackupSummary {
@@ -24,6 +24,29 @@ const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object
 const str = (v: unknown): v is string => typeof v === 'string'
 const strOr = (v: unknown, d = ''): string => (typeof v === 'string' ? v : d)
 const strOrNull = (v: unknown): string | null => (typeof v === 'string' ? v : null)
+
+const finite = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined)
+
+/** 고객 요구 하나를 다듬는다. 알아볼 수 없으면 버린다(파일 전체를 거부하지 않는다). */
+function parseRequirement(o: Record<string, unknown>): Requirement | null {
+  if (!str(o.id) || !str(o.name) || o.name.trim() === '') return null
+  const kind = o.kind
+  if (kind !== 'min' && kind !== 'max' && kind !== 'range' && kind !== 'target') return null
+  const at = isObj(o.at) && str(o.at.name) && finite(o.at.value) !== undefined ? { name: o.at.name, value: o.at.value as number } : undefined
+  return {
+    id: o.id,
+    name: o.name,
+    unit: strOr(o.unit),
+    kind,
+    min: finite(o.min),
+    max: finite(o.max),
+    target: finite(o.target),
+    tolerance: finite(o.tolerance),
+    at,
+    priority: o.priority === 'nice' ? 'nice' : 'must',
+    ...(strOr(o.note) ? { note: strOr(o.note) } : {}),
+  }
+}
 
 class Invalid extends Error {}
 
@@ -79,7 +102,8 @@ export function parseBackup(text: string): ParseResult {
 
     const projects: Project[] = list(raw.projects, 'projects').map((o, i) => {
       if (!str(o.name)) throw new Invalid(`프로젝트 ${i + 1}번째에 이름이 없습니다.`)
-      return { ...common(o, `프로젝트 ${i + 1}번째`), name: o.name, description: strOr(o.description) }
+      const requirements = Array.isArray(o.requirements) ? o.requirements.filter(isObj).map(parseRequirement).filter((r): r is Requirement => r !== null) : []
+      return { ...common(o, `프로젝트 ${i + 1}번째`), name: o.name, description: strOr(o.description), ...(strOr(o.customer) ? { customer: strOr(o.customer) } : {}), ...(requirements.length > 0 ? { requirements } : {}) }
     })
     const experiments: Experiment[] = list(raw.experiments, 'experiments').map((o, i) => {
       if (!str(o.title)) throw new Invalid(`실험 ${i + 1}번째에 제목이 없습니다.`)

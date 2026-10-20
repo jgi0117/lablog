@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useBackend } from '../app/BackendContext'
 import { ValidationError, createExperiment } from '../services/experimentService'
+import { applyRequirementItems } from '../services/requirementItems'
 import { startFromTemplate } from '../services/templateService'
 import { logUsage } from '../services/usage'
 import { parseTags } from '../services/text'
@@ -58,10 +59,30 @@ export function NewExperimentPage() {
     }
   }, [backend, projectId])
 
+  const selected = projects.find((p) => p.id === projectId)
+  const requirements = selected?.requirements ?? []
+  const [count, setCount] = useState<number | null>(null)
+  // 프로젝트를 고르면 "프로젝트 이름 #번호"를 제목으로 제안한다. 비워 두고 만들면 이 제목을 쓴다.
+  useEffect(() => {
+    let alive = true
+    setCount(null)
+    if (!selected) return
+    backend.experiments
+      .list({ projectId: selected.id }, 'updated_desc', { limit: 1, offset: 0 })
+      .then((r) => alive && setCount(r.total))
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [backend, selected])
+  const suggested = selected && count !== null ? `${selected.name} #${count + 1}` : ''
+
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (busy) return
-    if (!title.trim()) {
+    const typed = title.trim()
+    const finalTitle = typed || suggested
+    if (!finalTitle) {
       setError('제목을 입력하세요')
       return
     }
@@ -73,20 +94,23 @@ export function NewExperimentPage() {
       }
       const template = templates.find((t) => t.id === templateId)
       if (template) {
-        const exp = await startFromTemplate(backend, template, { title, purpose, tags: parseTags(tags), projectId: pid })
+        const exp = await startFromTemplate(backend, template, { title: finalTitle, purpose, tags: parseTags(tags), projectId: pid })
+        await applyRequirementItems(backend, exp.id, requirements)
         logUsage('template_start')
         navigate(`/experiments/${exp.id}/steps`)
         return
       }
       if (fromLast && last && pid === last.projectId) {
         // 마지막 실험의 절차와 조건을 이어받는다. 결과는 항목만 남기고 값은 비워 빠뜨리지 않게 한다.
-        const copy = await backend.experiments.duplicate(last.id, { title: title.trim() })
+        const copy = await backend.experiments.duplicate(last.id, { title: finalTitle })
         const patch = { ...(purpose.trim() ? { purpose: purpose.trim() } : {}), ...(tags.trim() ? { tags: parseTags(tags) } : {}) }
         if (Object.keys(patch).length > 0) await backend.experiments.update(copy.id, patch)
+        await applyRequirementItems(backend, copy.id, requirements)
         navigate(`/experiments/${copy.id}/steps`)
         return
       }
-      const exp = await createExperiment(backend, { title, purpose, tags: parseTags(tags), projectId: pid })
+      const exp = await createExperiment(backend, { title: finalTitle, purpose, tags: parseTags(tags), projectId: pid })
+      await applyRequirementItems(backend, exp.id, requirements)
       navigate(`/experiments/${exp.id}/steps`)
     } catch (err) {
       setError(err instanceof ValidationError ? err.message : '저장하지 못했습니다. 다시 시도하세요.')
@@ -111,7 +135,7 @@ export function NewExperimentPage() {
               setTitle(e.target.value)
               if (error) setError('')
             }}
-            placeholder="예) HC-300 하드코팅 조건 탐색 #11"
+            placeholder={suggested ? `비워 두면 "${suggested}"로 만듭니다` : '예) 하이브리드본드 HB-50 #12'}
             autoFocus
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? 'title-error' : undefined}
@@ -174,6 +198,12 @@ export function NewExperimentPage() {
               <span className="muted"> — 조건 값은 그대로, 결과 값은 비워서 가져옵니다</span>
             </span>
           </label>
+        )}
+        {requirements.length > 0 && (
+          <p className="req-hint" role="note">
+            이 프로젝트의 고객 요구 {requirements.length}개({[...new Set(requirements.map((r) => r.name))].slice(0, 3).join(', ')}
+            {new Set(requirements.map((r) => r.name)).size > 3 ? ' 등' : ''})에 맞춰 측정할 항목을 빈 칸으로 미리 만들어 드립니다.
+          </p>
         )}
         <div className="form__actions">
           <button type="submit" className="btn btn--primary" disabled={busy}>

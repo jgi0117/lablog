@@ -15,6 +15,7 @@ const PAGES = [
   '/projects/demo-project-1/data',
   '/projects/demo-project-1/analysis',
   '/projects/demo-project-4',
+  '/projects/demo-project-4/requirements',
   '/data',
   '/data/analysis',
   '/data/export',

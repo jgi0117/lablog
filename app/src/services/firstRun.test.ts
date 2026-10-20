@@ -69,7 +69,7 @@ describe('예시 구성이 바뀐 뒤의 첫 실행', () => {
     expect(await seedFirstRun(b, (x) => seedDemo(x, 'full'))).toBe(true)
     expect((await b.experiments.list()).total).toBe(1030)
     expect((await b.projects.list()).filter((p) => p.id.startsWith('demo-project-'))).toHaveLength(4)
-    expect(localStorage.getItem('lablog:example-seeded')).toBe('seeded:2')
+    expect(localStorage.getItem('lablog:example-seeded')).toBe('seeded:3')
     expect(await seedFirstRun(b, (x) => seedDemo(x, 'full'))).toBe(false) // 두 번 바꾸지 않는다
   }, 60000)
 
@@ -88,7 +88,36 @@ describe('예시 구성이 바뀐 뒤의 첫 실행', () => {
     localStorage.setItem('lablog:example-seeded', 'seeded')
     expect(await seedFirstRun(b, seedDemo)).toBe(false)
     expect((await b.experiments.list()).total).toBe(0)
-    expect(localStorage.getItem('lablog:example-seeded')).toBe('seeded:2')
+    expect(localStorage.getItem('lablog:example-seeded')).toBe('seeded:3')
+  })
+})
+
+describe('예시 구성 2 → 3 (고객 요구 추가)', () => {
+  it('고치지 않은 예시 프로젝트에는 고객과 요구가 반영되고 실험은 그대로다', async () => {
+    const b = make()
+    await seedDemo(b)
+    // 구성 2의 모습을 만든다: 프로젝트에 고객·요구가 없고 한 번도 고치지 않은 상태(버전 1)
+    const file = await b.backup.exportAll()
+    file.projects = file.projects.map((p) => ({ ...p, customer: undefined, requirements: undefined, version: 1 }))
+    await b.backup.importAll(file, 'replace')
+    expect((await b.projects.list()).every((p) => (p.requirements?.length ?? 0) === 0)).toBe(true)
+
+    localStorage.setItem('lablog:example-seeded', 'seeded:2')
+    expect(await seedFirstRun(b, seedDemo, seedExampleProjects)).toBe(true)
+    const after = await b.projects.list()
+    expect(after.every((p) => (p.requirements?.length ?? 0) === 3 && !!p.customer)).toBe(true)
+    expect((await b.experiments.list()).total).toBe(200)
+    expect(localStorage.getItem('lablog:example-seeded')).toBe('seeded:3')
+  })
+
+  it('직접 고친 예시 프로젝트는 덮어쓰지 않는다', async () => {
+    const b = make()
+    await seedDemo(b)
+    await b.projects.update('demo-project-1', { name: '내가 바꾼 이름' })
+    localStorage.setItem('lablog:example-seeded', 'seeded:2')
+    expect(await seedFirstRun(b, seedDemo, seedExampleProjects)).toBe(false)
+    expect((await b.projects.list()).find((p) => p.id === 'demo-project-1')?.name).toBe('내가 바꾼 이름')
+    expect(localStorage.getItem('lablog:example-seeded')).toBe('seeded:3')
   })
 })
 
@@ -98,7 +127,7 @@ describe('예시 프로젝트만 없어진 브라우저 고치기', () => {
     await seedDemo(b)
     for (const p of await b.projects.list()) await b.projects.softDelete(p.id)
     expect(await b.projects.list()).toHaveLength(0)
-    localStorage.setItem('lablog:example-seeded', 'seeded:2')
+    localStorage.setItem('lablog:example-seeded', 'seeded:3')
     expect(await seedFirstRun(b, seedDemo, seedExampleProjects)).toBe(false)
     expect((await b.projects.list()).map((p) => p.id).sort()).toEqual(['demo-project-1', 'demo-project-2', 'demo-project-3', 'demo-project-4'])
     expect((await b.experiments.list()).total).toBe(200) // 실험은 그대로
@@ -108,7 +137,7 @@ describe('예시 프로젝트만 없어진 브라우저 고치기', () => {
     const b = make()
     await seedDemo(b)
     const mine = await b.projects.create({ name: '내 프로젝트', description: '' })
-    localStorage.setItem('lablog:example-seeded', 'seeded:2')
+    localStorage.setItem('lablog:example-seeded', 'seeded:3')
     expect(await seedFirstRun(b, seedDemo, seedExampleProjects)).toBe(false)
     const ps = await b.projects.list()
     expect(ps).toHaveLength(5)

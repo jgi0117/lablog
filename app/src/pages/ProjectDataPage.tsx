@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { DataGrid } from '../components/DataGrid'
 import { EmptyState } from '../components/EmptyState'
@@ -11,6 +12,7 @@ import { logUsage } from '../services/usage'
 export function ProjectDataPage() {
   const { project, matrix } = useProject()
   const toast = useToast()
+  const reqs = useMemo(() => new Map([[project.id, project.requirements ?? []]]), [project])
   if (matrix.rows.length === 0 || matrix.columns.length === 0) {
     return (
       <EmptyState title="모을 데이터가 없습니다" description="실험에 조건과 결과를 입력하면 이 표에 항목별로 모입니다.">
@@ -38,7 +40,7 @@ export function ProjectDataPage() {
           CSV로 내보내기
         </button>
       </div>
-      <DataGrid matrix={matrix} />
+      <DataGrid matrix={matrix} requirementsByProject={reqs} />
     </div>
   )
 }

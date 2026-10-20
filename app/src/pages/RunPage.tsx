@@ -4,14 +4,16 @@ import { useBackend } from '../app/BackendContext'
 import { EmptyState } from '../components/EmptyState'
 import { ExternalChangeBanner } from '../components/ExternalChangeBanner'
 import { ProgressBar } from '../components/ProgressBar'
+import { ExperimentRequirementBar } from '../components/ExperimentRequirementBar'
 import { RunDeviationPanel } from '../components/RunDeviationPanel'
+import { useRequirementCheck } from '../hooks/useRequirementCheck'
 import { SaverIndicator } from '../components/SaverIndicator'
 import { useLatest } from '../hooks/useLatest'
 import { StatusBadge } from '../components/StatusBadge'
 import { useToast } from '../components/Toast'
 import { useDebouncedSave } from '../hooks/useDebouncedSave'
 import { useExperimentData } from '../hooks/useExperimentData'
-import type { DataItem, DataKind, Step } from '../domain/types'
+import type { DataItem, DataKind, Experiment, Step } from '../domain/types'
 import {
   firstOpenIndex,
   nextOpenIndex,
@@ -26,6 +28,12 @@ import { logUsage } from '../services/usage'
 import { catalogNames, findCatalogUnit, type CatalogItem } from '../services/catalog'
 import { useItemCatalog } from '../hooks/useItemCatalog'
 import { COMMON_UNITS, valueWarning } from '../services/validation'
+
+/** 수행 중에도 고객 요구를 곁에 두고 본다(값을 입력하면 곧바로 만족·미달이 바뀐다). 요구가 없으면 아무것도 그리지 않는다. */
+function RunRequirementBar({ experiment, items }: { experiment: Experiment; items: DataItem[] }) {
+  const state = useRequirementCheck(experiment, items)
+  return state ? <ExperimentRequirementBar state={state} /> : null
+}
 
 interface PanelProps {
   step: Step
@@ -326,6 +334,7 @@ export function RunPage() {
         </ol>
 
         <aside className="run__side">
+          <RunRequirementBar experiment={experiment} items={items} />
           <div className="panel">
             <h2 className="panel__title">조건 · 결과</h2>
             {items.length === 0 && <p className="muted">아직 입력한 값이 없습니다.</p>}

@@ -23,6 +23,7 @@ import { TrashPage } from '../pages/TrashPage'
 const ProjectsPage = lazy(() => import('../pages/ProjectsPage').then((m) => ({ default: m.ProjectsPage })))
 const ProjectLayout = lazy(() => import('../pages/ProjectLayout').then((m) => ({ default: m.ProjectLayout })))
 const ProjectOverviewPage = lazy(() => import('../pages/ProjectOverviewPage').then((m) => ({ default: m.ProjectOverviewPage })))
+const ProjectRequirementsPage = lazy(() => import('../pages/ProjectRequirementsPage').then((m) => ({ default: m.ProjectRequirementsPage })))
 const ProjectDataPage = lazy(() => import('../pages/ProjectDataPage').then((m) => ({ default: m.ProjectDataPage })))
 const ProjectAnalysisPage = lazy(() => import('../pages/ProjectAnalysisPage').then((m) => ({ default: m.ProjectAnalysisPage })))
 const SettingsPage = lazy(() => import('../pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
@@ -51,6 +52,7 @@ export function AppRoutes() {
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="projects/:id" element={<ProjectLayout />}>
             <Route index element={<ProjectOverviewPage />} />
+            <Route path="requirements" element={<ProjectRequirementsPage />} />
             <Route path="data" element={<ProjectDataPage />} />
             <Route path="analysis" element={<ProjectAnalysisPage />} />
           </Route>

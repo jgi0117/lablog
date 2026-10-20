@@ -9,12 +9,69 @@ import { useToast } from '../components/Toast'
 import { useAllBundles } from '../hooks/useBundles'
 import { useBackupExport } from '../hooks/useBackupExport'
 import { seedDemo } from '../data/seed'
-import { findGaps, type Gap } from '../services/analysis'
+import { buildMatrix, findGaps, type Gap } from '../services/analysis'
+import { describeRequirement, projectStatus, type ProjectRequirementStatus } from '../services/requirements'
 import { backupReminder, backupSnoozedUntil, lastBackupAt, snoozeBackupReminder } from '../services/backup'
 import { dataTimestamps } from '../services/projectData'
 import { logGapsSnapshot } from '../services/usage'
 import { formatRelative } from '../services/format'
 import { stepStats } from '../services/experimentService'
+
+const OVERALL_TEXT = { achieved: '요구 달성', 'in-progress': '진행 중', 'no-data': '측정 전' } as const
+
+/** 프로젝트 한 줄 요약: 고객 요구 달성 상태와 지금 가장 도움이 될 다음 행동 */
+function ProjectSummaryCard({
+  id,
+  name,
+  customer,
+  total,
+  running,
+  status,
+  reqs,
+}: {
+  id: string
+  name: string
+  customer?: string
+  total: number
+  running: number
+  status: ProjectRequirementStatus | null
+  reqs: unknown[]
+}) {
+  let next = ''
+  let nextTo = `/projects/${id}`
+  if (!status || reqs.length === 0) {
+    next = '고객이 요청한 특성을 입력하면 달성 여부를 자동으로 판정합니다'
+    nextTo = `/projects/${id}/requirements`
+  } else if (status.overall === 'achieved') {
+    next = `필수 요구를 모두 만족한 배합 ${status.achievedRecipes.length}개`
+  } else if (status.overall === 'no-data') {
+    next = '요구 항목의 측정값을 입력하세요'
+  } else if (status.closest) {
+    const miss = status.closest.verdicts.find((v) => v.requirement.priority === 'must' && v.verdict !== 'pass')
+    next = miss ? `가장 가까운 배합에서 "${describeRequirement(miss.requirement)}"가 아직 부족합니다` : '요구에 가까워지고 있습니다'
+  }
+  return (
+    <div className="card project-card">
+      <h3 className="card__title">
+        <Link to={`/projects/${id}`}>{name}</Link>
+      </h3>
+      {customer && <p className="project-card__desc">{customer}</p>}
+      <div className="project-card__stats">
+        {status?.overall && <span className={`req-chip req-chip--${status.overall === 'achieved' ? 'achieved' : status.overall === 'in-progress' ? 'not-yet' : 'no-data'}`}>{OVERALL_TEXT[status.overall]}</span>}
+        {status && status.mustTotal > 0 && (
+          <span>
+            필수 요구 {status.mustAchieved}/{status.mustTotal}
+          </span>
+        )}
+        <span>실험 {total}건</span>
+        <span>진행 {running}</span>
+      </div>
+      <span className="card__meta">
+        <Link to={nextTo}>{next || '프로젝트 열기'}</Link>
+      </span>
+    </div>
+  )
+}
 
 /** 홈: 진행 중인 실험, 놓친 것(모든 프로젝트), 최근 실험. 실험이 없으면 첫 실험 안내. */
 export function HomePage() {
@@ -45,7 +102,14 @@ export function HomePage() {
     }
     const order = { high: 0, mid: 1, low: 2 } as const
     gaps.sort((a, c) => order[a.severity] - order[c.severity])
-    return { names, running, recent, gaps, gapProject, total: state.bundles.length }
+    // 프로젝트마다 고객 요구 달성 현황과 다음에 할 일
+    const projects = state.projects.map((p) => {
+      const bs = state.bundles.filter((b) => b.experiment.projectId === p.id)
+      const reqs = p.requirements ?? []
+      const status = reqs.length > 0 ? projectStatus(buildMatrix(bs), reqs) : null
+      return { p, total: bs.length, running: bs.filter((b) => b.experiment.status === 'running').length, status, reqs }
+    })
+    return { names, running, recent, gaps, gapProject, projects, total: state.bundles.length }
   }, [state])
 
   // 모든 프로젝트의 확인할 것 개수를 이 기기에 기록해 둔다(주마다 줄어드는지 보기 위해).
@@ -120,7 +184,30 @@ export function HomePage() {
         </EmptyState>
       ) : (
         <>
-          <h2 className="section-title section-title--first">진행 중 ({view.running.length})</h2>
+          <div className="home__quick">
+            <Link to="/experiments/new" className="btn btn--primary">
+              + 새 실험
+            </Link>
+            <Link to="/projects" className="btn">
+              + 새 프로젝트
+            </Link>
+            <Link to="/data" className="btn">
+              전체 데이터 보기
+            </Link>
+          </div>
+
+          {view.projects.length > 0 && (
+            <>
+              <h2 className="section-title section-title--first">프로젝트 현황 ({view.projects.length})</h2>
+              <div className="card-grid project-summary">
+                {view.projects.map(({ p, total, running, status, reqs }) => (
+                  <ProjectSummaryCard key={p.id} id={p.id} name={p.name} customer={p.customer} total={total} running={running} status={status} reqs={reqs} />
+                ))}
+              </div>
+            </>
+          )}
+
+          <h2 className="section-title">진행 중 ({view.running.length})</h2>
           {view.running.length === 0 ? <p className="muted">진행 중인 실험이 없습니다.</p> : <div className="card-grid">{view.running.map(card)}</div>}
 
           <h2 className="section-title">놓친 것 ({view.gaps.length})</h2>

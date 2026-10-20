@@ -15,6 +15,7 @@ export function ProjectsPage() {
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [customer, setCustomer] = useState('')
   const [error, setError] = useState('')
 
   const cards = useMemo(() => {
@@ -37,7 +38,7 @@ export function ProjectsPage() {
       setError('프로젝트 이름을 입력하세요')
       return
     }
-    const p = await backend.projects.create({ name: name.trim(), description: description.trim() })
+    const p = await backend.projects.create({ name: name.trim(), description: description.trim(), ...(customer.trim() ? { customer: customer.trim() } : {}) })
     navigate(`/projects/${p.id}`)
   }
 
@@ -65,6 +66,10 @@ export function ProjectsPage() {
             )}
           </div>
           <div className="field">
+            <label htmlFor="pcustomer">고객 또는 요청 부서 (선택)</label>
+            <input id="pcustomer" className="input" value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="예) ○○건설 구조팀" />
+          </div>
+          <div className="field">
             <label htmlFor="pdesc">목표·설명 (선택)</label>
             <textarea id="pdesc" className="input input--area" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="예) 연필경도 3H 이상, 투과율 90% 이상, 헤이즈 1% 이하" />
           </div>
@@ -90,6 +95,7 @@ export function ProjectsPage() {
           {cards.map(({ p, bundles, counts, percent, gaps, last }) => (
             <Link key={p.id} to={`/projects/${p.id}`} className="card project-card">
               <h2 className="card__title">{p.name}</h2>
+              {p.customer && <p className="project-card__customer">고객·요청: {p.customer}</p>}
               {p.description && <p className="project-card__desc">{p.description}</p>}
               <div className="project-card__stats">
                 <span>실험 {bundles.length}건</span>

@@ -3,6 +3,7 @@ import { EmptyState } from '../components/EmptyState'
 import { GapList } from '../components/GapList'
 import { StatusBadge } from '../components/StatusBadge'
 import { StatusBar, TimelineChart } from '../components/charts'
+import { RequirementStatus } from '../components/RequirementStatus'
 import { useProject } from '../hooks/useProjectContext'
 import { statusCounts, timelineBars } from '../services/analysis'
 import { stepStats } from '../services/experimentService'
@@ -12,14 +13,18 @@ const TIMELINE_MAX = 30
 
 /** 프로젝트 현황: 진행 상태, 빠진 것 한눈에, 타임라인, 최근 실험. */
 export function ProjectOverviewPage() {
-  const { project, bundles, gaps } = useProject()
+  const { project, bundles, gaps, matrix } = useProject()
   if (bundles.length === 0) {
     return (
-      <EmptyState title="이 프로젝트에는 아직 실험이 없습니다" description="실험을 만들면 진행 현황, 빠진 것, 데이터 비교가 여기에 나타납니다.">
-        <Link to={`/experiments/new?project=${project.id}`} className="btn btn--primary">
-          + 이 프로젝트에 새 실험
-        </Link>
-      </EmptyState>
+      <div className="proj-empty">
+        {/* 실험을 만들기 전에 고객 요구부터 정해 두는 것이 자연스러운 순서라서 요구 입력 안내를 먼저 보여 준다 */}
+        <RequirementStatus matrix={matrix} requirements={project.requirements ?? []} customer={project.customer} editHref={`/projects/${project.id}/requirements`} />
+        <EmptyState title="이 프로젝트에는 아직 실험이 없습니다" description="실험을 만들면 진행 현황, 빠진 것, 데이터 비교가 여기에 나타납니다.">
+          <Link to={`/experiments/new?project=${project.id}`} className="btn btn--primary">
+            + 이 프로젝트에 새 실험
+          </Link>
+        </EmptyState>
+      </div>
     )
   }
   const counts = statusCounts(bundles)
@@ -31,6 +36,9 @@ export function ProjectOverviewPage() {
 
   return (
     <div className="proj-grid">
+      <div className="proj-grid__wide">
+        <RequirementStatus matrix={matrix} requirements={project.requirements ?? []} customer={project.customer} editHref={`/projects/${project.id}/requirements`} />
+      </div>
       <section className="panel" aria-labelledby="h-progress">
         <h2 id="h-progress" className="panel__title">
           진행 현황

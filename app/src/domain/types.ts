@@ -14,9 +14,40 @@ export interface Entity {
   version: number
 }
 
+/** 고객 요구의 모양: 이상(min), 이하(max), 범위(range), 목표값±허용(target) */
+export type RequirementKind = 'min' | 'max' | 'range' | 'target'
+
+/**
+ * 고객이 요청한 특성 하나. 신제품 개발은 이 요구를 만족하는 조건을 찾는 일이라, 프로젝트가 요구를 들고 있고
+ * 실험의 같은 이름 항목(조건 또는 결과)과 맞춰 달성 여부를 판정한다.
+ */
+export interface Requirement {
+  id: ID
+  /** 항목 이름. 실험의 조건·결과 이름과 같아야 맞춰 본다(띄어쓰기·대소문자는 무시) */
+  name: string
+  unit: string
+  kind: RequirementKind
+  /** min·range의 아래 한계(이상) */
+  min?: number
+  /** max·range의 위 한계(이하) */
+  max?: number
+  /** target의 목표값과 허용 오차(±) */
+  target?: number
+  tolerance?: number
+  /** 이 조건일 때만 적용한다. 예) 재령 = 28일일 때의 압축강도 */
+  at?: { name: string; value: number }
+  /** must: 고객이 꼭 요구, nice: 있으면 좋은 것 */
+  priority: 'must' | 'nice'
+  note?: string
+}
+
 export interface Project extends Entity {
   name: string
   description: string
+  /** 고객 또는 요청 부서 */
+  customer?: string
+  /** 고객 요구 특성. 없으면 달성 판정을 하지 않는다 */
+  requirements?: Requirement[]
 }
 
 /** 준비 → 진행 → 완료. 완료에서 다시 진행으로 돌아갈 수 있다. */

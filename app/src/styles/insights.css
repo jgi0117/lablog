@@ -389,3 +389,223 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ----- 고객 요구 특성 ----- */
+.project-customer {
+  margin: 0 0 var(--space-xs);
+}
+
+.req-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.req-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.req-row {
+  padding: var(--space-md) var(--space-lg);
+  background: var(--paper-field);
+  border: var(--line) solid var(--rule);
+}
+
+.req-row__main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  align-items: flex-end;
+}
+
+.req-row__name {
+  flex: 1 1 200px;
+}
+
+.req-row__num {
+  flex: 1 1 90px;
+  max-width: 140px;
+}
+
+.req-row__main .field,
+.req-row__main .input,
+.req-row__at-fields .input {
+  min-width: 0;
+}
+
+.req-row__remove {
+  margin-left: auto;
+}
+
+.req-row__at {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm) var(--space-md);
+  align-items: center;
+  margin-top: var(--space-sm);
+  font-size: 14px;
+}
+
+.req-row__at-toggle {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  min-height: var(--touch-min);
+  cursor: pointer;
+}
+
+.req-row__at-toggle input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--verdigris);
+}
+
+.req-row__at-fields {
+  flex-wrap: wrap;
+  display: inline-flex;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.req-row__at-value {
+  width: 90px;
+}
+
+.req-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.req-page__customer {
+  max-width: 420px;
+  margin-bottom: var(--space-lg);
+}
+
+.req-banner {
+  padding: var(--space-md) var(--space-lg);
+  margin-bottom: var(--space-md);
+  border-left: 6px solid var(--verdigris);
+  background: var(--paper-field);
+  line-height: 1.6;
+}
+
+.req-banner--todo {
+  border-left-color: var(--color-warn);
+}
+
+.req-banner__list {
+  margin: var(--space-xs) 0 0;
+  padding-left: 1.2em;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  font-size: 14px;
+}
+
+.req-banner__closest {
+  margin-top: var(--space-xs);
+}
+
+.req-chip {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px solid currentColor;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.req-chip--achieved {
+  color: var(--verdigris-strong);
+}
+
+.req-chip--not-yet {
+  color: var(--wax);
+}
+
+.req-chip--no-data {
+  color: var(--ink-2);
+}
+
+.req-table th[scope='row'] {
+  white-space: normal;
+  min-width: 220px;
+}
+
+.req-table td:last-child {
+  text-align: left;
+  white-space: normal;
+}
+
+/* 실험·표에서 요구 판정 표시 */
+.cell--pass {
+  background: rgba(46, 107, 94, 0.18);
+}
+
+.cell--miss {
+  background: rgba(139, 42, 42, 0.14);
+}
+
+.req-flag {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.req-flag--pass {
+  color: var(--verdigris-strong);
+}
+
+.req-flag--fail {
+  color: var(--wax);
+}
+
+.req-summary {
+  margin: 0 0 var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--paper-field);
+  border-left: 5px solid var(--ink-3);
+}
+
+.req-summary--ok {
+  border-left-color: var(--verdigris);
+}
+
+.req-summary--todo {
+  border-left-color: var(--color-warn);
+}
+
+.req-hint {
+  margin: 0;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--paper-field);
+  border-left: 5px solid var(--verdigris);
+  font-size: 14px;
+}
+
+/* ----- 홈: 빠른 시작과 프로젝트 현황 ----- */
+.home__quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.project-summary .project-card .card__title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.project-summary .project-card .card__title a:hover {
+  text-decoration: underline;
+}
+
+.project-card__customer {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-2);
+}

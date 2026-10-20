@@ -2,8 +2,8 @@ import type { DataBackend } from '../data/repositories'
 import { safeGet, safeSet } from './safeStorage'
 
 const KEY = 'lablog:example-seeded'
-/** 예시 데이터 구성이 바뀔 때마다 올린다. 1: 필름·소규모, 2: 공개 콘크리트 데이터 전체(1,030건) */
-export const EXAMPLE_VERSION = '2'
+/** 예시 데이터 구성이 바뀔 때마다 올린다. 1: 필름·소규모, 2: 공개 콘크리트 데이터 전체(1,030건), 3: 프로젝트에 고객·고객 요구 추가 */
+export const EXAMPLE_VERSION = '3'
 const CURRENT = `seeded:${EXAMPLE_VERSION}`
 
 /** 예시 데이터(UCI 콘크리트)의 프로젝트·실험 id는 이 머리말로 시작한다. */
@@ -22,6 +22,14 @@ export async function seedFirstRun(
   restoreProjects?: (b: DataBackend) => Promise<void>,
 ): Promise<boolean> {
   const state = safeGet(KEY)
+  // 2 → 3: 실험은 그대로이고 예시 프로젝트에 고객 요구가 더해졌다. 예시 프로젝트를 고치지 않았으면 같은 id로 덮어써 반영한다.
+  if (state === 'seeded:2') {
+    const example = (await backend.projects.list()).filter((p) => EXAMPLE_PROJECT.test(p.id))
+    const unedited = example.length > 0 && example.every((p) => p.version === 1)
+    if (unedited) await seed(backend)
+    safeSet(KEY, CURRENT)
+    return unedited
+  }
   // 예시 실험은 남아 있는데 예시 프로젝트가 지워진(또는 없는) 상태면 프로젝트만 되살린다.
   // (예시를 바꾸는 도중 프로젝트가 함께 지워진 브라우저를 고친다.)
   if (restoreProjects && state !== null && (await hasOrphanedExamples(backend))) {

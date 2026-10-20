@@ -1,6 +1,6 @@
 import type { BackupFile } from './repositories'
 import { BACKUP_SCHEMA_VERSION } from './repositories'
-import type { DataItem, Experiment, ExperimentStatus, Project, Step } from '../domain/types'
+import type { DataItem, Experiment, ExperimentStatus, Project, Requirement, Step } from '../domain/types'
 
 /**
  * 시연용 예시 데이터: UCI 콘크리트 압축강도 공개 데이터(Yeh, 1998, CC BY 4.0).
@@ -42,11 +42,32 @@ export function binderOf(r: ConcreteRow): BinderKey {
 export const SOURCE_NOTE = '공개 데이터(UCI 콘크리트) 기반 예시'
 
 /** 프로젝트 이름과 제품 코드의 숫자는 지어낸 예시이며 실제 치환율이 아니다. */
-export const CONCRETE_PROJECTS: { key: BinderKey; id: string; name: string; subtitle: string; detail: string }[] = [
-  { key: 'SM', id: 'demo-project-1', name: '스탠다드믹스 SM-00', subtitle: '표준 배합 강도 기준 확립', detail: '결합재: 시멘트 단독. 재령별 압축강도의 기준값을 세운다.' },
-  { key: 'ES', id: 'demo-project-2', name: '에코슬래그 ES-30', subtitle: '저탄소 콘크리트 개발, 슬래그 치환', detail: '결합재: 시멘트 + 고로슬래그. 시멘트를 슬래그로 바꿔도 강도가 유지되는 조건을 찾는다.' },
-  { key: 'LF', id: 'demo-project-3', name: '로히트 플라이 LF-20', subtitle: '저발열·장기강도 콘크리트 개발, 플라이애시 치환', detail: '결합재: 시멘트 + 플라이애시. 낮은 수화열과 재령에 따른 강도 증진을 본다.' },
-  { key: 'HB', id: 'demo-project-4', name: '하이브리드본드 HB-50', subtitle: '고성능 복합 결합재 콘크리트 개발', detail: '결합재: 시멘트 + 고로슬래그 + 플라이애시. 세 가지를 함께 쓴 배합의 강도를 평가한다.' },
+/** 고객 요구를 짧게 쓰는 도우미(예시 데이터용). 재령을 적용 조건으로 거는 강도 요구가 많다. */
+function req(id: string, name: string, kind: 'min' | 'max', value: number, unit: string, opts: { at?: number; nice?: boolean } = {}): Requirement {
+  return {
+    id,
+    name,
+    unit,
+    kind,
+    ...(kind === 'min' ? { min: value } : { max: value }),
+    ...(opts.at ? { at: { name: '재령', value: opts.at } } : {}),
+    priority: opts.nice ? 'nice' : 'must',
+  }
+}
+
+export const CONCRETE_PROJECTS: { key: BinderKey; id: string; name: string; subtitle: string; detail: string; customer: string; requirements: Requirement[] }[] = [
+  { key: 'SM', id: 'demo-project-1', name: '스탠다드믹스 SM-00', subtitle: '표준 배합 강도 기준 확립', detail: '결합재: 시멘트 단독. 재령별 압축강도의 기준값을 세운다.',
+    customer: '한빛건설 구조팀 (예시)',
+    requirements: [req('demo-req-1-1', '압축강도', 'min', 30, 'MPa', { at: 28 }), req('demo-req-1-2', '압축강도', 'min', 20, 'MPa', { at: 7 }), req('demo-req-1-3', '시멘트', 'max', 400, 'kg/m³', { nice: true })] },
+  { key: 'ES', id: 'demo-project-2', name: '에코슬래그 ES-30', subtitle: '저탄소 콘크리트 개발, 슬래그 치환', detail: '결합재: 시멘트 + 고로슬래그. 시멘트를 슬래그로 바꿔도 강도가 유지되는 조건을 찾는다.',
+    customer: '그린인프라공사 (예시)',
+    requirements: [req('demo-req-2-1', '압축강도', 'min', 50, 'MPa', { at: 28 }), req('demo-req-2-2', '고로슬래그', 'min', 120, 'kg/m³'), req('demo-req-2-3', '시멘트', 'max', 300, 'kg/m³')] },
+  { key: 'LF', id: 'demo-project-3', name: '로히트 플라이 LF-20', subtitle: '저발열·장기강도 콘크리트 개발, 플라이애시 치환', detail: '결합재: 시멘트 + 플라이애시. 낮은 수화열과 재령에 따른 강도 증진을 본다.',
+    customer: '한솔플랜트 설비팀 (예시)',
+    requirements: [req('demo-req-3-1', '압축강도', 'min', 55, 'MPa', { at: 56 }), req('demo-req-3-2', '압축강도', 'min', 45, 'MPa', { at: 28 }), req('demo-req-3-3', '플라이애시', 'min', 80, 'kg/m³', { nice: true })] },
+  { key: 'HB', id: 'demo-project-4', name: '하이브리드본드 HB-50', subtitle: '고성능 복합 결합재 콘크리트 개발', detail: '결합재: 시멘트 + 고로슬래그 + 플라이애시. 세 가지를 함께 쓴 배합의 강도를 평가한다.',
+    customer: '미래전력 토목팀 (예시)',
+    requirements: [req('demo-req-4-1', '압축강도', 'min', 80, 'MPa', { at: 28 }), req('demo-req-4-2', '물', 'max', 170, 'kg/m³'), req('demo-req-4-3', '고성능 감수제', 'max', 12, 'kg/m³', { nice: true })] },
 ]
 
 /**
@@ -198,6 +219,8 @@ function projects(): Project[] {
     id: p.id,
     name: p.name,
     description: `${p.subtitle}\n${p.detail}\n${SOURCE_NOTE}`,
+    customer: p.customer,
+    requirements: p.requirements,
     createdAt: daysAgo(70),
     // 수정 시각은 지금보다 살짝 뒤로 둔다. 예시를 지운 직후 다시 넣어도 "지운 프로젝트"보다 새것으로 쳐서 되살아나게 하기 위함이다
     // (저장소의 시각은 연달아 저장할 때 실제 시계보다 조금 앞서 갈 수 있다).

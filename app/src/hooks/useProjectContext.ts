@@ -4,6 +4,8 @@ import type { ExperimentBundle, Gap, Matrix } from '../services/analysis'
 
 export interface ProjectContext {
   project: Project
+  /** 저장한 프로젝트를 화면에 반영한다(고객 요구 등을 고친 뒤) */
+  setProject: (p: Project) => void
   bundles: ExperimentBundle[]
   matrix: Matrix
   gaps: Gap[]

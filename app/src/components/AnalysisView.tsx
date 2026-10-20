@@ -9,7 +9,9 @@ import {
   type Gap,
   type Matrix,
 } from '../services/analysis'
+import type { Requirement } from '../domain/types'
 import {
+  achievementInsights,
   buildInsights,
   columnSummaries,
   columnValues,
@@ -30,6 +32,8 @@ interface Props {
   matrix: Matrix
   /** 프로젝트 화면에서만: 빠짐 점검 결과(이상치 후보 목록에 쓴다) */
   gaps?: Gap[]
+  /** 프로젝트의 고객 요구. 있으면 달성한 실험과 못 미친 실험의 조건 차이를 "한눈에 읽기"에 더한다 */
+  requirements?: Requirement[]
 }
 
 const label = (c: Column) => (c.unit ? `${c.name} (${c.unit})` : c.name)
@@ -39,7 +43,7 @@ const f = (n: number) => String(Number(n.toPrecision(4)))
  * 분석 화면: "무엇이 결과를 움직이는가"를 한눈에 읽도록 요약 문장, 영향 주는 조건, 그룹 비교, 분포, 상관 행렬, 요약 통계,
  * 관계·추세 차트, 상·하위 실험을 차례로 보여 준다. 프로젝트 하나일 때도, 모든 프로젝트를 합칠 때도 같은 화면을 쓴다.
  */
-export function AnalysisView({ matrix, gaps }: Props) {
+export function AnalysisView({ matrix, gaps, requirements }: Props) {
   const results = useMemo(() => numericColumns(matrix).filter((c) => c.kind === 'result'), [matrix])
   const numeric = useMemo(() => numericColumns(matrix), [matrix])
   const [yKey, setYKey] = useState<string | null>(null)
@@ -53,7 +57,7 @@ export function AnalysisView({ matrix, gaps }: Props) {
   const y = results.find((c) => c.key === (yKey ?? defaultY?.key)) ?? defaultY
 
   const drivers = useMemo(() => (y ? rankDrivers(matrix, y.key) : null), [matrix, y])
-  const insights = useMemo(() => (y ? buildInsights(matrix, y.key) : []), [matrix, y])
+  const insights = useMemo(() => (y ? [...achievementInsights(matrix, requirements ?? []), ...buildInsights(matrix, y.key)] : []), [matrix, y, requirements])
   const groups = useMemo(() => (y ? groupCandidates(matrix, y.key) : []), [matrix, y])
   const heat = useMemo(() => correlationView(matrix), [matrix])
   const sums = useMemo(() => columnSummaries(matrix), [matrix])

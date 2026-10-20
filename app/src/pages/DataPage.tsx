@@ -11,6 +11,9 @@ import type { DataItem, DataKind } from '../domain/types'
 import { completeExperiment, numericHistory, reopenExperiment } from '../services/experimentService'
 import { catalogNames, findCatalogUnit, type CatalogItem } from '../services/catalog'
 import { useItemCatalog } from '../hooks/useItemCatalog'
+import { ExperimentRequirementBar } from '../components/ExperimentRequirementBar'
+import { useRequirementCheck, type RequirementCheck } from '../hooks/useRequirementCheck'
+import { normalizeName } from '../services/analysis'
 import { COMMON_UNITS, valueWarning } from '../services/validation'
 import { logUsage } from '../services/usage'
 
@@ -21,11 +24,13 @@ interface RowProps {
   items: DataItem[]
   catalog: CatalogItem[]
   autoFocus: boolean
+  /** 이 항목에 걸린 고객 요구의 판정(입력 값이 바뀌면 바로 갱신된다) */
+  checks?: RequirementCheck[]
   onChanged: (d: DataItem) => void
   onRemove: () => void
 }
 
-function DataRow({ item, items, catalog, autoFocus, onChanged, onRemove }: RowProps) {
+function DataRow({ item, items, catalog, autoFocus, checks = [], onChanged, onRemove }: RowProps) {
   const backend = useBackend()
   const [name, setName] = useState(item.name)
   const [value, setValue] = useState(item.value)
@@ -82,6 +87,13 @@ function DataRow({ item, items, catalog, autoFocus, onChanged, onRemove }: RowPr
       <button type="button" className="btn btn--icon" onClick={onRemove} aria-label={`${name || KIND_LABEL[item.kind]} 삭제`}>
         ✕
       </button>
+      {checks
+        .filter((c) => c.verdict === 'pass' || c.verdict === 'fail')
+        .map((c) => (
+          <span key={c.requirement.id} className={`req-flag req-flag--${c.verdict}`}>
+            {c.verdict === 'pass' ? '✓ 요구 만족' : '✗ 요구 미달'} · {c.text}
+          </span>
+        ))}
       {warning && (
         <p className="field__warn" role="status">
           {warning}
@@ -102,6 +114,7 @@ export function DataPage() {
   const [focusId, setFocusId] = useState<string | null>(null)
   const catalog = useItemCatalog(experiment.projectId)
   const finishing = params.get('finish') === '1'
+  const req = useRequirementCheck(experiment, items)
 
   const replace = (d: DataItem) => setItems((xs) => xs.map((x) => (x.id === d.id ? d : x)))
 
@@ -140,6 +153,7 @@ export function DataPage() {
 
   return (
     <div className="data-page">
+      {req && <ExperimentRequirementBar state={req} />}
       {(['condition', 'result'] as const).map((k) => (
         <datalist key={k} id={`item-names-${k}`}>
           {catalogNames(catalog, k).map((n) => (
@@ -162,7 +176,7 @@ export function DataPage() {
               {rows.length === 0 && <p className="muted">아직 {KIND_LABEL[kind]}이 없습니다.</p>}
               <ul className="plain-list">
                 {rows.map((r) => (
-                  <DataRow key={r.id} item={r} items={items} catalog={catalog} autoFocus={r.id === focusId} onChanged={replace} onRemove={() => void remove(r)} />
+                  <DataRow key={r.id} item={r} items={items} catalog={catalog} autoFocus={r.id === focusId} checks={req?.byName.get(normalizeName(r.name))} onChanged={replace} onRemove={() => void remove(r)} />
                 ))}
               </ul>
               <button type="button" className="btn btn--dashed" onClick={() => void add(kind)}>
