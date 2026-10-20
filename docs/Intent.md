@@ -37,6 +37,7 @@
 - **기대 결과(Proposed outcome)**: `main`에 push하면 Vercel이 자동으로 빌드·배포하고, 그 주소에서 로그인하면 서버 저장소의 같은 데이터가 보인다.
 - **영향 범위(Affected users and systems)**: 파일럿 사용자 1명(개발팀 개인). Vercel(프로젝트 `lablog`, 루트 `app`), GitHub 저장소 `jgi0117/lablog`, Supabase의 Site URL·Redirect URLs, `app/vercel.json`(새로고침 시 index.html).
 - **제약(Constraints)**: 무료(Hobby) 플랜. 공개용(anon/publishable) 키만 환경 변수에 둔다(service_role 금지). 가입은 닫혀 있고 로그인한 계정의 데이터만 보인다. Vercel 연결 도구가 쓰기 권한이 없어(403) 프로젝트 만들기는 사용자가 대시보드에서 한다.
+- **확인 결과(2026-10-20)**: 고정 주소 `https://lablog-kgt8.vercel.app/`가 Vercel 로그인 없이 열리고, 앱 로그인 화면이 나온다(Supabase 설정이 빌드에 들어감, 계정 만들기 버튼 없음). 직접 주소(`/experiments`)와 새로고침도 열린다. 아직 확인 못 한 것: 실제 로그인 후 데이터 표시, GitHub push 자동 배포, 이메일 링크 로그인(Site URL 등록 필요).
 - **진행 상황**: 사용자가 Vercel에서 `lablog-kgt8` 프로젝트를 가져와 배포 주소 `https://lablog-kgt8-hp4wo029d-gj-380c.vercel.app/`가 생겼다. 접속하면 Vercel 로그인으로 넘어간다(Vercel Authentication 켜짐). 이름이 `lablog`인 빈 프로젝트가 하나 더 있다. 연결 도구는 목록 조회만 되고 프로젝트 상세·배포 조회는 403이라 빌드 결과·환경 변수·Git 연결은 확인하지 못했다.
 - **열린 질문(Open questions)**: ① 배포 주소를 Supabase Site URL·Redirect URLs에 등록해야 한다(사용자). 고정 주소(`lablog-kgt8.vercel.app` 형태)를 쓰는 편이 좋다. ② GitHub Pages 배포(`deploy.yml`)를 계속 둘지 끌지(사용자). ③ Vercel 기본 접근 제한(Vercel 로그인 필요)을 끌지(사용자). ④ 비어 있는 `lablog` 프로젝트를 지울지(사용자).
 - **문서 갱신**: `docs/phase9/02-설정-가이드.md`에 Vercel 절 추가 (미완)
