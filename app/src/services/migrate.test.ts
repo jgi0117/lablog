@@ -4,7 +4,7 @@ import { createMemoryStore } from '../data/remote/memoryStore'
 import { createRemoteBackend } from '../data/remote/remoteBackend'
 import { seedDemo } from '../data/seed'
 import type { Experiment, NewEntity } from '../domain/types'
-import { countsOf, migrateLocalToRemote, previewMigration, totalOf, type MigrationReport } from './migrate'
+import { countsOf, migrateLocalToRemote, normalizeIds, previewMigration, totalOf, type MigrationReport } from './migrate'
 
 const opened: LocalBackend[] = []
 afterEach(() => {
@@ -125,7 +125,9 @@ describe('로컬 → 서버 이전', () => {
     expect(projects.every((p) => (p.requirements?.length ?? 0) === 3)).toBe(true)
     // 올린 데이터로 같은 화면 계산이 된다: 실험의 조건·결과를 읽어 비교
     const e = (await l.experiments.list({}, 'title_asc', { limit: 1, offset: 0 })).items[0]
-    expect(await r.dataItems.listByExperiment(e.id)).toEqual(await l.dataItems.listByExperiment(e.id))
+    const rid = normalizeIds({ ...(await l.backup.exportAll()), projects: [], steps: [], dataItems: [], experiments: [e] }).experiments[0].id
+    const strip = (rows: { name: string; value: string; unit: string; kind: string }[]) => rows.map((x) => [x.kind, x.name, x.value, x.unit])
+    expect(strip(await r.dataItems.listByExperiment(rid))).toEqual(strip(await l.dataItems.listByExperiment(e.id)))
   }, 60000)
 
   it('빠진 행이 있으면 ok가 아니다(검증이 실제로 걸러 낸다)', async () => {
@@ -138,5 +140,32 @@ describe('로컬 → 서버 이전', () => {
     const report: MigrationReport = await migrateLocalToRemote(l, r)
     expect(report.ok).toBe(false)
     expect(report.missing.steps).toBe(1)
+  })
+
+  it('UUID가 아닌 예전 id(demo-project-1)도 같은 UUID로 바꿔 올리고, 참조가 이어진다', async () => {
+    const now = '2026-01-01T00:00:00.000Z'
+    const base = { createdAt: now, updatedAt: now, deletedAt: null, version: 1 }
+    const old = local()
+    await old.backup.importAll(
+      {
+        schemaVersion: 2,
+        exportedAt: now,
+        projects: [{ id: 'demo-project-1', name: '예전', description: '', customer: '', requirements: [], ...base }],
+        experiments: [{ id: 'demo-exp-1', projectId: 'demo-project-1', title: '실험', purpose: '', owner: '', tags: [], status: 'ready', startedAt: null, completedAt: null, sourceExperimentId: null, ...base }],
+        steps: [{ id: 'demo-step-1', experimentId: 'demo-exp-1', order: 1, content: '단계', done: false, doneAt: null, note: '', ...base }],
+        dataItems: [],
+      } as never,
+      'replace',
+    )
+    const remote = createRemoteBackend(createMemoryStore())
+    const report = await migrateLocalToRemote(old, remote)
+    expect(report.ok).toBe(true)
+    const again = await migrateLocalToRemote(old, remote)
+    expect(again.remoteAfter.experiments).toBe(1)
+    const file = await remote.backup.exportAll()
+    expect(file.projects[0].id).toMatch(/^[0-9a-f-]{36}$/)
+    expect(file.experiments[0].projectId).toBe(file.projects[0].id)
+    expect(file.steps[0].experimentId).toBe(file.experiments[0].id)
+    expect(normalizeIds(await old.backup.exportAll()).projects[0].id).toBe(file.projects[0].id)
   })
 })

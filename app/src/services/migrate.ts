@@ -21,6 +21,36 @@ export const TABLE_LABEL: Record<MigrationTable, string> = {
 /** 부모부터 올린다(외래 키 순서) */
 const ORDER: MigrationTable[] = ['projects', 'experiments', 'steps', 'dataItems', 'deviations', 'templates']
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const ID_KEYS = ['id', 'projectId', 'experimentId', 'stepId', 'sourceExperimentId'] as const
+
+/** 문자열에서 늘 같은 UUID 모양 값을 만든다(암호용 아님). 다시 실행해도 같은 id가 나와서 이전이 멱등이다. */
+export function stableUuid(text: string): string {
+  const hex: string[] = []
+  for (let seed = 0; seed < 4; seed++) {
+    let h = (0x811c9dc5 ^ (seed * 0x9e3779b1)) >>> 0
+    for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193) >>> 0
+    h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d) >>> 0
+    hex.push(h.toString(16).padStart(8, '0'))
+  }
+  const x = hex.join('')
+  return `${x.slice(0, 8)}-${x.slice(8, 12)}-5${x.slice(13, 16)}-a${x.slice(17, 20)}-${x.slice(20, 32)}`
+}
+
+/** 예전 예시 데이터처럼 UUID가 아닌 id(예: "demo-project-1")를 서버가 받을 수 있는 UUID로 바꾼다. 참조하는 id도 같이 바꾼다. */
+export function normalizeIds(file: BackupFile): BackupFile {
+  const fix = (v: unknown) => (typeof v === 'string' && v !== '' && !UUID_RE.test(v) ? stableUuid(v) : v)
+  const out = { ...file } as Record<string, unknown>
+  for (const t of ORDER) {
+    out[t] = ((file[t] ?? []) as unknown as Record<string, unknown>[]).map((r) => {
+      const c = { ...r }
+      for (const k of ID_KEYS) if (k in c) c[k] = fix(c[k])
+      return c
+    })
+  }
+  return out as unknown as BackupFile
+}
+
 export type Counts = Record<MigrationTable, number>
 
 export function countsOf(file: BackupFile): Counts {
@@ -63,7 +93,7 @@ export interface MigrationPreview {
 
 /** 올리기 전에 건수를 미리 본다. 아무것도 바꾸지 않는다. */
 export async function previewMigration(local: DataBackend, remote: DataBackend): Promise<MigrationPreview> {
-  const [lf, rf] = await Promise.all([local.backup.exportAll(), remote.backup.exportAll()])
+  const [lf, rf] = await Promise.all([local.backup.exportAll().then(normalizeIds), remote.backup.exportAll()])
   let alreadyThere = 0
   for (const t of ORDER) {
     const have = new Set(rowsOf(rf, t).map((r) => r.id))
@@ -92,7 +122,7 @@ export type Progress = (step: { table: MigrationTable | 'verify'; label: string;
  * (이미 올라간 것은 남지만 다시 실행하면 이어서 올라간다).
  */
 export async function migrateLocalToRemote(local: DataBackend, remote: DataBackend, onProgress: Progress = () => {}): Promise<MigrationReport> {
-  const localFile = await local.backup.exportAll()
+  const localFile = normalizeIds(await local.backup.exportAll())
   const remoteBeforeFile = await remote.backup.exportAll()
   const total = ORDER.length + 1
   let uploaded = 0
