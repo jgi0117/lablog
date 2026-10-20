@@ -41,6 +41,7 @@
 - **영향 범위(Affected users and systems)**: 개발자(사용자·Claude). 연구원 1명은 변화를 못 느껴야 한다. `app/src/**` 전체, `.oxlintrc.json`, `docs/**`. Supabase `lablog-v2`(변경 없음), Vercel(v2 Preview).
 - **제약(Constraints)**: `v2` 브랜치와 `lablog-v2` 폴더에서만 작업, 새 라이브러리 금지, 표·마이그레이션 변경 금지, 기존 시험 약화 금지, 기한 없음(5단계).
 - **열린 질문(Open questions)**: ① spec·plan 확정(사용자). ② oxlint의 `max-lines`·경로별 import 제한 지원 여부(1단계에서 확인). ③ v2 Supabase에 운영자 계정 생성(사용자, 서버 시험·가져오기 검증에 필요). ④ v2 전용 Vercel 프로젝트(사용자, 대시보드). ⑤ 기관 보안 정책(사용자). ⑥ QA 13번 재현 순서(모름 → 계약 시험으로 직접 재현).
+- **QA**: `docs/qa/QA-001-구조재구성-기준선.md` — 기준선 Claude QA Pass 12 / Fail 2(예상) / No Run 4, 직접 QA 13개 대기. 상태는 "QA 대기".
 - **문서 갱신**: 문제정의 ✔, PRD ✔, UJ(5~7) ✔, IA ✔, ERD(v2 메모) ✔, GLOSSARY ✔, ADR 3건 ✔. 이후 단계마다 IA·PRD KR 점검.
 
 ---
