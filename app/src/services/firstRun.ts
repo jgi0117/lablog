@@ -16,8 +16,18 @@ const EXAMPLE_EXPERIMENT = /^concrete-/
  * - 예전 구성의 예시(소규모)만 들어 있는 브라우저는 직접 만든 기록이 없을 때에 한해 새 구성으로 바꾼다.
  * 새로 넣었으면 true.
  */
-export async function seedFirstRun(backend: DataBackend, seed: (b: DataBackend) => Promise<number>): Promise<boolean> {
+export async function seedFirstRun(
+  backend: DataBackend,
+  seed: (b: DataBackend) => Promise<number>,
+  restoreProjects?: (b: DataBackend) => Promise<void>,
+): Promise<boolean> {
   const state = safeGet(KEY)
+  // 예시 실험은 남아 있는데 예시 프로젝트가 지워진(또는 없는) 상태면 프로젝트만 되살린다.
+  // (예시를 바꾸는 도중 프로젝트가 함께 지워진 브라우저를 고친다.)
+  if (restoreProjects && state !== null && (await hasOrphanedExamples(backend))) {
+    await restoreProjects(backend)
+    if (state === 'existing' || state === CURRENT) return false
+  }
   if (state === 'existing' || state === CURRENT) return false
   const page = { limit: 1, offset: 0 }
   const [live, trash, projects] = await Promise.all([
@@ -51,6 +61,13 @@ export async function seedFirstRun(backend: DataBackend, seed: (b: DataBackend) 
   await seed(backend)
   safeSet(KEY, CURRENT)
   return true
+}
+
+/** 프로젝트에 속해야 할 예시 실험이 있는데 그 프로젝트가 목록에 없는지 */
+async function hasOrphanedExamples(backend: DataBackend): Promise<boolean> {
+  const [first, projects] = await Promise.all([backend.experiments.list({}, 'updated_desc', { limit: 1, offset: 0 }), backend.projects.list()])
+  const e = first.items[0]
+  return !!e && EXAMPLE_EXPERIMENT.test(e.id) && !!e.projectId && EXAMPLE_PROJECT.test(e.projectId) && !projects.some((p) => p.id === e.projectId)
 }
 
 /** 예시 데이터가 남아 있는 개수(프로젝트, 실험). */

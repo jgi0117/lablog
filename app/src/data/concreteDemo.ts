@@ -207,8 +207,9 @@ function projects(): Project[] {
   }))
 }
 
-/** mode 'demo': 시연용 200건. 'full': 공개 데이터 전체 1,030건(시연 목록의 실험은 같은 모양으로 들어간다). */
-export function buildConcreteBackup(rows: ConcreteRow[], mode: 'demo' | 'full'): BackupFile {
+/** mode 'projects': 예시 프로젝트 4개만. 'demo': 시연용 200건. 'full': 공개 데이터 전체 1,030건(시연 목록의 실험은 같은 모양으로 들어간다). */
+export function buildConcreteBackup(rows: ConcreteRow[], mode: 'demo' | 'full' | 'projects'): BackupFile {
+  if (mode === 'projects') return { schemaVersion: BACKUP_SCHEMA_VERSION, exportedAt: new Date().toISOString(), projects: projects(), experiments: [], steps: [], dataItems: [] }
   const parts = { experiments: [] as Experiment[], steps: [] as Step[], dataItems: [] as DataItem[] }
   const byRow = new Map(rows.map((r) => [r.row, r]))
   const idOf = (key: BinderKey) => CONCRETE_PROJECTS.find((p) => p.key === key)?.id as string

@@ -160,6 +160,12 @@ export async function seedDemo(db: DataBackend, set: ExampleSet = defaultExample
   return file.experiments.length
 }
 
+/** 예시 프로젝트 4개만 다시 넣는다(지워졌거나 없어진 경우 되살린다). */
+export async function seedExampleProjects(db: DataBackend): Promise<void> {
+  const file = buildConcreteBackup([], 'projects')
+  await db.backup.importAll(file, 'merge')
+}
+
 /** 공개 데이터 전체 1,030건(프로젝트 4개). seedDemo(db, 'full')과 같다. */
 export async function seedConcreteFull(db: DataBackend): Promise<number> {
   return seedDemo(db, 'full')

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createLocalBackend, type LocalBackend } from '../data/local/localBackend'
-import { defaultExampleSet, seedDemo } from '../data/seed'
+import { defaultExampleSet, seedDemo, seedExampleProjects } from '../data/seed'
 import { countExampleData, removeExampleData, seedFirstRun } from './firstRun'
 
 const opened: LocalBackend[] = []
@@ -89,6 +89,30 @@ describe('예시 구성이 바뀐 뒤의 첫 실행', () => {
     expect(await seedFirstRun(b, seedDemo)).toBe(false)
     expect((await b.experiments.list()).total).toBe(0)
     expect(localStorage.getItem('lablog:example-seeded')).toBe('seeded:2')
+  })
+})
+
+describe('예시 프로젝트만 없어진 브라우저 고치기', () => {
+  it('예시 실험은 있는데 프로젝트가 지워졌으면 프로젝트만 되살린다', async () => {
+    const b = make()
+    await seedDemo(b)
+    for (const p of await b.projects.list()) await b.projects.softDelete(p.id)
+    expect(await b.projects.list()).toHaveLength(0)
+    localStorage.setItem('lablog:example-seeded', 'seeded:2')
+    expect(await seedFirstRun(b, seedDemo, seedExampleProjects)).toBe(false)
+    expect((await b.projects.list()).map((p) => p.id).sort()).toEqual(['demo-project-1', 'demo-project-2', 'demo-project-3', 'demo-project-4'])
+    expect((await b.experiments.list()).total).toBe(200) // 실험은 그대로
+  })
+
+  it('직접 만든 프로젝트와 멀쩡한 예시는 건드리지 않는다', async () => {
+    const b = make()
+    await seedDemo(b)
+    const mine = await b.projects.create({ name: '내 프로젝트', description: '' })
+    localStorage.setItem('lablog:example-seeded', 'seeded:2')
+    expect(await seedFirstRun(b, seedDemo, seedExampleProjects)).toBe(false)
+    const ps = await b.projects.list()
+    expect(ps).toHaveLength(5)
+    expect(ps.find((p) => p.id === mine.id)?.version).toBe(1)
   })
 })
 

@@ -13,8 +13,8 @@ import './styles/global.css'
 async function start() {
   if (import.meta.env.VITE_AUTO_EXAMPLE !== 'off') {
     try {
-      const { seedDemo } = await import('./data/seed')
-      await seedFirstRun(getBackend(), seedDemo)
+      const { seedDemo, seedExampleProjects } = await import('./data/seed')
+      await seedFirstRun(getBackend(), seedDemo, seedExampleProjects)
     } catch {
       // 저장소를 열 수 없는 경우 등은 앱 안의 저장소 경고가 안내한다.
     }
