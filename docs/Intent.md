@@ -31,6 +31,20 @@
 
 ---
 
+## 2026-10-20 v2 구조 재구성 (상태: 계획, spec/plan 확정 대기)
+
+**Spec / Plan**: `docs/specs/001-구조-재구성/spec.md`, `plan.md`
+**참조**: `문제정의.md`, PRD §3·§4(KR3~KR5), IA(Component Reuse Map·URL Strategy), UJ Journey 5~7, ERD(변경 없음), ADR 0001~0003
+
+- **문제(Problem)**: 300줄 넘는 파일 9개, 계층형 폴더, 저장소 구현 두 벌, 서버 저장소 충돌이 시험으로 고정되지 않음, 문서가 앱과 어긋남. 다음 기능을 안전하게 얹기 어렵다.
+- **기대 결과(Proposed outcome)**: 모든 파일 ≤ 300줄, feature-first 구조, import 경계를 린터가 강제, 공용 계약 시험(충돌 포함), 문서 일치. 사용자에게 보이는 동작은 그대로이고 기존 시험 450개·E2E 112개가 불변으로 통과한다.
+- **영향 범위(Affected users and systems)**: 개발자(사용자·Claude). 연구원 1명은 변화를 못 느껴야 한다. `app/src/**` 전체, `.oxlintrc.json`, `docs/**`. Supabase `lablog-v2`(변경 없음), Vercel(v2 Preview).
+- **제약(Constraints)**: `v2` 브랜치와 `lablog-v2` 폴더에서만 작업, 새 라이브러리 금지, 표·마이그레이션 변경 금지, 기존 시험 약화 금지, 기한 없음(5단계).
+- **열린 질문(Open questions)**: ① spec·plan 확정(사용자). ② oxlint의 `max-lines`·경로별 import 제한 지원 여부(1단계에서 확인). ③ v2 Supabase에 운영자 계정 생성(사용자, 서버 시험·가져오기 검증에 필요). ④ v2 전용 Vercel 프로젝트(사용자, 대시보드). ⑤ 기관 보안 정책(사용자). ⑥ QA 13번 재현 순서(모름 → 계약 시험으로 직접 재현).
+- **문서 갱신**: 문제정의 ✔, PRD ✔, UJ(5~7) ✔, IA ✔, ERD(v2 메모) ✔, GLOSSARY ✔, ADR 3건 ✔. 이후 단계마다 IA·PRD KR 점검.
+
+---
+
 ## 2026-10-20 전역 하네스(Global CLAUDE.md)와 스킬 세트 (상태: 완료)
 
 **Spec / Plan**: 생략(개인 설정 작업, 앱 코드 변경 없음)
