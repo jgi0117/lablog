@@ -12,6 +12,12 @@
 4. `docs/planning/uj.md`: 사용자 여정과 오류 처리
 5. `docs/phase9/erd.md`: 서버 표 구조, 보안, 로그인 설계
 
+## 작업 순서: Intent → Spec → Plan → 개발
+
+기능·화면·데이터 구조·로그인을 바꾸는 작업은 `write-spec-plan` 스킬(`.claude/skills/write-spec-plan/`)로 진행한다.
+`docs/Intent.md`에 의도를 쓰고 → `docs/specs/NNN-이름/spec.md`(무엇을·왜)를 쓰고 사용자 확인을 받고 → `plan.md`(어떻게)를 쓰고 확인받은 뒤 → 개발한다.
+오타·문구·작은 버그 수정은 Intent 항목만 쓰고 spec/plan은 생략할 수 있다.
+
 ## Intent.md 규칙
 
 - 작업마다 `docs/Intent.md` 맨 위에 새 항목을 추가한다(지난 항목은 지우지 않는다). 틀은 그 파일에 있다.

@@ -11,12 +11,14 @@
 | ERD | `docs/phase9/erd.md` | 서버 표 구조, 보안(RLS), 로그인 설계 |
 | 데이터 모델 | `docs/phase1/01-데이터-모델.md` | 앱의 도메인 모델과 규칙 |
 | 계획·기록 | `docs/planning/devplan.md`, `docs/phaseN/` | 단계별 체크리스트와 완료 기록 |
+| Spec / Plan | `docs/specs/NNN-이름/spec.md`, `plan.md` | 이 작업의 요구사항(무엇·왜)과 구현 계획(어떻게). 틀과 절차는 `.claude/skills/write-spec-plan/` |
 
 ## 작성 틀
 
 ```markdown
 ## YYYY-MM-DD 작업 이름 (상태: 계획 / 진행 / 완료 / 보류)
 
+**Spec / Plan**: `docs/specs/NNN-이름/spec.md`, `plan.md` (없으면 "생략: 사유")
 **참조**: PRD §번호, IA(화면·주소), UJ(Journey 번호), ERD(표 이름) — 어느 문장·화면에 해당하는지
 
 - **문제(Problem)**: 지금 무엇이 불편하거나 되지 않는지
@@ -28,6 +30,18 @@
 ```
 
 ---
+
+## 2026-10-20 Spec·Plan 작성 절차 만들기 (상태: 완료)
+
+**Spec / Plan**: 생략(문서 틀 작업)
+**참조**: PRD §7.1(문서 구성), 사용자 지시(Intent → Spec → Plan → 개발), Spec Kit·Osmani 방식
+
+- **문제(Problem)**: 작업을 시작할 때 요구사항(무엇·왜)과 구현 계획(어떻게)이 매번 다른 모양으로 쓰이거나 빠져서, 개발이 문서를 근거로 하지 못한다.
+- **기대 결과(Proposed outcome)**: 모든 기능 작업이 같은 여섯 칸 spec과 다섯 칸 plan을 쓰고, 사용자 확인 뒤에 개발한다. 요구사항 번호(FR)→성공 기준(SC)→시험이 끊기지 않고 이어진다.
+- **영향 범위(Affected users and systems)**: 개발 절차(이후 모든 작업), `.claude/skills/write-spec-plan/`(SKILL.md, spec-template.md, plan-template.md), `CLAUDE.md`, `docs/specs/`. 앱 코드 변경 없음.
+- **제약(Constraints)**: 칸 이름과 순서는 사용자 지정 그대로. 쉬운 한국어. 새 라이브러리 금지가 기본. 작은 수정에는 절차를 강요하지 않는다.
+- **열린 질문(Open questions)**: ① 첫 적용 대상(두 탭 충돌 안내 / PRD·IA·UJ 정리 / 시험용 프로젝트 중 무엇부터)은 사용자가 정한다. ② 앞선 작업(서버 저장소 전환 등)의 spec/plan을 나중에 소급해서 쓸지(사용자).
+- **문서 갱신**: CLAUDE.md ✔, Intent.md 틀 ✔
 
 ## 2026-10-20 Vercel 자동 배포 (상태: 진행)
 
