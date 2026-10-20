@@ -1,6 +1,6 @@
 # Spec: 구조 재구성 (클린 아키텍처, feature-first)
 
-- **상태**: 확정 대기(사용자 확인 필요)
+- **상태**: 확정(2026-10-20), 구현 진행(1/5단계 완료)
 - **날짜**: 2026-10-20
 - **작업 의도**: `docs/Intent.md`의 "v2 구조 재구성"
 - **관련 문서**: `문제정의.md`, PRD §4 KR3~KR5, IA(Component Reuse Map), ERD(변경 없음), ADR 0002·0003
@@ -8,8 +8,8 @@
 
 ## 1. 해결하려는 문제
 
-- **지금 상태**: 코드가 계층형 폴더(`pages/components/services/hooks`)에 모여 있고 300줄이 넘는 파일이 9개다. 화면과 저장소 구현이 가까이 있어 한 곳을 고치면 어디가 깨지는지 알기 어렵다. 저장소 구현은 local·remote 두 벌이고, 서버 저장소의 동시 수정 충돌은 시험으로 고정되어 있지 않다(QA 13번 Fail).
-- **근거**: 파일 줄 수 측정(`localBackend.ts` 471, `SettingsPage.tsx` 466, `remoteBackend.ts` 431, `AnalysisView.tsx` 384, `insights.ts` 382, `RunPage.tsx` 381, `analysis.ts` 373, `stats.ts` 369, `DataGrid.tsx` 339), QA 체크리스트 13번.
+- **지금 상태**: 코드가 계층형 폴더(`pages/components/services/hooks`)에 모여 있고 빈 줄·주석 제외 기준으로 300줄이 넘는 파일이 10개다. 화면과 저장소 구현이 가까이 있어 한 곳을 고치면 어디가 깨지는지 알기 어렵다. 저장소 구현은 local·remote 두 벌이고, 서버 저장소의 동시 수정 충돌은 시험으로 고정되어 있지 않다(QA 13번 Fail).
+- **근거**: QA-001 및 `baseline.md`의 oxlint 측정(제품 코드 7개, 시험 3개), QA 체크리스트 13번.
 - **막혀서 생기는 일**: 다음 기능(팀 공유, 첨부 등)을 얹을 때 변경 범위를 예측하기 어렵고, 규칙이 문서에만 있어 지켜지지 않는다.
 - **PRD 연결**: KR3(300줄·경계 0건), KR4(기존 시험 불변), KR5(문서 일치).
 
@@ -26,7 +26,7 @@
 |---|---|---|---|---|
 | FR-1 | 개발자는 어떤 `src` 파일도 300줄(빈 줄·주석 제외)을 넘지 않는다는 것을 린터로 확인할 수 있다 | Must | — | — |
 | FR-2 | `domain`은 React·저장소·`data`를 import하지 않고, `features/*`는 `data`의 구현을 직접 import하지 않으며, 린터가 위반을 오류로 알린다 | Must | — | — |
-| FR-3 | 300줄을 넘는 파일 9개가 책임별로 나뉜다(공개 동작 불변) | Must | — | — |
+| FR-3 | 300줄을 넘는 파일 10개가 책임별로 나뉜다(공개 동작 불변) | Must | — | — |
 | FR-4 | 코드가 `src/domain`, `src/data`, `src/features/*`, `src/shared` 구조로 옮겨진다 | Must | 모든 화면 | — |
 | FR-5 | local·remote 저장소가 하나의 `Repository` 계약과 공용 계약 시험으로 검증된다 | Must | — | 7표 |
 | FR-6 | 서버 저장소 계약 시험에 "A가 먼저 저장하면 B의 저장은 `ConflictError`" 시나리오가 있다 | Must | `/experiments/:id` 등 편집 화면 | `version` |

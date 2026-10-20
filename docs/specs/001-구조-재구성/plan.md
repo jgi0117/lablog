@@ -1,6 +1,6 @@
 # Plan: 구조 재구성 (클린 아키텍처, feature-first)
 
-- **상태**: 확정 대기(spec 확정 뒤 시작)
+- **상태**: 확정(2026-10-20), 1단계 완료
 - **날짜**: 2026-10-20
 - **짝 문서**: [spec.md](./spec.md) (요구사항 FR-1~9, 성공 기준 SC-1~9)
 - **작업 의도**: `docs/Intent.md`의 "v2 구조 재구성"
@@ -51,19 +51,20 @@ app/src/
   styles/ tests/ main.tsx
 ```
 
-**300줄 초과 파일 9개 분리안**(공개 export는 유지하고 내부만 나눈다)
+**300줄 초과 파일 10개 분리안**(빈 줄·주석 제외, 공개 export는 유지하고 내부만 나눈다)
 
-| 파일 | 줄 | 나누는 방향 |
+| 파일 | 코드 줄 | 나누는 방향 |
 |---|---|---|
-| `data/local/localBackend.ts` | 471 | 저장소별(projects, experiments, steps, dataItems, templates, deviations, backup) 파일로, 조립은 `localBackend.ts` |
-| `pages/SettingsPage.tsx` | 466 | 섹션 컴포넌트(저장 위치, 백업, 사용 기록, 수행 모드, 예시 데이터, 오류 기록)로 |
-| `data/remote/remoteBackend.ts` | 431 | `modify`·공통, 저장소별, backup으로 (local과 같은 분할) |
-| `components/AnalysisView.tsx` | 384 | 컨트롤, 산점도, 추세, 이상치 목록으로 |
-| `services/insights.ts` | 382 | 빠짐 점검 규칙별(`gaps/*`)로 |
-| `pages/RunPage.tsx` | 381 | 단계 카드, 진행 헤더, 편차 패널로 |
-| `services/analysis.ts` | 373 | 상관, 추세, 이상치로 |
-| `services/stats.ts` | 369 | 기술통계, 회귀, 분산분석, 분포 함수로 |
-| `components/DataGrid.tsx` | 339 | 표 본문, 머리글, 필터로 |
+| `data/local/localBackend.ts` | 438 | 저장소별(projects, experiments, steps, dataItems, templates, deviations, backup) 파일로, 조립은 `localBackend.ts` |
+| `pages/SettingsPage.tsx` | 436 | 섹션 컴포넌트(저장 위치, 백업, 사용 기록, 수행 모드, 예시 데이터, 오류 기록)로 |
+| `app/phase5.test.tsx` | 398 | 시나리오 책임별 시험 파일로 |
+| `tests/contracts/backend.contract.ts` | 397 | 계약 시나리오별 시험 파일로 |
+| `data/remote/remoteBackend.ts` | 391 | `modify`·공통, 저장소별, backup으로 (local과 같은 분할) |
+| `components/AnalysisView.tsx` | 360 | 컨트롤, 산점도, 추세, 이상치 목록으로 |
+| `pages/RunPage.tsx` | 353 | 단계 카드, 진행 헤더, 편차 패널로 |
+| `components/DataGrid.tsx` | 316 | 표 본문, 머리글, 필터로 |
+| `services/insights.ts` | 311 | 빠짐 점검 규칙별(`gaps/*`)로 |
+| `services/phase5.test.ts` | 306 | 서비스 시나리오별 시험 파일로 |
 
 **요구사항 ↔ 파일**
 
@@ -83,7 +84,7 @@ app/src/
 
 | 단계 | 목표 | 바꾸는 파일 | 끝났는지 확인 | 되돌리는 법 |
 |---|---|---|---|---|
-| 1 | 기준선과 규칙 도입(경고 수준) | `.oxlintrc.json`, `src/tests/` 측정 스크립트, `docs/specs/001/baseline.md` | 줄 수·import 위반 목록이 기록됨. `npm run check`·E2E 통과(코드 변경 없음). Q-1 결론 | 커밋 되돌리기 |
+| 1 ✔ | 기준선과 규칙 도입(경고 수준) | `.oxlintrc.json`, `docs/specs/001-구조-재구성/baseline.md` | 2026-10-20 완료. `check` 450/2, E2E 112/13, Q-1 해소 | 커밋 되돌리기 |
 | 2 | 300줄 초과 9개 분리 | 위 9개 파일(+새 파일) | 해당 파일 ≤ 300줄, `npm run check` 통과, 이름 바꾸기·내용 이동만 | 파일별 커밋 되돌리기 |
 | 3 | `domain` 순수화와 `features/*`·`shared`로 이동 | `src/**`(기능 하나씩: trash → templates → search → settings/auth → requirements → data-hub → projects → experiments → home) | 기능 하나 이동할 때마다 `check` 통과, 마지막에 E2E 112개 통과, 최상위 `pages/components/services/hooks` 제거(SC-5) | 기능 단위 커밋 되돌리기 |
 | 4 | `data` 정리, 계약 시험 단일화, 충돌 시험, IA-라우트 시험 | `data/**`, `contract` 시험, `ia-routes.test.ts` | SC-6, SC-7 통과. 서버(v2 Supabase) 계약·RLS 시험은 시험 계정 있을 때만(Q-3) | 커밋 되돌리기 |

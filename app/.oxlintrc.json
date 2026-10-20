@@ -2,7 +2,73 @@
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["react", "typescript", "oxc"],
   "rules": {
+    "max-lines": [
+      "warn",
+      { "max": 300, "skipBlankLines": true, "skipComments": true }
+    ],
     "react/rules-of-hooks": "error",
     "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
+  },
+  "overrides": [
+    {
+      "files": ["src/domain/**/*.ts", "src/domain/**/*.tsx"],
+      "rules": {
+        "no-restricted-imports": [
+          "warn",
+          {
+            "paths": [
+              {
+                "name": "react",
+                "message": "domain은 React에 의존하지 않습니다."
+              },
+              {
+                "name": "react-dom",
+                "message": "domain은 React DOM에 의존하지 않습니다."
+              },
+              {
+                "name": "dexie",
+                "message": "domain은 저장소 구현에 의존하지 않습니다."
+              },
+              {
+                "name": "@supabase/supabase-js",
+                "message": "domain은 저장소 구현에 의존하지 않습니다."
+              }
+            ],
+            "patterns": [
+              {
+                "group": [
+                  "**/data/**",
+                  "**/features/**",
+                  "**/app/**",
+                  "react/*",
+                  "react-dom/*"
+                ],
+                "message": "domain은 UI·저장소·기능 계층에 의존하지 않습니다."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/features/**/*.ts", "src/features/**/*.tsx"],
+      "rules": {
+        "no-restricted-imports": [
+          "warn",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/data/local/**",
+                  "**/data/remote/**",
+                  "**/data/supabase/**"
+                ],
+                "message": "feature는 data 구현 대신 Repository 계약을 사용합니다."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }
