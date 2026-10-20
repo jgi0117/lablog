@@ -51,13 +51,11 @@ test('키보드만으로 새 실험 만들기 → 절차 입력 → 수행 → �
   await expect(page.locator('.badge', { hasText: '완료' })).toBeVisible()
 })
 
-test('키보드만으로 검색해서 결과를 열 수 있다', async ({ page }) => {
+test('키보드만으로 실험 목록에서 검색해 결과를 열 수 있다', async ({ page }) => {
   await seedDemo(page)
-  await page.keyboard.press('Control+K')
-  await expect(page.getByRole('searchbox', { name: '전역 검색' })).toBeFocused()
-  await page.keyboard.type('압축강도')
-  await page.keyboard.press('Enter')
-  await expect(page.getByRole('heading', { name: '검색 결과' })).toBeVisible()
+  await page.goto('/experiments')
+  await page.getByRole('searchbox', { name: '실험 검색' }).focus()
+  await page.keyboard.insertText('배합 #400')
   await tabTo(page, /배합 #\d+, 재령/)
   await page.keyboard.press('Enter')
   await expect(page.getByRole('heading', { name: /배합 #\d+, 재령/ })).toBeVisible()

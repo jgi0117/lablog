@@ -238,10 +238,11 @@ describe('이전 실험 이어받기', () => {
     const user = userEvent.setup()
     const b = await demoBackend()
     open('/experiments/new?project=demo-project-1', b)
-    expect(await screen.findByText(/마지막 실험\(/)).toBeInTheDocument()
-    expect(screen.getByRole('checkbox')).toBeChecked()
+    const preview = await screen.findByRole('note', { name: '이어받기 미리보기' })
+    await waitFor(() => expect(preview).toHaveTextContent(/절차 4개 · 조건 6개/))
+    expect(screen.getByRole('radio', { name: /마지막 실험에서 이어받기/ })).toBeChecked()
     await user.type(screen.getByLabelText('제목 (필수)'), '배합 #1000, 재령 28일')
-    await user.click(screen.getByRole('button', { name: /만들고 절차 입력하기/ }))
+    await user.click(screen.getByRole('button', { name: '실험 만들기' }))
     await screen.findByRole('heading', { name: /#1000/ })
 
     // SM에서 가장 최근에 손댄 실험은 진행 중인 마지막 배합이다.
@@ -278,9 +279,9 @@ describe('이전 실험 이어받기', () => {
     const user = userEvent.setup()
     const b = await demoBackend()
     open('/experiments/new?project=demo-project-1', b)
-    await user.click(await screen.findByRole('checkbox'))
+    await user.click(await screen.findByRole('radio', { name: '빈 실험' }))
     await user.type(screen.getByLabelText('제목 (필수)'), '빈 실험')
-    await user.click(screen.getByRole('button', { name: /만들고 절차 입력하기/ }))
+    await user.click(screen.getByRole('button', { name: '실험 만들기' }))
     await screen.findByRole('heading', { name: /빈 실험/ })
     const made = (await b.experiments.list({ projectId: 'demo-project-1' })).items.find((e) => e.title === '빈 실험')!
     expect(await b.steps.listByExperiment(made.id)).toHaveLength(0)

@@ -42,7 +42,7 @@ test('Journey 6: 고객 요구 입력 → 새 실험에 항목이 미리 만들�
   await page.getByRole('link', { name: '+ 이 프로젝트에 새 실험' }).click()
   await expect(page.getByLabel('제목 (필수)')).toHaveAttribute('placeholder', /컬러 필름 CF-10 #1/)
   await expect(page.getByRole('note')).toContainText('고객 요구 1개(헤이즈)')
-  await page.getByRole('button', { name: /만들고 절차 입력하기/ }).click()
+  await page.getByRole('button', { name: '실험 만들기' }).click()
   await expect(page.getByRole('heading', { name: '컬러 필름 CF-10 #1' })).toBeVisible()
 
   // 4. 조건·결과 탭: 헤이즈 칸이 있고, 값을 넣으면 곧바로 요구 만족으로 바뀐다

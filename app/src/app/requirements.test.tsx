@@ -189,10 +189,10 @@ describe('새 실험: 요구에 맞춘 구성', () => {
     const p = await smallProject(b, [1.4, 0.9])
     open(`/experiments/new?project=${p.id}`, b)
     const title = await screen.findByLabelText('제목 (필수)')
-    await waitFor(() => expect(title).toHaveAttribute('placeholder', '비워 두면 "컬러 필름 #3"로 만듭니다'))
-    expect(screen.getByRole('note')).toHaveTextContent('고객 요구 1개(헤이즈)')
-    await user.click(screen.getByRole('checkbox')) // 이어받기 끄기: 요구 항목만 확인
-    await user.click(screen.getByRole('button', { name: /만들고 절차 입력하기/ }))
+    await waitFor(() => expect(title).toHaveAttribute('placeholder', '비워 두면 “컬러 필름 #3”'))
+    expect(screen.getAllByRole('note').some((note) => note.textContent?.includes('측정 항목 1개'))).toBe(true)
+    await user.click(screen.getByRole('radio', { name: '빈 실험' })) // 이어받기 끄기: 요구 항목만 확인
+    await user.click(screen.getByRole('button', { name: '실험 만들기' }))
     await screen.findByRole('heading', { name: '컬러 필름 #3' })
     const made = (await b.experiments.list({ projectId: p.id })).items.find((x) => x.title === '컬러 필름 #3')!
     const items = await b.dataItems.listByExperiment(made.id)
@@ -206,9 +206,9 @@ describe('새 실험: 요구에 맞춘 구성', () => {
     const prev = await b.experiments.create({ ...exp, projectId: p.id, title: '코팅 #1' })
     await b.dataItems.create({ experimentId: prev.id, kind: 'condition', order: 1, name: '온도', value: '80', unit: '°C' })
     open(`/experiments/new?project=${p.id}`, b)
-    expect(await screen.findByRole('checkbox')).toBeChecked()
+    expect(await screen.findByRole('radio', { name: /마지막 실험에서 이어받기/ })).toBeChecked()
     await user.type(screen.getByLabelText('제목 (필수)'), '코팅 #2')
-    await user.click(screen.getByRole('button', { name: /만들고 절차 입력하기/ }))
+    await user.click(screen.getByRole('button', { name: '실험 만들기' }))
     await screen.findByRole('heading', { name: '코팅 #2' })
     const made = (await b.experiments.list({ projectId: p.id })).items.find((x) => x.title === '코팅 #2')!
     const items = await b.dataItems.listByExperiment(made.id)
@@ -225,7 +225,7 @@ describe('새 실험: 요구에 맞춘 구성', () => {
     const title = await screen.findByLabelText('제목 (필수)')
     expect(title.getAttribute('placeholder')).not.toContain('비워 두면')
     expect(screen.queryByRole('note')).toBeNull()
-    await user.click(screen.getByRole('button', { name: /만들고 절차 입력하기/ }))
+    await user.click(screen.getByRole('button', { name: '실험 만들기' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('제목을 입력하세요')
   })
 })

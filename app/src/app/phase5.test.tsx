@@ -11,7 +11,7 @@ import { lastBackupAt } from '../services/backup'
 import { readErrors } from '../services/errorLog'
 import { createExperiment } from '../services/experimentService'
 import { loadAllBundles } from '../services/projectData'
-import { readUsage } from '../services/usage'
+import { logUsage, readUsage } from '../services/usage'
 
 const opened: LocalBackend[] = []
 let seq = 0
@@ -345,36 +345,27 @@ describe('접근성 보조', () => {
 })
 
 describe('사용 기록 (설정과 KR 측정)', () => {
-  it('검색 후 실험을 열면 걸린 시간이 기록되고 설정에 요약된다', async () => {
+  it('실험 목록 검색은 전용 검색 사용 기록을 만들지 않는다', async () => {
     const user = userEvent.setup()
     const b = make()
     await seedDemo(b)
-    open('/search?q=%EC%95%95%EC%B6%95%EA%B0%95%EB%8F%84', b) // 압축강도
-    await screen.findByText(/건 ·/)
+    open('/experiments?q=%EB%B0%B0%ED%95%A9', b)
+    await screen.findByRole('searchbox', { name: '실험 검색' })
     await user.click((await screen.findAllByRole('link', { name: /배합 #\d+/ }))[0])
     await screen.findByRole('heading', { name: /배합 #\d+, 재령/ })
-    expect(readUsage().map((e) => e.name)).toEqual(expect.arrayContaining(['search', 'open_from_search']))
-
-    cleanup()
-    open('/settings', b)
-    expect(await screen.findByText(/중앙값 \d+(\.\d+)?초 · 10초 안 100%/)).toBeInTheDocument()
+    expect(readUsage().map((e) => e.name)).not.toEqual(expect.arrayContaining(['search', 'open_from_search']))
   })
 
   it('끄면 기록하지 않고, 지우면 없어진다', async () => {
     const user = userEvent.setup()
     const b = make()
-    await seedDemo(b)
-    open('/search?q=%EC%95%95%EC%B6%95%EA%B0%95%EB%8F%84', b)
-    await screen.findByText(/건 ·/)
+    logUsage('search', { ms: 10 })
     expect(readUsage().length).toBeGreaterThan(0)
-    cleanup()
     open('/settings', b)
     await user.click(await screen.findByRole('button', { name: '기록 지우기' }))
     expect(readUsage()).toEqual([])
     await user.click(screen.getByRole('checkbox', { name: '사용 기록 남기기' }))
-    cleanup()
-    open('/search?q=%EC%95%95%EC%B6%95%EA%B0%95%EB%8F%84', b)
-    await screen.findByText(/건 ·/)
+    logUsage('search', { ms: 10 })
     expect(readUsage()).toEqual([])
   })
 

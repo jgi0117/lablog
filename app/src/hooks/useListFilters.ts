@@ -4,6 +4,7 @@ import type { ExperimentFilter, ExperimentSort } from '../data/repositories'
 import type { ExperimentStatus } from '../domain/types'
 
 export interface ListFilters {
+  q: string
   project: string
   tag: string
   status: '' | ExperimentStatus
@@ -12,7 +13,7 @@ export interface ListFilters {
   page: number
 }
 
-export const DEFAULT_FILTERS: ListFilters = { project: '', tag: '', status: '', period: '', sort: 'updated_desc', page: 1 }
+export const DEFAULT_FILTERS: ListFilters = { q: '', project: '', tag: '', status: '', period: '', sort: 'updated_desc', page: 1 }
 export const PAGE_SIZE = 12
 const STORAGE_KEY = 'lablog:list-filters'
 
@@ -27,6 +28,7 @@ export function parseFilters(params: URLSearchParams): ListFilters {
   const sort = params.get('sort') ?? ''
   const page = Number(params.get('page') ?? '1')
   return {
+    q: params.get('q') ?? '',
     project: params.get('project') ?? '',
     tag: params.get('tag') ?? '',
     status: STATUSES.includes(status) ? (status as ListFilters['status']) : '',
@@ -39,6 +41,7 @@ export function parseFilters(params: URLSearchParams): ListFilters {
 /** 기본값과 다른 것만 주소에 담는다. */
 export function toParams(f: ListFilters): URLSearchParams {
   const p = new URLSearchParams()
+  if (f.q) p.set('q', f.q)
   if (f.project) p.set('project', f.project)
   if (f.tag) p.set('tag', f.tag)
   if (f.status) p.set('status', f.status)
@@ -49,7 +52,7 @@ export function toParams(f: ListFilters): URLSearchParams {
 }
 
 export function isFiltered(f: ListFilters): boolean {
-  return !!(f.project || f.tag || f.status || f.period)
+  return !!(f.q || f.project || f.tag || f.status || f.period)
 }
 
 /** 화면 필터를 저장소 조회 조건으로 바꾼다. 기간은 마지막 수정 시각 기준. */

@@ -20,7 +20,7 @@ const PAGES = [
   '/data/analysis',
   '/data/export',
   '/experiments',
-  '/search?q=' + encodeURIComponent('압축강도'),
+  '/experiments?q=' + encodeURIComponent('배합 #400'),
   '/settings',
   '/experiments/concrete-827',
   '/experiments/concrete-827/steps',

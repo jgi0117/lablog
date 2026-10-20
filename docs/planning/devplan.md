@@ -1,5 +1,7 @@
 # 개발 계획 (Dev Plan): 실험 기록 서비스
 
+> **v1 구현 기록**: 이 문서의 Phase 0~9는 완료된 기존 개발 순서를 보존한다. 현재 v2 우선순위와 다음 작업은 `docs/planning/prd.md`, `docs/Intent.md`, `docs/specs/001-구조-재구성/`, `docs/specs/002-핵심-실험-경험/`을 따른다. 독립 검색·템플릿은 v2 핵심 범위에서 제외됐다.
+
 **문제**: 실험 기록이 여러 곳에 흩어져 찾기도 재현하기도 어려운 문제
 **기준 문서**: prd.md(범위·KR), IA.md(화면·URL), uj.md(흐름·오류), 문제정의-솔루션.md
 **범위**: 0단계 준비 → 최종 테스트·파일럿까지 + 이후 Supabase 전환 계획
@@ -181,7 +183,7 @@ e2e/               Playwright 시나리오 (journeys)
 ### 2.2 작업
 - [ ] Vite+React+TS 프로젝트 생성, ESLint/Prettier/strict 설정
 - [ ] 라우팅: `/`, `/experiments`, `/experiments/new`, `/experiments/:id`, `/experiments/:id/steps`, `/experiments/:id/data`, `/search`, `/settings`
-- [ ] 앱 레이아웃: 상단(전역 검색창, + 새 실험, 설정), 메인 메뉴(홈·실험·검색·템플릿)
+- [ ] 앱 레이아웃(v1 기록): 상단(전역 검색창, + 새 실험, 설정), 메인 메뉴(홈·실험·검색·템플릿). v2 목표는 전역 검색 제거, 홈·프로젝트·실험·데이터 4개 메뉴다.
 - [ ] 도메인 타입과 규칙 구현 + 단위 테스트(진행률, 상태 전이)
 - [ ] Dexie 스키마 v1, `LocalRepository` 구현 (Project, Experiment, Step, DataItem)
 - [ ] Repository **계약 테스트** 작성 후 LocalRepository 통과
@@ -415,7 +417,7 @@ e2e/               Playwright 시나리오 (journeys)
 - [ ] 가드레일: 기록 입력 시간이 기존보다 늘지 않았는지 비교 측정
 
 ### 6.7 출시 판정 (Go / No-go)
-- Go 조건: 치명 버그 0, 데이터 유실 시나리오 0, E2E 전체 통과, 사용성 테스트에서 과제 성공률 80% 이상, 검색 10초 기준 충족
+- Go 조건(v1): 치명 버그 0, 데이터 유실 시나리오 0, E2E 전체 통과, 사용성 테스트에서 과제 성공률 80% 이상, 검색 10초 기준 충족. v2는 등록 30초·최근 10건 파악 10초를 spec 002에서 확인한다.
 - No-go 시: 원인 분류 후 Phase 3~5 해당 부분으로 복귀
 
 자세한 결과와 남은 일: `docs/phase6/00-완료-기록.md` (자동 검증 완료, 사용성 테스트·실기기 확인 남음)

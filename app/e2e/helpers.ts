@@ -12,8 +12,11 @@ export async function seedDemo(page: Page) {
 export async function createExperiment(page: Page, title: string, steps: string[], tags = '') {
   await page.goto('/experiments/new')
   await page.getByLabel('제목 (필수)').fill(title)
-  if (tags) await page.getByLabel('태그').fill(tags)
-  await page.getByRole('button', { name: /만들고 절차 입력하기/ }).click()
+  if (tags) {
+    await page.getByText('목적·태그 추가').click()
+    await page.getByLabel('태그').fill(tags)
+  }
+  await page.getByRole('button', { name: '실험 만들기' }).click()
   await expect(page.getByRole('heading', { name: title })).toBeVisible()
   if (steps.length) {
     await page.getByText('여러 단계 붙여넣기').click()

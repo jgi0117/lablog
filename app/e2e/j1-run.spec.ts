@@ -35,11 +35,11 @@ test('Journey 1: 새 실험 → 절차 → 수행 → 되돌리기 → 완료, �
   await expect(page.getByRole('heading', { name: 'HC-300 하드코팅 조건 탐색 #11' })).toBeVisible()
   await expect(page.locator('.badge', { hasText: '완료' })).toBeVisible()
 
-  // 새로고침 뒤에도 남는다 (IndexedDB). 단계 메모는 검색 색인에서도 찾아진다.
+  // 새로고침 뒤에도 남고 실험 목록의 제목 검색으로 다시 찾을 수 있다.
   await page.reload()
   await expect(page.locator('.badge', { hasText: '완료' })).toBeVisible()
   await expect(page.getByText(/3 \/ 3 단계 완료/)).toBeVisible()
-  await page.goto('/search?q=' + encodeURIComponent('고형분'))
+  await page.goto('/experiments?q=' + encodeURIComponent('HC-300 하드코팅'))
   await expect(page.getByRole('link', { name: /HC-300 하드코팅 조건 탐색 #11/ })).toBeVisible()
 })
 

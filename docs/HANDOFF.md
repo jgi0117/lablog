@@ -3,7 +3,7 @@
 다른 에이전트(Codex 등)로 이어서 작업하기 위한 현재 상태.
 
 ## 한 줄 상태
-spec/plan 001 확정 후 1단계(기준선·린터 경고 규칙) 완료. 다음은 2단계(300줄 초과 파일 10개 분리).
+구조 재구성 1단계는 완료. spec/plan 002를 확정해 “편리한 실험 등록·한눈에 보는 기록”을 구현했고 Chromium 핵심 회귀까지 통과했다. Firefox/WebKit·접근성 전체 재검증과 직접 QA가 남았다.
 
 ## 저장소·환경
 - GitHub `jgi0117/lablog`(PUBLIC), 브랜치 `v2`. 로컬 폴더 `…\DAY2\lablog-v2`(clone). `main`은 lablog 운영(Vercel `lablog-kgt8`이 배포).
@@ -20,9 +20,12 @@ spec/plan 001 확정 후 1단계(기준선·린터 경고 규칙) 완료. 다음
 | `docs/phase9/erd.md` | v2 메모 추가(표 구조 변경 없음) |
 | `GLOSSARY.md`, `docs/adr/0001~0003` | 완료 |
 | `docs/Intent.md` | v2 구조 재구성 항목 추가 |
-| `docs/specs/001-구조-재구성/{spec,plan}.md` | 사용자 확정, 1단계 완료 |
+| `docs/specs/001-구조-재구성/{spec,plan}.md` | 1단계 완료, spec 002 확정 전까지 후속 단계 보류 |
 | `docs/specs/001-구조-재구성/baseline.md` | 1단계 기준선·위반 목록 기록 완료 |
-| 남음 | `docs/summary/*`·`docs/planning/devplan.md`(lablog 시점 그대로, 갱신 필요), v2용 QA 시트 |
+| `docs/specs/002-핵심-실험-경험/spec.md` | 확정 |
+| `docs/specs/002-핵심-실험-경험/plan.md` | 확정, 구현 진행(교차 브라우저 QA 대기) |
+| `docs/qa/QA-002-핵심-실험-경험.md` | Chromium 중간 결과 기록, 최종 QA 대기 |
+| 남음 | 접근성 전체 재실행, Firefox/WebKit 전체 회귀, 직접 30초/10초 QA, 001 후속 재계획 |
 
 ## 사용자가 해야 하는 것 (에이전트가 못 함)
 1. Supabase 대시보드: `lablog-v2`에 운영자 계정 만들기(Auto Confirm), Confirm email 끄기, 가입 닫기, Site URL/Redirect URLs 등록.
@@ -34,10 +37,11 @@ spec/plan 001 확정 후 1단계(기준선·린터 경고 규칙) 완료. 다음
 - QA 13번(두 탭 충돌 안내 없음) 원인 미확인 → v2 계약 시험으로 재현.
 - lablog `main`의 unpushed 문서 커밋이 `v2`에 포함되어 공개됨(저장소 PUBLIC).
 
-## 다음 작업 (plan 2단계)
-1. 300줄 초과 제품 코드 7개와 시험 3개를 책임별로 분리한다.
-2. 파일 단위로 `npm run check`, 단계 끝에 E2E를 실행한다.
-3. 공개 동작·시험 시나리오는 바꾸지 않고 커밋·push(`v2`).
+## 다음 작업
+1. `npm run check` 재확인 후 Chromium 전체 접근성 검사를 완료한다.
+2. Firefox/WebKit 전체 Playwright를 브라우저별로 실행하고 환경 실패와 코드 실패를 분리한다.
+3. 직접 30초 등록·10초 파악 QA 후 QA-002를 완료 처리한다.
+4. 001의 2~5단계를 줄어든 제품 범위에 맞춰 재계획한다.
 
 ## 에이전트 간 차이
 - Claude의 전역 스킬(`~/.claude/skills`: grill-with-docs, write-spec-plan 등)은 Codex에서 자동으로 안 보인다. 같은 절차는 `.claude/skills/write-spec-plan/`(저장소 안)의 SKILL.md와 템플릿을 읽고 따라 하면 된다.

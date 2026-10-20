@@ -66,10 +66,10 @@ test('Journey 3: 프로젝트의 마지막 실험을 이어받아 새 실험을 
   await seedDemo(page)
   await page.goto('/projects/demo-project-1')
   await page.getByRole('link', { name: '+ 이 프로젝트에 새 실험' }).click()
-  await expect(page.getByText(/마지막 실험\(/)).toBeVisible()
-  await expect(page.getByRole('checkbox')).toBeChecked()
+  await expect(page.getByRole('radio', { name: /마지막 실험에서 이어받기/ })).toBeChecked()
+  await expect(page.getByRole('note', { name: '이어받기 미리보기' })).toContainText('결과 값·단계 체크·메모는 비워서 시작합니다.')
   await page.getByLabel('제목 (필수)').fill('배합 #1000, 재령 28일')
-  await page.getByRole('button', { name: /만들고 절차 입력하기/ }).click()
+  await page.getByRole('button', { name: '실험 만들기' }).click()
   await expect(page.getByRole('heading', { name: /#1000/ })).toBeVisible()
   await expect(page.getByRole('link', { name: /^절차 \(4\)/ })).toBeVisible() // 절차 4단계를 이어받음
 

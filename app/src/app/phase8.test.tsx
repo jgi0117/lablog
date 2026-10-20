@@ -116,14 +116,18 @@ describe('템플릿 서비스', () => {
 })
 
 describe('복제 (Journey 3 Step 1, E1)', () => {
-  it('개요의 버튼 한 번으로 복제하고, 결과·체크·메모는 비워진 채 새 실험이 열린다', async () => {
+  it('개요에서 원본을 고른 등록 화면으로 이동하고, 결과·체크·메모를 비워 생성한다', async () => {
     const user = userEvent.setup()
     const b = make()
-    const e = await finishedExperiment(b)
+    const original = await finishedExperiment(b)
+    const project = await b.projects.create({ name: '코팅 프로젝트', description: '' })
+    const e = await b.experiments.update(original.id, { projectId: project.id })
     open(`/experiments/${e.id}`, b)
-    await user.click(await screen.findByRole('button', { name: '복제하여 새 실험' }))
-
-    expect(await screen.findByText(/결과 값과 체크·메모는 비워졌습니다/)).toBeInTheDocument()
+    await user.click(await screen.findByRole('link', { name: '이 실험에서 새로 시작' }))
+    const preview = await screen.findByRole('note', { name: '이어받기 미리보기' })
+    await waitFor(() => expect(preview).toHaveTextContent('결과 값·단계 체크·메모는 비워서 시작합니다.'))
+    await user.type(screen.getByLabelText('제목 (필수)'), '이어받은 실험')
+    await user.click(screen.getByRole('button', { name: '실험 만들기' }))
     const all = (await b.experiments.list()).items
     const copy = all.find((x) => x.sourceExperimentId === e.id) as Experiment
     expect(copy).toBeTruthy()
@@ -139,56 +143,29 @@ describe('복제 (Journey 3 Step 1, E1)', () => {
   })
 })
 
-describe('템플릿 화면', () => {
-  it('개요에서 템플릿으로 저장하면 목록에 나타나고, 거기서 새 실험을 시작한다', async () => {
-    const user = userEvent.setup()
+describe('템플릿 UI 제거와 데이터 보존', () => {
+  it('이전 템플릿 주소는 실험 목록으로 안내하고 데이터는 남긴다', async () => {
+    const b = make()
+    await b.templates.create({ name: '보존할 템플릿', steps: [{ content: '하나' }], defaultConditions: [], resultItems: [] })
+    open('/templates', b)
+    expect(await screen.findByText('템플릿 대신 기존 실험 이어받기를 사용하세요.')).toBeInTheDocument()
+    expect(await b.templates.list()).toHaveLength(1)
+  })
+
+  it('실험 개요에는 템플릿 생성 대신 기존 실험 이어받기 진입점이 있다', async () => {
     const b = make()
     const e = await finishedExperiment(b)
     open(`/experiments/${e.id}`, b)
-    await user.click(await screen.findByRole('button', { name: '템플릿으로 저장' }))
-    await user.type(screen.getByLabelText('템플릿 이름'), '표준 도포·건조')
-    await user.click(screen.getByRole('button', { name: '저장' }))
-    await waitFor(async () => expect(await b.templates.list()).toHaveLength(1))
-
-    await user.click(await screen.findByRole('button', { name: '템플릿 보기' }))
-    expect(await screen.findByRole('heading', { name: '표준 도포·건조' })).toBeInTheDocument()
-    expect(screen.getByText('절차 2개 · 조건 1개 · 결과 항목 1개')).toBeInTheDocument()
-
-    await user.click(screen.getByRole('link', { name: '이 템플릿으로 새 실험' }))
-    await user.type(await screen.findByLabelText('제목 (필수)'), '템플릿 첫 실험')
-    expect(screen.getByLabelText('템플릿에서 시작')).toHaveValue((await b.templates.list())[0].id)
-    await user.click(screen.getByRole('button', { name: /만들고 절차 입력하기/ }))
-    expect(await screen.findByLabelText('2번째 단계')).toHaveValue('80°C 건조')
-    const made = (await b.experiments.list()).items.find((x) => x.title === '템플릿 첫 실험') as Experiment
-    expect((await b.dataItems.listByExperiment(made.id)).map((i) => i.name)).toEqual(['건조 온도', '연필경도'])
+    expect(await screen.findByRole('link', { name: '이 실험에서 새로 시작' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '템플릿으로 저장' })).toBeNull()
   })
 
-  it('템플릿을 편집해 저장하고, 삭제하면 사라진다', async () => {
-    const user = userEvent.setup()
+  it('새 실험 화면은 저장된 템플릿을 노출하지 않는다', async () => {
     const b = make()
-    const t = await b.templates.create({ name: '고칠 템플릿', steps: [{ content: '하나' }], defaultConditions: [], resultItems: [] })
-    open('/templates', b)
-    const card = (await screen.findByRole('heading', { name: '고칠 템플릿' })).closest('li') as HTMLElement
-    await user.click(within(card).getByText('편집'))
-    const steps = within(card).getByLabelText(/절차/)
-    await user.clear(steps)
-    await user.type(steps, '가{Enter}나')
-    await user.click(within(card).getByRole('button', { name: '저장' }))
-    await waitFor(async () => expect((await b.templates.get(t.id)).steps).toEqual([{ content: '가' }, { content: '나' }]))
-
-    await user.click(within(card).getByRole('button', { name: '템플릿 삭제' }))
-    await user.click(within(card).getByRole('button', { name: '정말 삭제' }))
-    await waitFor(async () => expect(await b.templates.list()).toEqual([]))
-    expect(await screen.findByText('저장한 템플릿이 없습니다')).toBeInTheDocument()
-  })
-
-  it('이름 없이는 새 템플릿을 만들 수 없다', async () => {
-    const user = userEvent.setup()
-    const b = make()
-    open('/templates', b)
-    await user.click(await screen.findByRole('button', { name: '+ 새 템플릿' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('이름')
-    expect(await b.templates.list()).toEqual([])
+    await b.templates.create({ name: '숨긴 템플릿', steps: [{ content: '하나' }], defaultConditions: [], resultItems: [] })
+    open('/experiments/new', b)
+    await screen.findByRole('heading', { name: '새 실험' })
+    expect(screen.queryByLabelText('템플릿에서 시작')).toBeNull()
   })
 })
 

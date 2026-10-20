@@ -296,7 +296,7 @@ describe('프로필(표시 이름)과 비밀번호', () => {
     const backend = createLocalBackend('lablog-owner')
     openApp('/experiments/new', backend, account({ displayName: '김연구' }))
     await user.type(await screen.findByLabelText(/제목/), '담당자 시험')
-    await user.click(screen.getByRole('button', { name: /만들고 절차 입력하기/ }))
+    await user.click(screen.getByRole('button', { name: '실험 만들기' }))
     await vi.waitFor(async () => {
       const list = await backend.experiments.list({})
       expect(list.items.find((e) => e.title === '담당자 시험')?.owner).toBe('김연구')

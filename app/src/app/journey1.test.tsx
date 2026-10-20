@@ -32,7 +32,7 @@ describe('Journey 1: 새 실험 수행', () => {
     await user.click(await screen.findByRole('link', { name: '+ 새 실험' }, { timeout: 3000 }))
     await user.type(await screen.findByLabelText('제목 (필수)'), 'HC-300 하드코팅 조건 탐색 #11')
     await user.type(screen.getByLabelText('태그'), '하드코팅, UV경화')
-    await user.click(screen.getByRole('button', { name: /만들고 절차 입력하기/ }))
+    await user.click(screen.getByRole('button', { name: '실험 만들기' }))
 
     // 2. 절차 붙여넣기
     expect(await screen.findByRole('heading', { name: /HC-300 하드코팅 조건 탐색 #11/ })).toBeInTheDocument()

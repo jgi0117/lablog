@@ -46,11 +46,12 @@ describe('라우팅과 앱 셸', () => {
     expect(screen.getByRole('link', { name: '실험' })).toHaveClass('is-active')
   })
 
-  it('전역 검색은 검색어를 주소에 담아 이동한다', async () => {
+  it('메인 메뉴는 핵심 네 항목만 보여 준다', async () => {
     setup('/')
-    await screen.findByText('첫 실험을 만들어 보세요')
-    await userEvent.type(screen.getByRole('searchbox', { name: '전역 검색' }), '80°C{Enter}')
-    expect(await screen.findByRole('heading', { name: /^검색/ })).toBeInTheDocument()
+    const menu = await screen.findByRole('navigation', { name: '메인 메뉴' })
+    expect(menu.querySelectorAll('a')).toHaveLength(4)
+    expect(screen.queryByRole('link', { name: '검색' })).toBeNull()
+    expect(screen.queryByRole('link', { name: '템플릿' })).toBeNull()
   })
 
   it('실험 상세에는 개요/절차/조건·결과 탭과 수행 모드 버튼이 있다', async () => {

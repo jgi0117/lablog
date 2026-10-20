@@ -90,7 +90,25 @@
 .recent-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.project-next {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.project-next p,
+.recent-row__values {
+  margin: var(--space-xs) 0 0;
+}
+
+.recent-row__meta {
+  display: flex;
+  align-items: center;
   gap: var(--space-md);
 }
 

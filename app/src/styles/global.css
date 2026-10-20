@@ -2,7 +2,6 @@
 @import './screens.css';
 @import './projects.css';
 @import './stability.css';
-@import './templates.css';
 @import './insights.css';
 
 *,
@@ -182,37 +181,11 @@ a {
   padding: var(--space-xl) var(--space-2xl);
 }
 
-.topbar__search {
+.topbar__context {
   flex: 1;
-  min-width: 220px;
-  max-width: 520px;
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  min-height: var(--touch-comfort);
-  padding: 0 var(--space-lg);
-  background: var(--paper-field);
-  border: var(--line) solid var(--rule);
-  border-radius: var(--radius);
-}
-
-.topbar__search input {
-  flex: 1;
-  min-width: 0;
-  border: 0;
-  background: none;
-  outline: none;
-}
-
-.topbar__search:focus-within {
-  outline: 3px solid var(--verdigris);
-  outline-offset: 2px;
-}
-
-.topbar__search kbd {
-  font-family: var(--font-mono);
-  font-size: var(--text-caption);
   color: var(--ink-3);
+  font-family: var(--font-display);
+  font-size: var(--text-heading);
 }
 
 .shell__main {

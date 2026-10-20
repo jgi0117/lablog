@@ -5,7 +5,7 @@ import { bulkBackupJson, createExperiment, importBackup } from './helpers'
 
 // 성능은 브라우저마다 달라서 세 브라우저 모두에서 같은 기준으로 잰다. 기준은 넉넉하게 두고 실제 값을 기록한다.
 
-test('실험 500건·단계 4,000개에서 홈, 목록, 검색이 2초 안에 뜬다', async ({ page }, testInfo) => {
+test('실험 500건·단계 4,000개에서 홈과 목록 검색이 2초 안에 뜬다', async ({ page }, testInfo) => {
   // Playwright의 Windows용 WebKit은 IndexedDB 쓰기가 매우 느려(훅 없는 bulkPut도 실험 100건에 14초) 대량 가져오기가 끝나지 않는다.
   // 앱의 문제가 아니라 시험 환경의 한계라서, 이 측정은 Chromium·Firefox와 CI(Linux)에서 하고 WebKit은 실제 기기 확인으로 넘긴다.
   test.skip(
@@ -31,19 +31,17 @@ test('실험 500건·단계 4,000개에서 홈, 목록, 검색이 2초 안에 �
   numbers['실험 목록(ms)'] = Date.now() - t
   expect(numbers['실험 목록(ms)']).toBeLessThan(2000)
 
-  // 검색: 처음(색인 만들기)과 이후
+  // 목록의 제목·목적 검색
   t = Date.now()
-  await page.goto('/search?q=' + encodeURIComponent('시약 250'))
-  await expect(page.getByText(/\d+건 · /)).toBeVisible()
+  await page.goto('/experiments?q=' + encodeURIComponent('대량 실험 0250'))
+  await expect(page.getByRole('link', { name: /대량 실험 0250/ })).toBeVisible()
   numbers['검색 처음 열기(ms)'] = Date.now() - t
   expect(numbers['검색 처음 열기(ms)']).toBeLessThan(2000)
 
-  const box = page.getByRole('searchbox', { name: '전역 검색' })
-  await box.fill('시약 251')
+  const box = page.getByRole('searchbox', { name: '실험 검색' })
+  await box.fill('대량 실험 0251')
   t = Date.now()
-  await box.press('Enter')
-  await expect(page.getByText('검색어: 시약 251')).toBeVisible()
-  await expect(page.getByText(/\d+건 · /)).toBeVisible()
+  await expect(page.getByRole('link', { name: /대량 실험 0251/ })).toBeVisible()
   numbers['검색 이후(ms)'] = Date.now() - t
   expect(numbers['검색 이후(ms)']).toBeLessThan(2000)
 

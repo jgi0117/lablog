@@ -33,7 +33,7 @@ describe('실험 만들기', () => {
   it('제목이 비어 있으면 안내하고 만들지 않는다', async () => {
     const backend = backendWith()
     open('/experiments/new', backend)
-    await userEvent.click(await screen.findByRole('button', { name: /만들고 절차 입력하기/ }))
+    await userEvent.click(await screen.findByRole('button', { name: '실험 만들기' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('제목을 입력하세요')
     expect((await backend.experiments.list()).total).toBe(0)
   })
@@ -45,7 +45,7 @@ describe('실험 만들기', () => {
     await user.type(await screen.findByLabelText('제목 (필수)'), '프로젝트 포함 실험')
     await user.selectOptions(screen.getByLabelText('프로젝트'), '+ 새 프로젝트…')
     await user.type(screen.getByLabelText('새 프로젝트 이름'), 'PROJECT-Z')
-    await user.click(screen.getByRole('button', { name: /만들고 절차 입력하기/ }))
+    await user.click(screen.getByRole('button', { name: '실험 만들기' }))
     await waitFor(async () => {
       const [exp] = (await backend.experiments.list()).items
       const [project] = await backend.projects.list()

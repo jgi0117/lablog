@@ -127,49 +127,33 @@ describe('실험 목록', () => {
   })
 })
 
-describe('통합 검색', () => {
-  it('제목·단계·조건에서 찾고 일치한 부분을 강조한다', async () => {
+describe('실험 목록 검색', () => {
+  it('제목·목적 키워드를 주소에 유지하며 목록을 좁힌다', async () => {
     const backend = backendWith()
     await seedSample(backend)
-    open(`/search?q=${encodeURIComponent('80°C')}`, backend)
-    expect(await screen.findByText(/4건 ·/)).toBeInTheDocument()
-    expect(screen.getAllByText('80°C', { selector: 'mark' }).length).toBeGreaterThan(0)
-    expect(screen.getByRole('button', { name: /^조건 4/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^결과 0/ })).toBeInTheDocument()
-    expect(screen.getByRole('searchbox', { name: '전역 검색' })).toHaveValue('80°C')
+    open(`/experiments?q=${encodeURIComponent('HC-300')}`, backend)
+    expect(await screen.findByRole('searchbox', { name: '실험 검색' })).toHaveValue('HC-300')
+    await waitFor(() => expect(cards()).toHaveLength(2))
   })
 
-  it('띄어쓰기를 무시하고 찾는다', async () => {
-    const backend = backendWith()
-    await seedSample(backend)
-    open(`/search?q=${encodeURIComponent('HC-300하드코팅')}`, backend)
-    expect(await screen.findByText(/2건 ·/)).toBeInTheDocument()
-  })
-
-  it('일치 위치 칩으로 좁힌다', async () => {
+  it('검색어와 프로젝트 필터를 함께 적용한다', async () => {
     const user = userEvent.setup()
     const backend = backendWith()
     await seedSample(backend)
-    open(`/search?q=${encodeURIComponent('80°C')}`, backend)
-    await screen.findByText(/4건 ·/)
-    await user.click(screen.getByRole('button', { name: /^결과 0/ }))
-    expect(await screen.findByText('일치하는 실험이 없습니다')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '필터 해제' }))
-    expect(await screen.findByText(/4건 ·/)).toBeInTheDocument()
+    open('/experiments', backend)
+    await user.type(await screen.findByRole('searchbox', { name: '실험 검색' }), '조건 탐색')
+    await waitFor(() => expect(cards()).toHaveLength(2))
+    const project = (await backend.projects.list()).find((row) => row.name === 'AG 방현 필름')!
+    await user.selectOptions(screen.getByLabelText('프로젝트'), project.id)
+    expect(await screen.findByText('조건에 맞는 실험이 없습니다')).toBeInTheDocument()
   })
 
-  it('결과가 없으면 비슷한 낱말을 제안한다 (E4)', async () => {
+  it('이전 검색 주소는 실험 목록으로 이동하고 안내한다', async () => {
     const backend = backendWith()
     await seedSample(backend)
-    open(`/search?q=${encodeURIComponent('하드코딩')}`, backend)
-    expect(await screen.findByText('일치하는 실험이 없습니다')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '하드코팅' })).toHaveAttribute('href', `/search?q=${encodeURIComponent('하드코팅')}`)
-    expect(screen.getByRole('link', { name: '새 실험 만들기' })).toBeInTheDocument()
-  })
-
-  it('검색어가 없으면 안내만 보여 준다', async () => {
-    open('/search', backendWith())
-    expect(await screen.findByText('찾을 내용을 입력하세요')).toBeInTheDocument()
+    open(`/search?q=${encodeURIComponent('HC-300')}`, backend)
+    expect(await screen.findByText('검색은 실험 목록의 제목·목적 검색으로 이동했습니다.')).toBeInTheDocument()
+    expect(screen.getByRole('searchbox', { name: '실험 검색' })).toHaveValue('HC-300')
   })
 })
 
@@ -222,22 +206,22 @@ describe('휴지통 (E5)', () => {
 })
 
 describe('Journey 2: 지난 실험 찾기', () => {
-  it('홈에서 검색해 필터로 좁히고 실험을 열기까지 이어진다', async () => {
+  it('실험 목록에서 검색해 필터로 좁히고 실험을 열기까지 이어진다', async () => {
     const user = userEvent.setup()
     const backend = backendWith()
     await seedSample(backend)
-    open('/', backend)
-    await screen.findByRole('searchbox', { name: '전역 검색' })
+    open('/experiments', backend)
+    await screen.findByRole('searchbox', { name: '실험 검색' })
 
     const started = performance.now()
-    await user.type(screen.getByRole('searchbox', { name: '전역 검색' }), '80°C{Enter}')
-    await screen.findByText(/4건 ·/)
+    await user.type(screen.getByRole('searchbox', { name: '실험 검색' }), 'HC-300')
+    await waitFor(() => expect(cards()).toHaveLength(2))
 
     // 프로젝트로 좁힌다
     const projects = await backend.projects.list()
     const a = projects.find((p) => p.name === '하드코팅 필름 HC-300')
     await user.selectOptions(screen.getByLabelText('프로젝트'), a?.id ?? '')
-    await screen.findByText(/2건 ·/)
+    await waitFor(() => expect(cards()).toHaveLength(2))
 
     // 결과를 눌러 실험을 연다
     await user.click(screen.getByRole('link', { name: /HC-300 하드코팅 조건 탐색 #4/ }))

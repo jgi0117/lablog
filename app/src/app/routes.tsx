@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Link, Route, Routes } from 'react-router-dom'
+import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { EmptyState } from '../components/EmptyState'
 import { DataPage } from '../pages/DataPage'
@@ -10,9 +10,7 @@ import { HomePage } from '../pages/HomePage'
 import { NewExperimentPage } from '../pages/NewExperimentPage'
 import { OverviewPage } from '../pages/OverviewPage'
 import { RunPage } from '../pages/RunPage'
-import { SearchPage } from '../pages/SearchPage'
 import { StepsPage } from '../pages/StepsPage'
-import { TemplatesPage } from '../pages/TemplatesPage'
 import { TrashPage } from '../pages/TrashPage'
 
 // 처음 화면에 필요 없는 무거운 화면(차트, 설정)은 열 때 불러온다.
@@ -37,6 +35,13 @@ function NotFound() {
       </Link>
     </EmptyState>
   )
+}
+
+function LegacyRouteRedirect({ from }: { from: 'search' | 'templates' }) {
+  const location = useLocation()
+  const params = new URLSearchParams(from === 'search' ? location.search : '')
+  params.set('moved', from)
+  return <Navigate replace to={`/experiments?${params.toString()}`} />
 }
 
 /**
@@ -70,8 +75,8 @@ export function AppRoutes() {
             <Route path="analysis" element={<DataAnalysisPage />} />
             <Route path="export" element={<DataExportPage />} />
           </Route>
-          <Route path="search" element={<SearchPage />} />
-          <Route path="templates" element={<TemplatesPage />} />
+          <Route path="search" element={<LegacyRouteRedirect from="search" />} />
+          <Route path="templates" element={<LegacyRouteRedirect from="templates" />} />
           <Route path="trash" element={<TrashPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="migrate" element={<MigrationPage />} />
