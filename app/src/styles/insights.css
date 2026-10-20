@@ -609,3 +609,25 @@
   font-size: 14px;
   color: var(--ink-2);
 }
+
+/* ----- 로그인과 클라우드 이전 ----- */
+.login {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: var(--space-xl) var(--space-lg);
+}
+
+.login__card {
+  width: min(440px, 100%);
+}
+
+.login__alt {
+  margin: var(--space-md) 0 0;
+}
+
+.banner__actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}

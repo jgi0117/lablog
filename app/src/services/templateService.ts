@@ -23,6 +23,7 @@ export async function saveAsTemplate(db: DataBackend, name: string, steps: Step[
 export interface FromTemplateInput {
   title: string
   purpose?: string
+  owner?: string
   tags?: string[]
   projectId?: ID | null
 }
@@ -35,7 +36,7 @@ export async function startFromTemplate(db: DataBackend, template: Template, inp
     projectId: input.projectId ?? null,
     title,
     purpose: input.purpose?.trim() ?? '',
-    owner: '',
+    owner: input.owner?.trim() ?? '',
     tags: input.tags ?? [],
     status: 'ready',
     startedAt: null,

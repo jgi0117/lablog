@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from
 import { useBackupExport } from '../hooks/useBackupExport'
 import { ErrorBoundary } from './ErrorBoundary'
 import { ExternalChangeBanner } from './ExternalChangeBanner'
+import { MigrationBanner } from './MigrationBanner'
 import { StorageBanner } from './StorageBanner'
 
 const NAV = [
@@ -93,6 +94,7 @@ export function AppShell() {
           </Link>
         </header>
         <StorageBanner />
+        <MigrationBanner />
         <ExternalChangeBanner />
         <main id="main" ref={main} tabIndex={-1} className="shell__main">
           <ErrorBoundary resetKey={location.pathname} onExport={() => void exportNow()}>

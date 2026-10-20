@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useAccount } from '../app/AccountContext'
 import { useBackend } from '../app/BackendContext'
 import { EmptyState } from '../components/EmptyState'
 import { ExperimentCard } from '../components/ExperimentCard'
@@ -79,6 +80,7 @@ export function HomePage() {
   const toast = useToast()
   const { state, reload } = useAllBundles()
   const exportNow = useBackupExport()
+  const account = useAccount()
   // 백업 기록(마지막 백업, 미루기)이 바뀌면 다시 계산하려고 쓰는 숫자
   const [backupTick, setBackupTick] = useState(0)
 
@@ -123,7 +125,7 @@ export function HomePage() {
   }, [view, gapCounts])
 
   const reminder = useMemo(() => {
-    if (!state) return null
+    if (!state || account) return null // 서버 저장소에서는 "이 브라우저에만 저장" 백업 알림을 하지 않는다
     const { newestChange, oldestCreated } = dataTimestamps(state.bundles)
     return backupReminder({
       now: new Date(),
@@ -135,7 +137,7 @@ export function HomePage() {
     })
     // backupTick이 바뀌면 localStorage의 백업 기록을 다시 읽는다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, backupTick])
+  }, [state, backupTick, account])
 
   const onSeed = async () => {
     const n = await seedDemo(backend)

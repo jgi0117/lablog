@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useAccount } from '../app/AccountContext'
 import { useBackend } from '../app/BackendContext'
 import { ValidationError, createExperiment } from '../services/experimentService'
 import { applyRequirementItems } from '../services/requirementItems'
@@ -13,6 +14,7 @@ const NEW_PROJECT = '__new__'
 /** 제목만 필수. 만들면 준비 상태로 절차 편집 화면으로 이동한다. */
 export function NewExperimentPage() {
   const backend = useBackend()
+  const owner = useAccount()?.displayName ?? ''
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const [projects, setProjects] = useState<Project[]>([])
@@ -94,7 +96,7 @@ export function NewExperimentPage() {
       }
       const template = templates.find((t) => t.id === templateId)
       if (template) {
-        const exp = await startFromTemplate(backend, template, { title: finalTitle, purpose, tags: parseTags(tags), projectId: pid })
+        const exp = await startFromTemplate(backend, template, { title: finalTitle, purpose, owner, tags: parseTags(tags), projectId: pid })
         await applyRequirementItems(backend, exp.id, requirements)
         logUsage('template_start')
         navigate(`/experiments/${exp.id}/steps`)
@@ -103,13 +105,13 @@ export function NewExperimentPage() {
       if (fromLast && last && pid === last.projectId) {
         // 마지막 실험의 절차와 조건을 이어받는다. 결과는 항목만 남기고 값은 비워 빠뜨리지 않게 한다.
         const copy = await backend.experiments.duplicate(last.id, { title: finalTitle })
-        const patch = { ...(purpose.trim() ? { purpose: purpose.trim() } : {}), ...(tags.trim() ? { tags: parseTags(tags) } : {}) }
+        const patch = { ...(owner ? { owner } : {}), ...(purpose.trim() ? { purpose: purpose.trim() } : {}), ...(tags.trim() ? { tags: parseTags(tags) } : {}) }
         if (Object.keys(patch).length > 0) await backend.experiments.update(copy.id, patch)
         await applyRequirementItems(backend, copy.id, requirements)
         navigate(`/experiments/${copy.id}/steps`)
         return
       }
-      const exp = await createExperiment(backend, { title: finalTitle, purpose, tags: parseTags(tags), projectId: pid })
+      const exp = await createExperiment(backend, { title: finalTitle, purpose, owner, tags: parseTags(tags), projectId: pid })
       await applyRequirementItems(backend, exp.id, requirements)
       navigate(`/experiments/${exp.id}/steps`)
     } catch (err) {

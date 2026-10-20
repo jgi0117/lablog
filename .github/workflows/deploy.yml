@@ -39,6 +39,10 @@ jobs:
         run: npm run build
         env:
           VITE_BASE: /${{ github.event.repository.name }}/
+          # 저장소 Variables에 넣으면 서버 저장소(Supabase)로 빌드된다. 없으면 로컬 저장소 빌드(docs/phase9/02-설정-가이드.md 7번).
+          VITE_DATA_BACKEND: ${{ vars.VITE_DATA_BACKEND || 'local' }}
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
       # 새로고침이나 직접 주소로 들어와도 앱이 열리도록, 없는 경로는 index.html로 보낸다.
       - run: cp dist/index.html dist/404.html
       - uses: actions/upload-pages-artifact@v3

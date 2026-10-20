@@ -2,11 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Link, Route, Routes } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { EmptyState } from '../components/EmptyState'
-import { DataAnalysisPage } from '../pages/DataAnalysisPage'
-import { DataExportPage } from '../pages/DataExportPage'
-import { DataLayout } from '../pages/DataLayout'
 import { DataPage } from '../pages/DataPage'
-import { DataTablePage } from '../pages/DataTablePage'
 import { DeviationsPage } from '../pages/DeviationsPage'
 import { ExperimentsPage } from '../pages/ExperimentsPage'
 import { ExperimentLayout } from '../pages/ExperimentLayout'
@@ -26,6 +22,11 @@ const ProjectOverviewPage = lazy(() => import('../pages/ProjectOverviewPage').th
 const ProjectRequirementsPage = lazy(() => import('../pages/ProjectRequirementsPage').then((m) => ({ default: m.ProjectRequirementsPage })))
 const ProjectDataPage = lazy(() => import('../pages/ProjectDataPage').then((m) => ({ default: m.ProjectDataPage })))
 const ProjectAnalysisPage = lazy(() => import('../pages/ProjectAnalysisPage').then((m) => ({ default: m.ProjectAnalysisPage })))
+const DataLayout = lazy(() => import('../pages/DataLayout').then((m) => ({ default: m.DataLayout })))
+const DataTablePage = lazy(() => import('../pages/DataTablePage').then((m) => ({ default: m.DataTablePage })))
+const DataAnalysisPage = lazy(() => import('../pages/DataAnalysisPage').then((m) => ({ default: m.DataAnalysisPage })))
+const DataExportPage = lazy(() => import('../pages/DataExportPage').then((m) => ({ default: m.DataExportPage })))
+const MigrationPage = lazy(() => import('../pages/MigrationPage').then((m) => ({ default: m.MigrationPage })))
 const SettingsPage = lazy(() => import('../pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
 
 function NotFound() {
@@ -73,6 +74,7 @@ export function AppRoutes() {
           <Route path="templates" element={<TemplatesPage />} />
           <Route path="trash" element={<TrashPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="migrate" element={<MigrationPage />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

@@ -14,9 +14,11 @@
     "format": "prettier --write src",
     "check": "npm run lint && npm run typecheck && npm run test",
     "e2e": "playwright test",
-    "e2e:report": "playwright show-report"
+    "e2e:report": "playwright show-report",
+    "test:supabase": "vitest run src/data/supabase/supabase.integration.test.ts src/data/supabase/supabase.rls.test.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
     "dexie": "^4.4.6",
     "minisearch": "^7.2.0",
     "react": "^19.2.8",

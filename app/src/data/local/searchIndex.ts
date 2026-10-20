@@ -38,44 +38,24 @@ function groupBy<T extends { experimentId: ID }>(rows: T[]): Map<ID, T[]> {
   return m
 }
 
+/** 실험들의 단계와 조건·결과를 불러오는 방법. many가 true면 전부 읽는 편이 빠르다는 뜻이다. */
+export interface DocLoader {
+  load(ids: ID[], many: boolean): Promise<{ steps: Step[]; items: DataItem[] }>
+}
+
 /**
- * 검색용 메모리 색인. 실험마다 글자를 한 번만 정규화해 두고, 데이터가 바뀐 실험만 다시 만든다.
- * 변경 감지는 Dexie 훅으로 한다(생성·수정·삭제 모두). clear나 통째 가져오기는 invalidateAll을 부른다.
+ * 검색 색인의 핵심. 어디서 읽어 오는지(IndexedDB, 서버)와 상관없이 같은 방식으로 찾는다.
+ * 실험마다 글자를 한 번만 정규화해 두고, markStale된 실험만 다시 만든다.
  */
-export function createSearchIndex(db: LablogDB) {
+export function createSearchEngine(loader: DocLoader) {
   const docs = new Map<ID, Doc>()
   const stale = new Set<ID>()
-
-  db.experiments.hook('creating', (id) => {
-    stale.add(id as ID)
-  })
-  db.experiments.hook('updating', (_mods, id) => {
-    stale.add(id as ID)
-  })
-  db.experiments.hook('deleting', (id) => {
-    stale.add(id as ID)
-  })
-  for (const table of [db.steps, db.dataItems] as const) {
-    table.hook('creating', (_id, obj) => {
-      stale.add(obj.experimentId)
-    })
-    table.hook('updating', (_mods, _id, obj) => {
-      stale.add(obj.experimentId)
-    })
-    table.hook('deleting', (_id, obj) => {
-      stale.add(obj.experimentId)
-    })
-  }
 
   async function docsFor(exps: Experiment[]): Promise<Doc[]> {
     const need = exps.filter((e) => !docs.has(e.id) || stale.has(e.id))
     if (need.length > 0) {
       const ids = need.map((e) => e.id)
-      const many = ids.length > 50
-      const [steps, items] = await Promise.all([
-        many ? db.steps.toArray() : db.steps.where('experimentId').anyOf(ids).toArray(),
-        many ? db.dataItems.toArray() : db.dataItems.where('experimentId').anyOf(ids).toArray(),
-      ])
+      const { steps, items } = await loader.load(ids, ids.length > 50)
       const stepsBy = groupBy(steps)
       const itemsBy = groupBy(items)
       for (const e of need) {
@@ -87,6 +67,10 @@ export function createSearchIndex(db: LablogDB) {
   }
 
   return {
+    markStale(id: ID) {
+      stale.add(id)
+    },
+
     invalidateAll() {
       docs.clear()
       stale.clear()
@@ -137,4 +121,43 @@ export function createSearchIndex(db: LablogDB) {
       return hits.sort((a, b) => b.score - a.score || (updated.get(b.experimentId) ?? '').localeCompare(updated.get(a.experimentId) ?? ''))
     },
   }
+}
+
+/**
+ * 검색용 메모리 색인. 실험마다 글자를 한 번만 정규화해 두고, 데이터가 바뀐 실험만 다시 만든다.
+ * 변경 감지는 Dexie 훅으로 한다(생성·수정·삭제 모두). clear나 통째 가져오기는 invalidateAll을 부른다.
+ */
+export function createSearchIndex(db: LablogDB) {
+  const engine = createSearchEngine({
+    load: async (ids, many) => {
+      const [steps, items] = await Promise.all([
+        many ? db.steps.toArray() : db.steps.where('experimentId').anyOf(ids).toArray(),
+        many ? db.dataItems.toArray() : db.dataItems.where('experimentId').anyOf(ids).toArray(),
+      ])
+      return { steps, items }
+    },
+  })
+
+  db.experiments.hook('creating', (id) => {
+    engine.markStale(id as ID)
+  })
+  db.experiments.hook('updating', (_mods, id) => {
+    engine.markStale(id as ID)
+  })
+  db.experiments.hook('deleting', (id) => {
+    engine.markStale(id as ID)
+  })
+  for (const table of [db.steps, db.dataItems] as const) {
+    table.hook('creating', (_id, obj) => {
+      engine.markStale(obj.experimentId)
+    })
+    table.hook('updating', (_mods, _id, obj) => {
+      engine.markStale(obj.experimentId)
+    })
+    table.hook('deleting', (_id, obj) => {
+      engine.markStale(obj.experimentId)
+    })
+  }
+
+  return { invalidateAll: engine.invalidateAll, search: engine.search }
 }

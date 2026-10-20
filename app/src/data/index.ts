@@ -14,5 +14,10 @@ export function getBackend(): DataBackend {
     backend = createLocalBackend()
     return backend
   }
-  throw new Error(`지원하지 않는 저장소입니다: ${kind} (supabase는 Phase 9에서 추가합니다)`)
+  throw new Error('서버 저장소(supabase)는 로그인한 뒤 SupabaseGate가 만듭니다. 이 함수는 로컬 저장소용입니다.')
+}
+
+/** 어느 저장소를 쓰는지. 'supabase'는 VITE_DATA_BACKEND=supabase일 때이고, 로그인 뒤 SupabaseGate가 서버 저장소를 만든다. */
+export function backendKind(): 'local' | 'supabase' {
+  return (import.meta.env.VITE_DATA_BACKEND ?? 'local') === 'supabase' ? 'supabase' : 'local'
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useBackend } from '../app/BackendContext'
+import { useAccount, type Account } from '../app/AccountContext'
 import { useStorageStatus } from '../app/StorageStatus'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { ProgressBar } from '../components/ProgressBar'
@@ -36,6 +37,62 @@ interface Pending {
 }
 
 /** 설정: 백업(내보내기·가져오기), 저장 상태, 사용 기록, 오류 기록, 앱 정보. */
+function ProfileForm({ account }: { account: Account }) {
+  const [name, setName] = useState(account.displayName)
+  const [password, setPassword] = useState('')
+  const [msg, setMsg] = useState('')
+  const [err, setErr] = useState('')
+  const run = async (fn: () => Promise<void>, ok: string) => {
+    setMsg('')
+    setErr('')
+    try {
+      await fn()
+      setMsg(ok)
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e))
+    }
+  }
+  return (
+    <div className="stack">
+      <div className="field">
+        <label htmlFor="profile-name">표시 이름</label>
+        <input id="profile-name" className="input" maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
+        <p className="muted">새 실험의 담당자 칸에 미리 들어갑니다.</p>
+        <button type="button" className="btn" onClick={() => void run(() => account.setDisplayName(name), '표시 이름을 저장했습니다.')}>
+          이름 저장
+        </button>
+      </div>
+      <div className="field">
+        <label htmlFor="profile-password">새 비밀번호</label>
+        <input id="profile-password" className="input" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <button
+          type="button"
+          className="btn"
+          disabled={password.length < 6}
+          onClick={() =>
+            void run(async () => {
+              await account.updatePassword(password)
+              setPassword('')
+            }, '비밀번호를 바꿨습니다.')
+          }
+        >
+          비밀번호 변경
+        </button>
+      </div>
+      {err && (
+        <p className="field__error" role="alert">
+          {err}
+        </p>
+      )}
+      {msg && (
+        <p className="req-hint" role="status">
+          {msg}
+        </p>
+      )}
+    </div>
+  )
+}
+
 export function SettingsPage() {
   const backend = useBackend()
   const toast = useToast()
@@ -52,6 +109,7 @@ export function SettingsPage() {
   const [currentCount, setCurrentCount] = useState<number | null>(null)
   const [usage, setUsage] = useState<UsageSummary>(() => summarizeUsage(readUsage()))
   const [errors, setErrors] = useState<ErrorEntry[]>(() => readErrors())
+  const account = useAccount()
   const [example, setExample] = useState<{ projects: number; experiments: number } | null>(null)
   const [confirmExample, setConfirmExample] = useState(false)
 
@@ -312,6 +370,33 @@ export function SettingsPage() {
           >
             오류 기록 지우기
           </button>
+        )}
+      </section>
+
+      <section className="panel" aria-labelledby="where-title">
+        <h2 id="where-title" className="panel__title">
+          저장 위치
+        </h2>
+        {account ? (
+          <>
+            <p>
+              <strong>서버 저장소(Supabase)</strong>에 저장합니다. 로그인한 계정: <b>{account.email}</b>
+            </p>
+            <p className="muted">같은 계정으로 들어오면 어느 기기에서든 같은 기록이 보입니다. 이 계정의 데이터는 다른 사용자에게 보이지 않습니다.</p>
+            <ProfileForm key={account.displayName} account={account} />
+            <div className="panel__actions">
+              <Link to="/migrate" className="btn">
+                이 브라우저의 로컬 데이터를 클라우드로 이전
+              </Link>
+              <button type="button" className="btn btn--quiet" onClick={() => void account.signOut()}>
+                로그아웃
+              </button>
+            </div>
+          </>
+        ) : (
+          <p>
+            지금은 <strong>이 브라우저(로컬 저장소)</strong>에만 저장합니다. 여러 기기에서 쓰거나 백업 부담을 줄이려면 서버 저장소(Supabase)로 옮길 수 있습니다. 순서는 <code>docs/phase9/02-설정-가이드.md</code>에 있습니다.
+          </p>
         )}
       </section>
 
