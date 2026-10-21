@@ -69,3 +69,11 @@
 - `npm run check` Pass: 전체 450개 중 448 pass / 2 skip. 기존 시험은 import 경로만 바꿨다.
 - `npm run build` Pass: 메인 청크 311.10 kB(gzip 97.19 kB)로 기준 약 321 kB보다 작다.
 - E2E Pass: 전체 기준 112 pass / 13 skip. Chromium·first-run 43 pass, Firefox 39 pass / 2 skip, WebKit 28 pass / 11 skip이며 WebKit 병렬 타임아웃 2건은 단독 재실행 2/2 pass로 확인했다.
+
+## 4단계 결과 (2026-10-21)
+
+- 공용 Repository 계약 시험을 `src/data/repositories` 한곳으로 옮기고 local·memory remote·Supabase 어댑터가 같은 계약을 참조하게 했다.
+- local과 memory remote에서 서로 다른 두 클라이언트가 같은 행의 같은 version을 수정할 때 늦은 쓰기가 `ConflictError`가 되는 계약 시험을 추가했다.
+- `src/tests/ia-routes.test.ts`에서 IA Site Map 19개 주소와 `routes.tsx` 공개 주소 목록의 일치를 고정했다.
+- `npm run check` Pass: 전체 453개 중 451 pass / 2 skip.
+- 진짜 Supabase 계약·RLS는 `SUPABASE_TEST_*` 시험 계정 환경 변수가 없어 No Run이다. 메모리 서버 계약으로 저장소 동작은 확인했다.

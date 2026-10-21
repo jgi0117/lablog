@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ConflictError, NotFoundError, type DataBackend } from '../../data/repositories'
+import { ConflictError, NotFoundError, type DataBackend } from './index'
 import type { Experiment, NewEntity } from '../../domain/types'
 
 export function runExtendedBackendContract(

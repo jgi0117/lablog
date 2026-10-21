@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { describe, it } from 'vitest'
-import { runBackendContract } from '../../tests/contracts/backend.contract'
+import { runBackendContract } from '../repositories/backend.contract'
 import { createRemoteBackend } from '../remote/remoteBackend'
 import { createSupabaseStore } from './supabaseStore'
 

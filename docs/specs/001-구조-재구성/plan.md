@@ -1,6 +1,6 @@
 # Plan: 구조 재구성 (클린 아키텍처, feature-first)
 
-- **상태**: 진행(3/5단계 완료)
+- **상태**: 진행(4/5단계 완료)
 - **날짜**: 2026-10-20
 - **짝 문서**: [spec.md](./spec.md) (요구사항 FR-1~9, 성공 기준 SC-1~9)
 - **작업 의도**: `docs/Intent.md`의 "v2 구조 재구성"
@@ -89,7 +89,7 @@ app/src/
 | 1 ✔ | 기준선과 규칙 도입(경고 수준) | `.oxlintrc.json`, `docs/specs/001-구조-재구성/baseline.md` | 2026-10-20 완료. `check` 450/2, E2E 112/13, Q-1 해소 | 커밋 되돌리기 |
 | 2 ✔ | 300줄 초과 10개 분리 | 위 10개 파일(+새 파일) | 2026-10-21 완료. max-lines 위반 0건, `npm run check` 448 pass/2 skip | 파일별 커밋 되돌리기 |
 | 3 ✔ | `domain` 순수화와 `features/*`·`shared`로 이동 | `src/**`(기능 하나씩: trash → settings/auth → requirements → data-hub → projects → experiments(목록 검색 포함) → home) | 2026-10-21 완료. `check` 448/2, E2E 112/13, 최상위 `pages/components/services/hooks` 제거, 메인 청크 311.10 kB | 기능 단위 커밋 되돌리기 |
-| 4 | `data` 정리, 계약 시험 단일화, 충돌 시험, IA-라우트 시험 | `data/**`, `contract` 시험, `ia-routes.test.ts` | SC-6, SC-7 통과. 서버(v2 Supabase) 계약·RLS 시험은 시험 계정 있을 때만(Q-3) | 커밋 되돌리기 |
+| 4 ✔ | `data` 정리, 계약 시험 단일화, 충돌 시험, IA-라우트 시험 | `data/**`, `contract` 시험, `ia-routes.test.ts` | 2026-10-21 완료. 공용 계약·두 클라이언트 충돌·IA 라우트 통과, `check` 451/2. 진짜 Supabase는 시험 계정 미설정으로 No Run | 커밋 되돌리기 |
 | 5 | 규칙 격상과 마무리 | `.oxlintrc.json`(경고 → 오류), 문서 점검, 가져오기 검증 | SC-1~SC-9 모두 확인(못 돌린 것은 No Run과 이유), PRD KR3~KR5 | 규칙만 경고로 되돌림 |
 
 - 위험이 큰 단계는 3(이동 범위가 크다). 기능 하나 단위로 나눠서 오류가 나면 바로 그 기능만 되돌린다.

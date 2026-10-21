@@ -3,7 +3,7 @@ import {
   ConflictError,
   NotFoundError,
   type DataBackend,
-} from '../../data/repositories'
+} from './index'
 import type { Experiment, NewEntity } from '../../domain/types'
 import { runExtendedBackendContract } from './backend.extended.contract'
 
@@ -12,7 +12,7 @@ import { runExtendedBackendContract } from './backend.extended.contract'
  * Phase 2: LocalRepository(IndexedDB)로 실행. Phase 9: SupabaseRepository로 다시 실행.
  * 사용법은 `runBackendContract('local', async () => createLocalBackend())` 한 줄이다.
  */
-export function runBackendContract(name: string, create: () => Promise<DataBackend>) {
+export function runBackendContract(name: string, create: () => Promise<DataBackend>, createPeer?: () => Promise<DataBackend>) {
   describe(`DataBackend 계약: ${name}`, () => {
     let db: DataBackend
 
@@ -63,6 +63,16 @@ export function runBackendContract(name: string, create: () => Promise<DataBacke
           ConflictError,
         )
       })
+
+      if (createPeer) {
+        it('두 클라이언트가 같은 행을 수정하면 늦은 쓰기에 ConflictError', async () => {
+          const peer = await createPeer()
+          const made = await db.experiments.create(exp())
+          const stale = await peer.experiments.get(made.id)
+          await db.experiments.update(made.id, { title: 'A가 먼저 수정' }, made.version)
+          await expect(peer.experiments.update(made.id, { title: 'B가 늦게 수정' }, stale.version)).rejects.toBeInstanceOf(ConflictError)
+        })
+      }
 
       it('없는 id는 NotFoundError', async () => {
         await expect(db.experiments.get('missing')).rejects.toBeInstanceOf(NotFoundError)

@@ -13,6 +13,29 @@ import { RunPage } from '../features/experiments/pages/RunPage'
 import { StepsPage } from '../features/experiments/pages/StepsPage'
 import { TrashPage } from '../features/trash/pages/TrashPage'
 
+/** docs/planning/IA.md Site Map의 공개 주소 목록. */
+export const APP_ROUTE_PATHS = [
+  '/',
+  '/projects',
+  '/projects/:id',
+  '/projects/:id/requirements',
+  '/projects/:id/data',
+  '/projects/:id/analysis',
+  '/experiments',
+  '/experiments/new',
+  '/experiments/:id',
+  '/experiments/:id/steps',
+  '/experiments/:id/run',
+  '/experiments/:id/data',
+  '/experiments/:id/deviations',
+  '/data',
+  '/data/analysis',
+  '/data/export',
+  '/trash',
+  '/migrate',
+  '/settings',
+] as const
+
 // 처음 화면에 필요 없는 무거운 화면(차트, 설정)은 열 때 불러온다.
 const ProjectsPage = lazy(() => import('../features/projects/pages/ProjectsPage').then((m) => ({ default: m.ProjectsPage })))
 const ProjectLayout = lazy(() => import('../features/projects/pages/ProjectLayout').then((m) => ({ default: m.ProjectLayout })))
