@@ -7,8 +7,8 @@ import { createLocalBackend, type LocalBackend } from '../data/local/localBacken
 import csv from '../data/concrete/concrete.csv?raw'
 import { DEMO_ROWS, parseConcreteCsv } from '../data/concreteDemo'
 import { seedDemo } from '../data/seed'
-import { describeCorrelation } from '../pages/ProjectAnalysisPage'
-import { createExperiment } from '../services/experimentService'
+import { describeCorrelation } from '../features/projects/pages/ProjectAnalysisPage'
+import { createExperiment } from '../features/experiments/application/experimentService'
 
 const opened: LocalBackend[] = []
 let seq = 0

@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react'
 import { BackendProvider } from './app/BackendContext'
 import { AppRoutes } from './app/routes'
-import { StorageStatusProvider } from './app/StorageStatus'
-import { ErrorBoundary } from './components/ErrorBoundary'
-import { ToastProvider } from './components/Toast'
+import { StorageStatusProvider } from './features/settings/components/StorageStatus'
+import { ErrorBoundary } from './shared/ui/ErrorBoundary'
+import { ToastProvider } from './shared/ui/Toast'
 import type { DataBackend } from './data/repositories'
-import { useBackupExport } from './hooks/useBackupExport'
+import { useBackupExport } from './features/settings/hooks/useBackupExport'
 
 /** 앱 전체를 감싸는 마지막 안전망. 화면 하나가 아니라 셸 자체가 깨졌을 때를 위한 것이다. */
 function AppBoundary({ children }: { children: ReactNode }) {

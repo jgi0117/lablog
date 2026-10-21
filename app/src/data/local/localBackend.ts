@@ -3,7 +3,7 @@ import { createSearchIndex } from './searchIndex'
 import { createLocalSupportingRepositories } from './supportingRepositories'
 import { createProjectRepository } from './projectRepository'
 import { guard, makeEntity, nowIso } from './util'
-import { createChangeBus } from '../../services/changeBus'
+import { createChangeBus } from '../../shared/lib/changeBus'
 import {
   ConflictError,
   NotFoundError,

@@ -6,9 +6,9 @@ import App from '../App'
 import { createLocalBackend, type LocalBackend } from '../data/local/localBackend'
 import { seedDemo } from '../data/seed'
 import type { Requirement } from '../domain/types'
-import { buildMatrix } from '../services/analysis'
-import { projectStatus } from '../services/requirements'
-import { loadProjectBundles } from '../services/projectData'
+import { buildMatrix } from '../domain/analysis/analysis'
+import { projectStatus } from '../domain/analysis/requirements'
+import { loadProjectBundles } from '../shared/application/projectData'
 
 const opened: LocalBackend[] = []
 let seq = 0

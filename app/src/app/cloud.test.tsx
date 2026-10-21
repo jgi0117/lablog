@@ -8,8 +8,8 @@ import { createMemoryStore } from '../data/remote/memoryStore'
 import { createRemoteBackend } from '../data/remote/remoteBackend'
 import type { DataBackend } from '../data/repositories'
 import { looksLikeServiceRoleKey, readSupabaseConfig } from '../data/supabase/client'
-import { AccountContext, type Account } from './AccountContext'
-import { LoginScreen, describeAuthError } from './LoginScreen'
+import { AccountContext, type Account } from '../features/auth/AccountContext'
+import { LoginScreen, describeAuthError } from '../features/auth/LoginScreen'
 
 beforeEach(async () => {
   localStorage.clear()

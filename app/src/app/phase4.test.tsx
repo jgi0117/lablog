@@ -6,8 +6,8 @@ import App from '../App'
 import { createLocalBackend, type LocalBackend } from '../data/local/localBackend'
 import { seedBulk, seedSample } from '../data/seed'
 import { BACKUP_SCHEMA_VERSION, NotFoundError, type BackupFile } from '../data/repositories'
-import { createExperiment } from '../services/experimentService'
-import { parseFilters, toExperimentFilter, toParams } from '../hooks/useListFilters'
+import { createExperiment } from '../features/experiments/application/experimentService'
+import { parseFilters, toExperimentFilter, toParams } from '../features/experiments/hooks/useListFilters'
 
 const opened: LocalBackend[] = []
 let seq = 0

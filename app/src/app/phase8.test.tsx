@@ -6,7 +6,7 @@ import App from '../App'
 import { createLocalBackend, type LocalBackend } from '../data/local/localBackend'
 import { seedDemo } from '../data/seed'
 import type { Experiment } from '../domain/types'
-import { parseBackup } from '../services/backup'
+import { parseBackup } from '../features/settings/application/backup'
 import {
   conditionsToText,
   parseConditionLines,
@@ -15,7 +15,7 @@ import {
   resultsToText,
   saveAsTemplate,
   startFromTemplate,
-} from '../services/templateService'
+} from '../features/experiments/application/templateService'
 
 const opened: LocalBackend[] = []
 let seq = 0

@@ -3,11 +3,11 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { backendKind, getBackend } from './data'
-import { seedFirstRun } from './services/firstRun'
+import { seedFirstRun } from './features/settings/application/firstRun'
 import './styles/global.css'
 
 // 서버 저장소를 쓸 때만 불러와서, 로컬 저장소 사용자는 Supabase 코드를 받지 않는다.
-const SupabaseGate = lazy(() => import('./app/SupabaseGate').then((m) => ({ default: m.SupabaseGate })))
+const SupabaseGate = lazy(() => import('./features/auth/SupabaseGate').then((m) => ({ default: m.SupabaseGate })))
 
 /**
  * 처음 여는 브라우저에서 데이터가 없으면 예시 데이터를 한 번 넣고 시작한다(첫 화면이 비어 보이지 않게).

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import App from '../App'
 import { createLocalBackend, type LocalBackend } from '../data/local/localBackend'
 import { seedSample } from '../data/seed'
-import { createExperiment } from '../services/experimentService'
+import { createExperiment } from '../features/experiments/application/experimentService'
 
 const opened: LocalBackend[] = []
 let seq = 0

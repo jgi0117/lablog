@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it } from 'vitest'
 import App from '../App'
 import { createLocalBackend, type LocalBackend } from '../data/local/localBackend'
-import { appendSteps, createExperiment } from '../services/experimentService'
+import { appendSteps, createExperiment } from '../features/experiments/application/experimentService'
 
 const opened: LocalBackend[] = []
 let seq = 0

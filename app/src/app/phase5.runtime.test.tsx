@@ -3,14 +3,14 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '../App'
-import { ErrorBoundary } from '../components/ErrorBoundary'
+import { ErrorBoundary } from '../shared/ui/ErrorBoundary'
 import { createLocalBackend, type LocalBackend } from '../data/local/localBackend'
 import { seedDemo } from '../data/seed'
 import { type DataBackend } from '../data/repositories'
-import { readErrors } from '../services/errorLog'
-import { createExperiment } from '../services/experimentService'
-import { loadAllBundles } from '../services/projectData'
-import { logUsage, readUsage } from '../services/usage'
+import { readErrors } from '../features/settings/application/errorLog'
+import { createExperiment } from '../features/experiments/application/experimentService'
+import { loadAllBundles } from '../shared/application/projectData'
+import { logUsage, readUsage } from '../features/settings/application/usage'
 
 const opened: LocalBackend[] = []
 let seq = 0
@@ -199,7 +199,7 @@ describe('사용 기록 (설정과 KR 측정)', () => {
 describe('오류 기록 (설정)', () => {
   it('기록된 오류를 보여 주고 지울 수 있다', async () => {
     const user = userEvent.setup()
-    const { logError } = await import('../services/errorLog')
+    const { logError } = await import('../features/settings/application/errorLog')
     logError('test', new Error('예전에 난 오류'))
     open('/settings', make())
     expect(await screen.findByText('예전에 난 오류')).toBeInTheDocument()

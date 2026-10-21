@@ -6,10 +6,10 @@ import App from '../App'
 import { createLocalBackend, type LocalBackend } from '../data/local/localBackend'
 import { seedDemo } from '../data/seed'
 import { StorageError, type DataBackend } from '../data/repositories'
-import { lastBackupAt } from '../services/backup'
-import { readErrors } from '../services/errorLog'
-import { createExperiment } from '../services/experimentService'
-import { readUsage } from '../services/usage'
+import { lastBackupAt } from '../features/settings/application/backup'
+import { readErrors } from '../features/settings/application/errorLog'
+import { createExperiment } from '../features/experiments/application/experimentService'
+import { readUsage } from '../features/settings/application/usage'
 
 const opened: LocalBackend[] = []
 let seq = 0

@@ -61,3 +61,11 @@
 - oxlint `max-lines` 경고는 10건에서 0건이 됐다. 새 파일을 포함해 빈 줄·주석 제외 300줄 초과 파일이 없다.
 - `npm run check` Pass: 전체 450개 중 448 pass / 2 skip. 시험 단언은 바꾸지 않고 파일만 시나리오별로 나눴다.
 - 사용자 화면·라우트 변경이 없는 구조 분리 단계라 전체 E2E는 3단계 완료 뒤 기준선 112 pass / 13 skip으로 재검증한다.
+
+## 3단계 결과 (2026-10-21)
+
+- 최상위 `pages`, `components`, `services`, `hooks`를 제거하고 `features/*`, `domain`, `shared`, `app`으로 이동했다.
+- `domain` 제품 코드는 `data`, `features`, `app`, React를 import하지 않는다. 저장소를 사용하는 요구 항목 생성은 `features/experiments/application`으로 옮겼다.
+- `npm run check` Pass: 전체 450개 중 448 pass / 2 skip. 기존 시험은 import 경로만 바꿨다.
+- `npm run build` Pass: 메인 청크 311.10 kB(gzip 97.19 kB)로 기준 약 321 kB보다 작다.
+- E2E Pass: 전체 기준 112 pass / 13 skip. Chromium·first-run 43 pass, Firefox 39 pass / 2 skip, WebKit 28 pass / 11 skip이며 WebKit 병렬 타임아웃 2건은 단독 재실행 2/2 pass로 확인했다.

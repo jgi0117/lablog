@@ -1,31 +1,31 @@
 import { lazy, Suspense } from 'react'
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { AppShell } from '../components/AppShell'
-import { EmptyState } from '../components/EmptyState'
-import { DataPage } from '../pages/DataPage'
-import { DeviationsPage } from '../pages/DeviationsPage'
-import { ExperimentsPage } from '../pages/ExperimentsPage'
-import { ExperimentLayout } from '../pages/ExperimentLayout'
-import { HomePage } from '../pages/HomePage'
-import { NewExperimentPage } from '../pages/NewExperimentPage'
-import { OverviewPage } from '../pages/OverviewPage'
-import { RunPage } from '../pages/RunPage'
-import { StepsPage } from '../pages/StepsPage'
-import { TrashPage } from '../pages/TrashPage'
+import { AppShell } from './AppShell'
+import { EmptyState } from '../shared/ui/EmptyState'
+import { DataPage } from '../features/data-hub/pages/DataPage'
+import { DeviationsPage } from '../features/experiments/pages/DeviationsPage'
+import { ExperimentsPage } from '../features/experiments/pages/ExperimentsPage'
+import { ExperimentLayout } from '../features/experiments/pages/ExperimentLayout'
+import { HomePage } from '../features/home/pages/HomePage'
+import { NewExperimentPage } from '../features/experiments/pages/NewExperimentPage'
+import { OverviewPage } from '../features/experiments/pages/OverviewPage'
+import { RunPage } from '../features/experiments/pages/RunPage'
+import { StepsPage } from '../features/experiments/pages/StepsPage'
+import { TrashPage } from '../features/trash/pages/TrashPage'
 
 // 처음 화면에 필요 없는 무거운 화면(차트, 설정)은 열 때 불러온다.
-const ProjectsPage = lazy(() => import('../pages/ProjectsPage').then((m) => ({ default: m.ProjectsPage })))
-const ProjectLayout = lazy(() => import('../pages/ProjectLayout').then((m) => ({ default: m.ProjectLayout })))
-const ProjectOverviewPage = lazy(() => import('../pages/ProjectOverviewPage').then((m) => ({ default: m.ProjectOverviewPage })))
-const ProjectRequirementsPage = lazy(() => import('../pages/ProjectRequirementsPage').then((m) => ({ default: m.ProjectRequirementsPage })))
-const ProjectDataPage = lazy(() => import('../pages/ProjectDataPage').then((m) => ({ default: m.ProjectDataPage })))
-const ProjectAnalysisPage = lazy(() => import('../pages/ProjectAnalysisPage').then((m) => ({ default: m.ProjectAnalysisPage })))
-const DataLayout = lazy(() => import('../pages/DataLayout').then((m) => ({ default: m.DataLayout })))
-const DataTablePage = lazy(() => import('../pages/DataTablePage').then((m) => ({ default: m.DataTablePage })))
-const DataAnalysisPage = lazy(() => import('../pages/DataAnalysisPage').then((m) => ({ default: m.DataAnalysisPage })))
-const DataExportPage = lazy(() => import('../pages/DataExportPage').then((m) => ({ default: m.DataExportPage })))
-const MigrationPage = lazy(() => import('../pages/MigrationPage').then((m) => ({ default: m.MigrationPage })))
-const SettingsPage = lazy(() => import('../pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
+const ProjectsPage = lazy(() => import('../features/projects/pages/ProjectsPage').then((m) => ({ default: m.ProjectsPage })))
+const ProjectLayout = lazy(() => import('../features/projects/pages/ProjectLayout').then((m) => ({ default: m.ProjectLayout })))
+const ProjectOverviewPage = lazy(() => import('../features/projects/pages/ProjectOverviewPage').then((m) => ({ default: m.ProjectOverviewPage })))
+const ProjectRequirementsPage = lazy(() => import('../features/requirements/pages/ProjectRequirementsPage').then((m) => ({ default: m.ProjectRequirementsPage })))
+const ProjectDataPage = lazy(() => import('../features/projects/pages/ProjectDataPage').then((m) => ({ default: m.ProjectDataPage })))
+const ProjectAnalysisPage = lazy(() => import('../features/projects/pages/ProjectAnalysisPage').then((m) => ({ default: m.ProjectAnalysisPage })))
+const DataLayout = lazy(() => import('../features/data-hub/pages/DataLayout').then((m) => ({ default: m.DataLayout })))
+const DataTablePage = lazy(() => import('../features/data-hub/pages/DataTablePage').then((m) => ({ default: m.DataTablePage })))
+const DataAnalysisPage = lazy(() => import('../features/data-hub/pages/DataAnalysisPage').then((m) => ({ default: m.DataAnalysisPage })))
+const DataExportPage = lazy(() => import('../features/data-hub/pages/DataExportPage').then((m) => ({ default: m.DataExportPage })))
+const MigrationPage = lazy(() => import('../features/settings/pages/MigrationPage').then((m) => ({ default: m.MigrationPage })))
+const SettingsPage = lazy(() => import('../features/settings/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
 
 function NotFound() {
   return (
