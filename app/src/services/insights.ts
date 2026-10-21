@@ -1,5 +1,5 @@
 import type { Requirement } from '../domain/types'
-import { normalizeName, type Cell, type Column, type Matrix, type MatrixRow } from './analysis'
+import { type Cell, type Column, type Matrix, type MatrixRow } from './analysis'
 import { eulreul, iga, wagwa } from './josa'
 import {
   compareGroups,
@@ -7,7 +7,6 @@ import {
   describeStrength,
   formatP,
   pearson,
-  quantile,
   regressStandardized,
   spearman,
   summarize,
@@ -15,7 +14,8 @@ import {
   type PairStat,
   type Summary,
 } from './stats'
-import { describeRequirement, evaluateRow } from './requirements'
+import { describeRequirement } from './requirements'
+import { achievementProfile } from './achievementProfile'
 
 /**
  * 실험 × 항목 표(Matrix)에서 "무엇이 결과를 움직이는가"를 읽어 내는 계산 모음.
@@ -309,59 +309,6 @@ export function buildInsights(m: Matrix, targetKey: string): Insight[] {
 }
 
 // ---------- 고객 요구를 달성한 조건 ----------
-
-export interface ProfileDriver {
-  column: Column
-  /** 달성한 실험의 조건 값 중앙값과, 가운데 80% 범위(10~90 백분위) */
-  passMedian: number
-  passLow: number
-  passHigh: number
-  /** 못 미친 실험의 중앙값 */
-  failMedian: number
-  /** 달성 여부(1/0)와 조건 값의 상관(점이연 상관)과 p-값 */
-  r: number
-  p: number
-}
-
-export interface AchievementProfile {
-  requirement: Requirement
-  passing: number
-  failing: number
-  drivers: ProfileDriver[]
-}
-
-/**
- * 요구를 달성한 실험과 못 미친 실험을 나눠, 어떤 조건이 달성 여부와 가장 관련 있는지 본다(조건 값의 차이가 큰 순).
- * 각 집단에 실험이 3건 이상 있어야 하고, 적용 조건(예: 재령)과 요구 자신은 비교에서 뺀다.
- * "달성한 실험들의 조건 범위"는 다음 실험을 어디서 시작할지 정하는 데 쓴다.
- */
-export function achievementProfile(m: Matrix, req: Requirement, minEach = 3): AchievementProfile | null {
-  const pass: MatrixRow[] = []
-  const fail: MatrixRow[] = []
-  for (const row of m.rows) {
-    const ev = evaluateRow(m, row, req)
-    if (ev.verdict === 'pass') pass.push(row)
-    else if (ev.verdict === 'fail') fail.push(row)
-  }
-  if (pass.length < minEach || fail.length < minEach) return null
-  const skip = new Set([normalizeName(req.name), ...(req.at ? [normalizeName(req.at.name)] : [])])
-  const drivers: ProfileDriver[] = []
-  for (const column of m.columns) {
-    if (column.kind !== 'condition' || skip.has(normalizeName(column.name))) continue
-    const pv = pass.map((r) => num(r.cells[column.key])).filter((v): v is number => v !== null)
-    const fv = fail.map((r) => num(r.cells[column.key])).filter((v): v is number => v !== null)
-    if (pv.length < minEach || fv.length < minEach) continue
-    const c = pearson([...pv.map(() => 1), ...fv.map(() => 0)], [...pv, ...fv])
-    if (!c) continue
-    const ps = summarize(pv)
-    const fs = summarize(fv)
-    if (!ps || !fs) continue
-    const sorted = [...pv].sort((a, b) => a - b)
-    drivers.push({ column, passMedian: ps.median, passLow: quantile(sorted, 0.1), passHigh: quantile(sorted, 0.9), failMedian: fs.median, r: c.r, p: c.p })
-  }
-  drivers.sort((a, b) => Math.abs(b.r) - Math.abs(a.r))
-  return { requirement: req, passing: pass.length, failing: fail.length, drivers }
-}
 
 /** 필수 요구마다 달성 프로필에서 읽을 수 있는 문장 */
 export function achievementInsights(m: Matrix, reqs: Requirement[]): Insight[] {
