@@ -31,7 +31,7 @@
 
 ---
 
-## 2026-10-20 핵심 실험 경험 재설계 (상태: 진행, Chromium 검증 완료·교차 브라우저 QA 대기)
+## 2026-10-20 핵심 실험 경험 재설계 (상태: 구현·자동 QA 완료, 직접 사용성 QA 대기)
 
 **Spec / Plan**: `docs/specs/002-핵심-실험-경험/spec.md`, `docs/specs/002-핵심-실험-경험/plan.md`
 **참조**: `문제정의.md`, PRD §4·§6·§7, IA(새 실험·실험 목록·실험 개요·프로젝트 현황), UJ Journey 1~4, ERD(`experiments`, `steps`, `data_items`, `deviations`, `templates`)
@@ -41,7 +41,7 @@
 - **영향 범위(Affected users and systems)**: 개인 연구원, 홈·프로젝트·실험 목록·새 실험·실험 개요·내비게이션·라우트·기존 검색·템플릿. 기존 데이터와 백업 형식은 유지한다.
 - **제약(Constraints)**: 코드 변경 전 spec/plan 재확정. 새 라이브러리 금지. 기존 템플릿 데이터 삭제 금지. 표 구조 변경은 별도 승인. `main`·`../lab` 변경 금지.
 - **열린 질문(Open questions)**: 없음. 결론·다음 행동 필드는 1차 제외, 목록은 앞쪽 최대 3개, 30초 등록·10초 파악을 초기 QA 기준으로 확정했다.
-- **검증**: `npm run check` 통과(448 pass/2 skip), Chromium 핵심 여정·요구·키보드·성능 통과. 전체 접근성 재검증과 Firefox/WebKit은 이월.
+- **검증**: `npm run check` 통과(448 pass/2 skip), Playwright 기준선 유지(112 pass/13 skip). Chromium 접근성, Firefox, WebKit 포함 자동 QA 완료.
 - **문서 갱신**: 문제정의 ✔, PRD ✔, IA ✔, UJ ✔, spec/plan 002 확정 ✔, GLOSSARY·ERD 메모 ✔, QA-002 진행 기록 ✔.
 
 ---
