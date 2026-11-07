@@ -251,20 +251,52 @@ export interface BoxRow {
   stats: BoxStats
 }
 
-/** 변수마다 한 줄: 상자(Q1~Q3), 가운데 선(중앙값), 수염(1.5 IQR), 밖의 점(이상치 후보). 변수마다 자기 범위로 그린다 */
-export function BoxPlots({ rows, onPick }: { rows: BoxRow[]; onPick?: (key: string, index: number) => void }) {
+/**
+ * 변수마다 한 줄: 상자(Q1~Q3), 가운데 선(중앙값), 수염(1.5 IQR), 밖의 점(이상치 후보).
+ * scaled면 (값 − 중앙값) / IQR 로 표준화해 모든 변수를 한 축에 나란히 그린다(상자는 모두 −0.5~0.5, 수염 한계는 ±2).
+ */
+export function BoxPlots({ rows, scaled = true, onPick }: { rows: BoxRow[]; scaled?: boolean; onPick?: (key: string, index: number) => void }) {
   const rowH = 34
   const L = 150
   const RW = W - L - 110
-  const h = rows.length * rowH + 8
+  const top = scaled ? 26 : 4
+  const h = rows.length * rowH + top + 8
+  const LIM = 6
+  const z = (r: BoxRow, v: number) => {
+    const iqr = r.stats.q3 - r.stats.q1 || Math.abs(r.stats.med) * 0.1 || 1
+    return Math.max(-LIM, Math.min(LIM, (v - r.stats.med) / iqr))
+  }
+  let dlo = -2.5
+  let dhi = 2.5
+  if (scaled) {
+    for (const r of rows) for (const v of r.values) if (Number.isFinite(v)) {
+      const s = z(r, v)
+      dlo = Math.min(dlo, s)
+      dhi = Math.max(dhi, s)
+    }
+  }
+  const sxScaled = (v: number) => L + ((v - dlo) / (dhi - dlo)) * RW
+  const ticks = [-4, -2, 0, 2, 4].filter((t) => t >= dlo && t <= dhi)
   return (
     <svg className="chart" viewBox={`0 0 ${W} ${h}`} role="img" aria-label="변수별 분포와 이상치 후보">
+      {scaled && (
+        <g fontSize="11" fill={C.ink}>
+          {ticks.map((t) => (
+            <g key={t}>
+              <line x1={sxScaled(t)} x2={sxScaled(t)} y1={top - 4} y2={h - 6} stroke={t === 0 ? C.bandLine : C.grid} strokeDasharray={Math.abs(t) === 2 ? '4 3' : undefined} />
+              <text x={sxScaled(t)} y={top - 8} textAnchor="middle">
+                {t === 0 ? '중앙값' : `${t > 0 ? '+' : ''}${t} IQR`}
+              </text>
+            </g>
+          ))}
+        </g>
+      )}
       {rows.map((r, i) => {
         const all = r.values.filter((v) => Number.isFinite(v))
         const lo = Math.min(...all)
         const hi = Math.max(...all)
-        const sx = (v: number) => L + ((v - lo) / Math.max(hi - lo, 1e-9)) * RW
-        const y = i * rowH + 4
+        const sx = scaled ? (v: number) => sxScaled(z(r, v)) : (v: number) => L + ((v - lo) / Math.max(hi - lo, 1e-9)) * RW
+        const y = top + i * rowH
         const mid = y + 13
         return (
           <g key={r.key}>
@@ -281,6 +313,7 @@ export function BoxPlots({ rows, onPick }: { rows: BoxRow[]; onPick?: (key: stri
               <circle key={idx} cx={sx(r.values[idx])} cy={mid} r="5" fill={C.neg} stroke="#fff" strokeWidth="1.2" style={{ cursor: onPick ? 'pointer' : undefined }} onClick={() => onPick?.(r.key, idx)}>
                 <title>
                   {r.labels[idx]}: {fmt(r.values[idx])} {r.unit}
+                  {scaled ? ` (중앙값에서 ${((r.values[idx] - r.stats.med) / (r.stats.q3 - r.stats.q1 || 1)).toFixed(1)} IQR)` : ''}
                 </title>
               </circle>
             ))}

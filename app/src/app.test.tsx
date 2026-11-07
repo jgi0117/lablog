@@ -119,8 +119,17 @@ describe('예시 데이터', () => {
     open('/')
     await user.click(await screen.findByRole('link', { name: '데이터' }))
     expect(await screen.findByRole('heading', { name: '데이터' })).toBeInTheDocument()
-    expect(screen.getByText(/같은 변수를 가진 프로젝트 15개 함께 보기/)).toBeInTheDocument()
+    expect(screen.getByText(/같은 변수 프로젝트 15개 함께/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /전체 \d+/ })).toHaveTextContent(`전체 ${getDb().runs.length}`)
+    // 전체 프로젝트 보기: 변수 이름 기준으로 합쳐 읽기만
+    await user.selectOptions(screen.getByLabelText('프로젝트'), 'all')
+    expect(await screen.findByText(/전체 보기 · 변수 이름이 같으면 한 열/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /전체 \d+/ })).toHaveTextContent(`전체 ${getDb().runs.length}`)
+    expect(screen.queryByRole('button', { name: 'CSV 더하기' })).not.toBeInTheDocument()
+    // 표준화 ↔ 원래 값
+    expect(screen.getByRole('button', { name: '표준화 (중앙값·IQR)' })).toHaveClass('btn--primary')
+    await user.click(screen.getByRole('button', { name: '원래 값' }))
+    expect(screen.getByRole('button', { name: '원래 값' })).toHaveClass('btn--primary')
     await user.click(screen.getByRole('link', { name: '모델' }))
     expect(await screen.findByRole('heading', { name: '모델' })).toBeInTheDocument()
   }, 30000)

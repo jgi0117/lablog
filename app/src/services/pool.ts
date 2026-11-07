@@ -84,3 +84,33 @@ export function pool(db: Db, p: Project): Pooled {
   }
   return { runs, projects, extras, fixed: flag(p.id) }
 }
+
+/** 모든 프로젝트의 실험을 변수 이름 기준으로 합친다(데이터 탭 "전체"). 변수 id는 'u:<구분>:<이름>' */
+export function unionScope(db: Db): { variables: Variable[]; runs: Run[]; projects: Project[] } {
+  const variables: Variable[] = []
+  const idOf = new Map<string, ID>()
+  const order: Record<Variable['role'], number> = { input: 0, level: 1, output: 2 }
+  for (const p of db.projects) {
+    for (const v of p.variables) {
+      const key = `${v.role}:${norm(v.name)}`
+      if (idOf.has(key)) continue
+      const id = `u:${key}`
+      idOf.set(key, id)
+      variables.push({ id, name: v.name, unit: v.unit, role: v.role, decimals: v.decimals })
+    }
+  }
+  variables.sort((a, b) => order[a.role] - order[b.role])
+  const runs: Run[] = []
+  for (const p of db.projects) {
+    const map = new Map(p.variables.map((v) => [v.id, idOf.get(`${v.role}:${norm(v.name)}`) as ID]))
+    for (const r of db.runs) {
+      if (r.project !== p.id) continue
+      const x: Record<ID, number> = {}
+      const y: Record<ID, number> = {}
+      for (const [k, v] of Object.entries(r.x)) if (map.has(k) && Number.isFinite(v)) x[map.get(k) as ID] = v
+      for (const [k, v] of Object.entries(r.y)) if (map.has(k) && Number.isFinite(v)) y[map.get(k) as ID] = v
+      runs.push({ ...r, x, y })
+    }
+  }
+  return { variables, runs, projects: db.projects }
+}
