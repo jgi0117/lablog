@@ -88,6 +88,7 @@ export function ProjectLayout() {
     { to: `/projects/${id}/requirements`, label: `고객 요구${project.requirements?.length ? ` (${project.requirements.length})` : ''}`, end: false },
     { to: `/projects/${id}/data`, label: '데이터', end: false },
     { to: `/projects/${id}/analysis`, label: '분석', end: false },
+    { to: `/projects/${id}/predict`, label: '예측·제안', end: false },
   ]
   return (
     <section>

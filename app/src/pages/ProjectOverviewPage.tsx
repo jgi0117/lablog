@@ -37,7 +37,13 @@ export function ProjectOverviewPage() {
   return (
     <div className="proj-grid">
       <div className="proj-grid__wide">
-        <RequirementStatus matrix={matrix} requirements={project.requirements ?? []} customer={project.customer} editHref={`/projects/${project.id}/requirements`} />
+        <RequirementStatus
+          matrix={matrix}
+          requirements={project.requirements ?? []}
+          customer={project.customer}
+          editHref={`/projects/${project.id}/requirements`}
+          predictHref={`/projects/${project.id}/predict`}
+        />
       </div>
       <section className="panel" aria-labelledby="h-progress">
         <h2 id="h-progress" className="panel__title">

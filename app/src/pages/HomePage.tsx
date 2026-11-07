@@ -49,7 +49,8 @@ function ProjectSummaryCard({
     next = '요구 항목의 측정값을 입력하세요'
   } else if (status.closest) {
     const miss = status.closest.verdicts.find((v) => v.requirement.priority === 'must' && v.verdict !== 'pass')
-    next = miss ? `가장 가까운 배합에서 "${describeRequirement(miss.requirement)}"가 아직 부족합니다` : '요구에 가까워지고 있습니다'
+    next = miss ? `가장 가까운 배합에서 "${describeRequirement(miss.requirement)}"가 아직 부족합니다 → 다음 실험 조건 제안 보기` : '요구에 가까워지고 있습니다'
+    nextTo = `/projects/${id}/predict`
   }
   return (
     <div className="card project-card">

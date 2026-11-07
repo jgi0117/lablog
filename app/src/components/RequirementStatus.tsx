@@ -9,6 +9,8 @@ interface Props {
   customer?: string
   /** 요구를 고치는 곳으로 가는 링크(없으면 보여 주지 않는다) */
   editHref?: string
+  /** 예측·제안 탭 링크. 아직 달성하지 못했을 때 "다음 실험 조건 제안"으로 안내한다 */
+  predictHref?: string
 }
 
 const f = (n: number) => String(Number(n.toPrecision(4)))
@@ -49,7 +51,7 @@ function RecipeLinks({ m, recipe, reqs }: { m: Matrix; recipe: Recipe; reqs: Req
  * 고객 요구 달성 현황. 맨 위에 "필수 요구를 모두 만족한 배합이 있는가"를 한 문장으로 알리고,
  * 요구마다 판정한 실험 수, 만족한 수, 가장 가까운 값을 표로 보여 준다. 달성하지 못했으면 가장 가까운 배합과 모자란 요구를 알려 준다.
  */
-export function RequirementStatus({ matrix, requirements, customer, editHref }: Props) {
+export function RequirementStatus({ matrix, requirements, customer, editHref, predictHref }: Props) {
   if (requirements.length === 0) {
     return (
       <section className="panel req-panel" aria-labelledby="h-req">
@@ -111,6 +113,13 @@ export function RequirementStatus({ matrix, requirements, customer, editHref }: 
                   ))}
               </ul>
             </div>
+          )}
+          {predictHref && (
+            <p className="req-banner__next">
+              <Link to={predictHref} className="btn btn--primary">
+                모델이 제안하는 다음 실험 조건 보기 →
+              </Link>
+            </p>
           )}
         </div>
       )}

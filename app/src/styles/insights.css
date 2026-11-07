@@ -631,3 +631,52 @@
   flex-wrap: wrap;
   gap: var(--space-sm);
 }
+
+/* ---------- 예측·제안 탭 ---------- */
+.cand-table th[scope='col'],
+.cand-table td {
+  vertical-align: top;
+}
+
+.cand-table__req th {
+  font-weight: 400;
+  color: var(--ink-2);
+}
+
+.cand-table {
+  width: 100%;
+}
+
+.cand-table td,
+.cand-table th {
+  white-space: normal;
+}
+
+.pred-check {
+  display: inline-block;
+  line-height: 1.35;
+}
+
+.pred-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--space-md) var(--space-lg);
+}
+
+.pred-form .field {
+  margin: 0;
+}
+
+.pred-form__range {
+  font-size: var(--text-caption);
+}
+
+.pred-reqs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.req-banner__next {
+  margin-top: var(--space-md);
+}

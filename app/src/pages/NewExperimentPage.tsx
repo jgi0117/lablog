@@ -1,9 +1,10 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAccount } from '../app/AccountContext'
 import { useBackend } from '../app/BackendContext'
 import { ValidationError, createExperiment } from '../services/experimentService'
 import { applyRequirementItems } from '../services/requirementItems'
+import { applyConditions, parseConditions } from '../services/prefill'
 import { startFromTemplate } from '../services/templateService'
 import { logUsage } from '../services/usage'
 import { parseTags } from '../services/text'
@@ -27,6 +28,8 @@ export function NewExperimentPage() {
   const [newProject, setNewProject] = useState('')
   const [templates, setTemplates] = useState<Template[]>([])
   const [templateId, setTemplateId] = useState(params.get('template') ?? '')
+  // 예측·제안 탭에서 "이 조건으로 새 실험"을 누르면 조건 값이 주소에 실려 온다
+  const conds = useMemo(() => parseConditions(params.get('cond')), [params])
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -98,6 +101,7 @@ export function NewExperimentPage() {
       if (template) {
         const exp = await startFromTemplate(backend, template, { title: finalTitle, purpose, owner, tags: parseTags(tags), projectId: pid })
         await applyRequirementItems(backend, exp.id, requirements)
+        await applyConditions(backend, exp.id, conds)
         logUsage('template_start')
         navigate(`/experiments/${exp.id}/steps`)
         return
@@ -108,11 +112,13 @@ export function NewExperimentPage() {
         const patch = { ...(owner ? { owner } : {}), ...(purpose.trim() ? { purpose: purpose.trim() } : {}), ...(tags.trim() ? { tags: parseTags(tags) } : {}) }
         if (Object.keys(patch).length > 0) await backend.experiments.update(copy.id, patch)
         await applyRequirementItems(backend, copy.id, requirements)
+        await applyConditions(backend, copy.id, conds)
         navigate(`/experiments/${copy.id}/steps`)
         return
       }
       const exp = await createExperiment(backend, { title: finalTitle, purpose, owner, tags: parseTags(tags), projectId: pid })
       await applyRequirementItems(backend, exp.id, requirements)
+      await applyConditions(backend, exp.id, conds)
       navigate(`/experiments/${exp.id}/steps`)
     } catch (err) {
       setError(err instanceof ValidationError ? err.message : '저장하지 못했습니다. 다시 시도하세요.')
@@ -200,6 +206,11 @@ export function NewExperimentPage() {
               <span className="muted"> — 조건 값은 그대로, 결과 값은 비워서 가져옵니다</span>
             </span>
           </label>
+        )}
+        {conds.length > 0 && (
+          <p className="req-hint" role="note">
+            제안받은 조건 {conds.length}개({conds.map((c) => `${c.name} ${c.value}`).join(', ')})를 조건 항목에 채워 넣습니다.
+          </p>
         )}
         {requirements.length > 0 && (
           <p className="req-hint" role="note">

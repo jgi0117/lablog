@@ -22,6 +22,7 @@ const ProjectOverviewPage = lazy(() => import('../pages/ProjectOverviewPage').th
 const ProjectRequirementsPage = lazy(() => import('../pages/ProjectRequirementsPage').then((m) => ({ default: m.ProjectRequirementsPage })))
 const ProjectDataPage = lazy(() => import('../pages/ProjectDataPage').then((m) => ({ default: m.ProjectDataPage })))
 const ProjectAnalysisPage = lazy(() => import('../pages/ProjectAnalysisPage').then((m) => ({ default: m.ProjectAnalysisPage })))
+const ProjectPredictPage = lazy(() => import('../pages/ProjectPredictPage').then((m) => ({ default: m.ProjectPredictPage })))
 const DataLayout = lazy(() => import('../pages/DataLayout').then((m) => ({ default: m.DataLayout })))
 const DataTablePage = lazy(() => import('../pages/DataTablePage').then((m) => ({ default: m.DataTablePage })))
 const DataAnalysisPage = lazy(() => import('../pages/DataAnalysisPage').then((m) => ({ default: m.DataAnalysisPage })))
@@ -56,6 +57,7 @@ export function AppRoutes() {
             <Route path="requirements" element={<ProjectRequirementsPage />} />
             <Route path="data" element={<ProjectDataPage />} />
             <Route path="analysis" element={<ProjectAnalysisPage />} />
+            <Route path="predict" element={<ProjectPredictPage />} />
           </Route>
           <Route path="experiments" element={<ExperimentsPage />} />
           <Route path="experiments/new" element={<NewExperimentPage />} />

@@ -19,6 +19,8 @@ export type UsageName =
   | 'template_save' // 템플릿으로 저장
   | 'template_start' // 템플릿으로 새 실험 시작
   | 'deviation_add' // 달라진 점 기록: fromRun
+  | 'predict_view' // 예측·제안 탭 열기
+  | 'suggest_start' // 제안 조건으로 새 실험 시작: candidate(0이면 직접 정한 조건)
 
 export interface UsageEvent {
   /** ISO 시각 */
