@@ -1,127 +1,193 @@
-/** 모든 ID는 클라이언트가 만드는 UUID. 로컬과 Supabase에서 같은 값을 그대로 쓴다. */
-export type ID = string
-/** ISO 8601 UTC 문자열 (예: 2026-10-19T05:32:08.000Z) */
-export type ISODate = string
-
-/** 모든 레코드의 공통 필드. 소프트 삭제와 충돌 감지(version)에 쓴다. */
-export interface Entity {
-  id: ID
-  createdAt: ISODate
-  updatedAt: ISODate
-  /** 휴지통으로 보낸 시각. null이면 살아 있음. 30일 뒤 영구 삭제 대상. */
-  deletedAt: ISODate | null
-  /** 저장할 때마다 1씩 늘어난다. 같은 레코드를 동시에 고쳤는지 판단한다. */
-  version: number
-}
-
-/** 고객 요구의 모양: 이상(min), 이하(max), 범위(range), 목표값±허용(target) */
-export type RequirementKind = 'min' | 'max' | 'range' | 'target'
-
 /**
- * 고객이 요청한 특성 하나. 신제품 개발은 이 요구를 만족하는 조건을 찾는 일이라, 프로젝트가 요구를 들고 있고
- * 실험의 같은 이름 항목(조건 또는 결과)과 맞춰 달성 여부를 판정한다.
+ * lablog v3 데이터 모델. 세 가지뿐이다: 프로젝트, 변수, 실험(run).
+ *
+ * - 프로젝트는 "무엇을 바꿔(입력) 무엇을 재고(출력) 어디에 도달할지(목표)"를 적어 둔 것이다.
+ * - 실험은 입력 값 묶음 x와 측정한 출력 값 y다. 앱이 입력 값을 정해 "계획" 상태로 만들어 두고,
+ *   사람은 결과 숫자만 넣는다. 그러면 "완료"가 된다.
+ * - 절차·단계·메모 같은 것은 없다. 조건과 결과만 쌓이고, 그것으로 모델을 만든다.
  */
-export interface Requirement {
+export type ID = string
+
+/** input: 앱이 값을 정해 주는 조건. level: 재령처럼 정해진 몇 가지 값에서 재는 조건. output: 측정 결과 */
+export type Role = 'input' | 'level' | 'output'
+
+export interface Variable {
   id: ID
-  /** 항목 이름. 실험의 조건·결과 이름과 같아야 맞춰 본다(띄어쓰기·대소문자는 무시) */
   name: string
   unit: string
-  kind: RequirementKind
-  /** min·range의 아래 한계(이상) */
+  role: Role
+  /** input의 탐색 범위. 같으면 그 값으로 고정한다 */
   min?: number
-  /** max·range의 위 한계(이하) */
   max?: number
-  /** target의 목표값과 허용 오차(±) */
+  /** 값의 소수 자릿수(0이면 정수) */
+  decimals: number
+  /** level 변수에서 계획할 값들(예: 재령 7, 28). 목표의 적용 조건에서 자동으로 채운다 */
+  levels?: number[]
+}
+
+/** target: 목표값에 가까울수록 좋고 ±허용 안이면 만족. >=, <=: 한쪽 한계. between: 범위 */
+export type GoalOp = 'target' | '>=' | '<=' | 'between'
+
+export interface Goal {
+  id: ID
+  /** 출력 변수 id(입력 변수에 걸 수도 있다: 시멘트 ≤ 400) */
+  variable: ID
+  op: GoalOp
+  lo?: number
+  hi?: number
+  /** target일 때 목표값과 허용 오차(±) */
   target?: number
-  tolerance?: number
-  /** 이 조건일 때만 적용한다. 예) 재령 = 28일일 때의 압축강도 */
-  at?: { name: string; value: number }
-  /** must: 고객이 꼭 요구, nice: 있으면 좋은 것 */
-  priority: 'must' | 'nice'
-  note?: string
+  tol?: number
+  /** 이 level 값일 때만 판정한다(예: 재령 28일 때) */
+  at?: { variable: ID; value: number }
+  /** 필수 목표인가(모두 만족해야 "달성"). 아니면 참고 목표 */
+  must: boolean
 }
 
-export interface Project extends Entity {
+export interface Project {
+  id: ID
   name: string
-  description: string
-  /** 고객 또는 요청 부서 */
-  customer?: string
-  /** 고객 요구 특성. 없으면 달성 판정을 하지 않는다 */
-  requirements?: Requirement[]
+  note: string
+  variables: Variable[]
+  goals: Goal[]
+  /** 처음 탐색 단계에서 앱이 짜는 실험(조건 묶음) 수 */
+  initialRuns: number
+  /** 같은 변수를 가진 다른 프로젝트의 실험도 모아 학습하는가(기본 true) */
+  pool?: boolean
+  /** 참고 데이터(과거 기록 등): 실험 계획을 짜지 않고 학습에만 쓴다 */
+  reference?: boolean
+  created: string
+  updated: string
 }
 
-/** 준비 → 진행 → 완료. 완료에서 다시 진행으로 돌아갈 수 있다. */
-export type ExperimentStatus = 'ready' | 'running' | 'done'
+export type RunStatus = 'planned' | 'done' | 'skipped'
+export type RunSource = 'plan' | 'model' | 'manual' | 'import'
 
-export interface Experiment extends Entity {
-  projectId: ID | null
-  title: string
-  purpose: string
-  owner: string
-  tags: string[]
-  status: ExperimentStatus
-  startedAt: ISODate | null
-  completedAt: ISODate | null
-  /** 복제로 만든 실험이면 원본 실험 ID */
-  sourceExperimentId: ID | null
-}
-
-export interface Step extends Entity {
-  experimentId: ID
-  /** 1부터 시작하는 표시 순서 */
+export interface Run {
+  id: ID
+  project: ID
+  /** 실험 순서(1부터). 계획 순서이자 표시 순서 */
   order: number
-  content: string
-  done: boolean
-  doneAt: ISODate | null
+  /** 입력·level 변수 id → 값 */
+  x: Record<ID, number>
+  /** 출력 변수 id → 값(아직 재지 않았으면 없음) */
+  y: Record<ID, number>
+  status: RunStatus
+  source: RunSource
+  note: string
+  /** 결과를 넣은 날짜(ISO) */
+  date: string | null
+}
+
+/** 직접 학습해 저장한 모델 한 버전. 변수 이름이 같은 프로젝트들(group)에서 함께 쓴다 */
+export interface ModelVersion {
+  id: ID
+  /** 변수 묶음 열쇠(입력·측정 시점·출력 이름). 같은 묶음의 프로젝트에서 쓸 수 있다 */
+  group: string
+  version: number
+  /** 출력 변수 이름(label) */
+  target: string
+  /** 쓴 조건 이름(feature). 프로젝트 표시 변수는 'proj:<id>' */
+  features: string[]
+  algo: 'forest' | 'ridge' | 'knn' | 'gbm'
+  params: Record<string, number | undefined>
+  folds: number
+  pooled: boolean
+  projects: ID[]
+  n: number
+  r2: number
+  mae: number
+  /** 교차검증 RMSE(= residSd)와 MSE */
+  rmse?: number
+  mse?: number
+  residSd: number
+  ysd: number
+  importance: number[]
+  cv_pred: number[]
+  cv_actual: number[]
+  /** 학습한 모델 본체(숫자·배열만) */
+  predictor: unknown
+  trainedAt: string
+  /** 같은 group·target에서 하나만 적용 */
+  applied: boolean
   note: string
 }
 
-export type DataKind = 'condition' | 'result'
-
-/** 조건·결과 한 줄. 값은 문자열로 둔다("—", 범위, 단위 없는 값 허용). */
-export interface DataItem extends Entity {
-  experimentId: ID
-  kind: DataKind
-  order: number
-  name: string
-  value: string
-  unit: string
+export interface Db {
+  version: 3
+  projects: Project[]
+  runs: Run[]
+  models?: ModelVersion[]
 }
 
-/** (P1) 첨부. 파일 본문은 Blob 저장소에 두고 여기에는 참조만 둔다. */
-export interface Attachment extends Entity {
-  experimentId: ID
-  stepId: ID | null
-  fileName: string
-  mimeType: string
-  size: number
-  blobRef: string
+export const emptyDb = (): Db => ({ version: 3, projects: [], runs: [], models: [] })
+
+/** 변수 묶음 열쇠: 입력·측정 시점·출력의 이름(공백·대소문자 무시). 같은 열쇠면 데이터와 모델을 함께 쓴다 */
+export function groupKeyOf(p: Project): string {
+  const norm = (s: string) => s.toLowerCase().replace(/\s+/g, '')
+  return p.variables
+    .filter((v) => v.name.trim())
+    .map((v) => `${v.role}:${norm(v.name)}`)
+    .sort()
+    .join('|')
 }
 
-/** (s3) 절차와 달라진 점 */
-export interface Deviation extends Entity {
-  experimentId: ID
-  stepId: ID | null
-  change: string
-  reason: string
+export const inputsOf = (p: Project) => p.variables.filter((v) => v.role === 'input')
+export const levelsOf = (p: Project) => p.variables.filter((v) => v.role === 'level')
+export const outputsOf = (p: Project) => p.variables.filter((v) => v.role === 'output')
+export const variableOf = (p: Project, id: ID) => p.variables.find((v) => v.id === id)
+export const label = (v: Variable) => (v.unit ? `${v.name} (${v.unit})` : v.name)
+
+/** 사람이 읽는 목표 한 줄. 예) "재령 28일 때 압축강도 ≥ 30 MPa" */
+export function describeGoal(p: Project, g: Goal): string {
+  const v = variableOf(p, g.variable)
+  const name = v?.name ?? g.variable
+  const unit = v?.unit ? ` ${v.unit}` : ''
+  const rule =
+    g.op === 'target'
+      ? `${fmt(g.target)} ± ${fmt(g.tol)}${unit}`
+      : g.op === '>='
+        ? `≥ ${fmt(g.lo)}${unit}`
+        : g.op === '<='
+          ? `≤ ${fmt(g.hi)}${unit}`
+          : `${fmt(g.lo)} ~ ${fmt(g.hi)}${unit}`
+  const atVar = g.at ? variableOf(p, g.at.variable) : undefined
+  const when = g.at ? `${atVar?.name ?? ''} ${fmt(g.at.value)}${atVar?.unit ? atVar.unit : ''}일 때 ` : ''
+  return `${when}${name} ${rule}`
 }
 
-/** (s3) 표준 절차 묶음 */
-export interface Template extends Entity {
-  name: string
-  steps: { content: string }[]
-  defaultConditions: { name: string; value: string; unit: string }[]
-  /** 결과는 항목 이름과 단위만 두고 값은 실험마다 채운다(빠뜨리지 않게 빈 칸으로 만들어 준다) */
-  resultItems: { name: string; unit: string }[]
+export function fmt(n: number | undefined | null, decimals?: number): string {
+  if (n === undefined || n === null || !Number.isFinite(n)) return '—'
+  if (decimals !== undefined) return n.toFixed(decimals)
+  return String(Number(n.toPrecision(5)))
 }
 
-/** 생성 입력: 서버/저장소가 채우는 필드를 뺀다. id는 호출자가 줄 수 있다(멱등 이전용). */
-export type NewEntity<T extends Entity> = Omit<
-  T,
-  'id' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'version'
-> & { id?: ID }
+/** 목표의 중심값(가까움을 잴 기준). target은 목표값, 한계는 그 값, 범위는 가운데 */
+export function goalCenter(g: Goal): number {
+  if (g.op === 'target') return g.target ?? 0
+  if (g.op === '>=') return g.lo ?? 0
+  if (g.op === '<=') return g.hi ?? 0
+  return ((g.lo ?? 0) + (g.hi ?? 0)) / 2
+}
 
-/** 수정 입력: 바꿀 필드만. */
-export type Patch<T extends Entity> = Partial<
-  Omit<T, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'version'>
->
+/** 값이 목표를 만족하는가와 여유(음수면 미달, 목표 크기에 대한 비율). target은 허용 오차 안쪽이 여유 */
+export function checkGoal(g: Goal, v: number): { ok: boolean; margin: number } {
+  let gap = 0
+  let base = 1
+  if (g.op === 'target') {
+    base = g.target ?? 0
+    gap = (g.tol ?? 0) - Math.abs(v - base)
+  } else if (g.op === '>=') {
+    base = g.lo ?? 0
+    gap = v - base
+  } else if (g.op === '<=') {
+    base = g.hi ?? 0
+    gap = base - v
+  } else {
+    const lo = g.lo ?? 0
+    const hi = g.hi ?? 0
+    base = (lo + hi) / 2
+    gap = Math.min(v - lo, hi - v)
+  }
+  return { ok: gap >= -1e-12, margin: gap / Math.max(Math.abs(base), 1e-9) }
+}

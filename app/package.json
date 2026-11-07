@@ -1,7 +1,7 @@
 {
   "name": "lablog",
   "private": true,
-  "version": "0.5.0",
+  "version": "3.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,24 +10,16 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -b && tsc -p tsconfig.e2e.json",
+    "typecheck": "tsc -b",
     "format": "prettier --write src",
-    "check": "npm run lint && npm run typecheck && npm run test",
-    "e2e": "playwright test",
-    "e2e:report": "playwright show-report",
-    "test:supabase": "vitest run src/data/supabase/supabase.integration.test.ts src/data/supabase/supabase.rls.test.ts"
+    "check": "npm run lint && npm run typecheck && npm run test"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.118.0",
-    "dexie": "^4.4.6",
-    "minisearch": "^7.2.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.4"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.14.0",
-    "@playwright/test": "^1.64.1",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
@@ -35,7 +27,6 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
-    "fake-indexeddb": "^6.2.6",
     "jsdom": "^30.1.3",
     "oxlint": "^1.81.0",
     "prettier": "^3.9.10",

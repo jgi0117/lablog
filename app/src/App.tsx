@@ -1,29 +1,53 @@
-import type { ReactNode } from 'react'
-import { BackendProvider } from './app/BackendContext'
-import { AppRoutes } from './app/routes'
-import { StorageStatusProvider } from './app/StorageStatus'
-import { ErrorBoundary } from './components/ErrorBoundary'
-import { ToastProvider } from './components/Toast'
-import type { DataBackend } from './data/repositories'
-import { useBackupExport } from './hooks/useBackupExport'
+import { useEffect } from 'react'
+import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom'
+import { HomePage } from './pages/HomePage'
+import { NewProjectPage } from './pages/NewProjectPage'
+import { ProjectPage } from './pages/ProjectPage'
+import { DataPage } from './pages/DataPage'
+import { ModelPage } from './pages/ModelPage'
+import { SetupPage } from './pages/SetupPage'
 
-/** 앱 전체를 감싸는 마지막 안전망. 화면 하나가 아니라 셸 자체가 깨졌을 때를 위한 것이다. */
-function AppBoundary({ children }: { children: ReactNode }) {
-  const exportNow = useBackupExport()
-  return <ErrorBoundary onExport={() => void exportNow()}>{children}</ErrorBoundary>
+/**
+ * 상단 탭 셋: 프로젝트(목록 → 실험 화면), 데이터(모든 실험 표·차트), 모델(모아 학습한 모델·제안·예측).
+ * 데이터와 모델은 프로젝트를 넘나들기 때문에 프로젝트 안이 아니라 옆에 둔다.
+ */
+/** 화면이 바뀌면 맨 위로 */
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+  return null
 }
 
-/** 라우터는 main.tsx가 감싼다. 테스트에서는 backend를 직접 넣을 수 있다. */
-export default function App({ backend }: { backend?: DataBackend }) {
+export default function App() {
   return (
-    <BackendProvider backend={backend}>
-      <ToastProvider>
-        <StorageStatusProvider>
-          <AppBoundary>
-            <AppRoutes />
-          </AppBoundary>
-        </StorageStatusProvider>
-      </ToastProvider>
-    </BackendProvider>
+    <div className="app">
+      <ScrollToTop />
+      <header className="top">
+        <Link to="/" className="brand">
+          lablog
+        </Link>
+        <nav>
+          <NavLink to="/" end>
+            프로젝트
+          </NavLink>
+          <NavLink to="/data">데이터</NavLink>
+          <NavLink to="/model">모델</NavLink>
+          <NavLink to="/new">+ 새 프로젝트</NavLink>
+        </nav>
+      </header>
+      <main>
+        <Routes>
+          <Route index element={<HomePage />} />
+          <Route path="new" element={<NewProjectPage />} />
+          <Route path="p/:id" element={<ProjectPage />} />
+          <Route path="p/:id/setup" element={<SetupPage />} />
+          <Route path="data" element={<DataPage />} />
+          <Route path="model" element={<ModelPage />} />
+          <Route path="*" element={<p className="muted">페이지가 없습니다. <Link to="/">홈으로</Link></p>} />
+        </Routes>
+      </main>
+    </div>
   )
 }

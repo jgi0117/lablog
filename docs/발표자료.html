@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lablog v3 소개</title>
+<link rel="icon" href="data:,">
+<style>
+  :root { --bg: #f6f7f9; --card: #fff; --ink: #1d2733; --ink-2: #4b5563; --ink-3: #6b7280; --line: #d9dee5; --accent: #2a78d6; --ok: #1baf7a; --bad: #e34948; --c1: #2a78d6; --c2: #eb6834; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #1d2733; color: var(--ink); font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif; }
+  .deck { max-width: 1100px; margin: 0 auto; padding: 24px 16px 80px; }
+  .slide { display: none; background: var(--card); border-radius: 14px; padding: 40px 48px; min-height: 620px; position: relative; }
+  .slide.is-active { display: block; }
+  h1 { font-size: 40px; margin: 0 0 12px; line-height: 1.25; }
+  h2 { font-size: 30px; margin: 0 0 20px; line-height: 1.3; }
+  h3 { font-size: 19px; margin: 18px 0 8px; color: var(--ink-2); }
+  p, li { font-size: 19px; line-height: 1.55; }
+  li { margin: 6px 0; }
+  .lead { font-size: 23px; color: var(--ink-2); }
+  .kicker { font-size: 14px; letter-spacing: .12em; color: var(--accent); text-transform: uppercase; margin-bottom: 20px; font-weight: 700; }
+  .muted { color: var(--ink-3); }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  .card { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+  .card h3 { margin-top: 0; }
+  .num { font-size: 14px; color: var(--ink-3); position: absolute; right: 24px; bottom: 16px; }
+  img.shot { width: 100%; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+  table { border-collapse: collapse; width: 100%; font-size: 17px; }
+  th, td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { color: var(--ink-3); font-weight: 600; background: var(--bg); }
+  .flow { display: flex; align-items: stretch; gap: 10px; margin: 14px 0; }
+  .flow .step { flex: 1; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 17px; }
+  .flow .arrow { align-self: center; font-size: 26px; color: var(--ink-3); }
+  .ok { color: var(--ok); font-weight: 700; } .no { color: var(--bad); font-weight: 700; }
+  .big { font-size: 54px; font-weight: 800; color: var(--accent); line-height: 1; }
+  .nav { position: fixed; left: 0; right: 0; bottom: 0; background: rgba(29,39,51,.95); color: #e5e7eb; display: flex; gap: 12px; align-items: center; justify-content: center; padding: 10px; font-size: 14px; }
+  .nav button { background: #fff; color: var(--ink); border: 1px solid var(--line); padding: 6px 14px; border-radius: 6px; font-size: 14px; cursor: pointer; }
+  .legend { display: flex; gap: 18px; font-size: 15px; margin-top: 6px; }
+  .legend span::before { content: ''; display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; border-radius: 2px; }
+  .legend .l1::before { background: var(--c1); } .legend .l2::before { background: var(--c2); }
+  code { background: var(--bg); padding: 1px 6px; border-radius: 4px; font-size: 90%; }
+  @media print { body { background: #fff; } .deck { max-width: none; padding: 0; } .slide { display: block; page-break-after: always; min-height: auto; } .nav { display: none; } }
+  @media (max-width: 760px) { .cols, .cols-3 { grid-template-columns: 1fr; } .slide { padding: 24px 18px; } h1 { font-size: 30px; } h2 { font-size: 24px; } .flow { flex-direction: column; } .flow .arrow { transform: rotate(90deg); } }
+</style>
+</head>
+<body>
+<div class="deck">
+
+<section class="slide is-active">
+  <div class="kicker">lablog v3</div>
+  <h1>조건은 앱이 정하고,<br>사람은 결과 숫자만 넣는다</h1>
+  <p class="lead">제품개발 실험 관리 + 조건 → 결과 예측 + 목표를 만족할 조건 제안. 목표는 "목표값 ± 허용", 만족하면 실험 종료.</p>
+  <p class="muted">제품개발팀 공유용 · 2026-11-07 · 예시 데이터는 UCI 콘크리트 공개 데이터 1,030건</p>
+  <div class="num">1 / 12</div>
+</section>
+
+<section class="slide">
+  <h2>문제: 입력은 귀찮고, 다음 조건은 짐작이다</h2>
+  <div class="cols">
+    <div class="card">
+      <h3><span class="no">지금까지</span></h3>
+      <ul>
+        <li>실험마다 절차를 쓰고 단계를 체크하고 조건·결과를 이름-값-단위로 적는다 → 등록 한 건에 클릭 수십 번</li>
+        <li>다음 실험 조건은 경험으로 짐작해 정한다. 빗나가면 하루가 간다</li>
+        <li>데이터는 엑셀·노트·메신저에 흩어져 모델을 만들 표가 없다</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="ok">v3</span></h3>
+      <ul>
+        <li>프로젝트에 <b>입력(바꿀 조건과 범위) · 출력 · 목표</b>만 적는다. 목표는 <b>목표값 ± 허용</b>(강도 35 ± 3): 10이 목표인데 20이면 만족이 아니다</li>
+        <li>앱이 실험 순서를 정한다. 카드에 조건이 적혀 있고, 사람은 <b>결과 숫자 + 저장 1번</b></li>
+        <li>조건과 결과만 쌓이니 그 표가 그대로 학습 데이터. 8건부터 모델이 돈다</li>
+      </ul>
+    </div>
+  </div>
+  <p class="muted" style="margin-top:18px">절차·단계·메모 체크리스트는 없앴다. 데이터(콘크리트 1,030건)와 고객 목표 판정만 남기고 전부 다시 만들었다.</p>
+  <div class="num">2 / 12</div>
+</section>
+
+<section class="slide">
+  <h2>한 실험의 흐름</h2>
+  <div class="flow">
+    <div class="step"><b>1. 프로젝트 만들기</b><br><span class="muted">변수 몇 줄, 목표 한 줄</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><b>2. 앱이 계획</b><br><span class="muted">범위를 고르게 덮는 조건 N개</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><b>3. 결과만 입력</b><br><span class="muted">숫자 넣고 Enter</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><b>4. 모델이 다음 조건</b><br><span class="muted">목표를 향해 3개씩</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><b>5. 목표 달성 → 종료</b><br><span class="muted">허용 안에 들면 실험 끝</span></div>
+  </div>
+  <div class="cols">
+    <div>
+      <h3>등록 한 건의 입력</h3>
+      <p><span class="big">1</span> <span class="lead">클릭 + 출력 수만큼의 숫자</span></p>
+      <p class="muted">조건은 카드에 이미 적혀 있다. 고쳐야 할 때만 "조건을 고쳐야 한다면"을 연다.</p>
+    </div>
+    <div>
+      <h3>측정 시점이 있는 실험</h3>
+      <p>재령 7일·28일처럼 한 배합을 여러 시점에 재면, 조건 하나가 실험 여러 건으로 펼쳐진다. 목표의 "28일일 때"에서 시점이 자동으로 정해진다.</p>
+    </div>
+  </div>
+  <div class="num">3 / 12</div>
+</section>
+
+<section class="slide">
+  <h2>화면 · 프로젝트 목록</h2>
+  <img class="shot" src="img/home.jpg" alt="프로젝트 카드 4개: 목표 상태, 완료·계획 수, 다음 실험 결과 넣기 버튼">
+  <ul>
+    <li>카드마다 목표 상태(달성·종료 / 진행 중), 완료·계획 수, 부족한 목표, "다음 실험 결과 넣기" 버튼. 예시 12개 중 아홉은 20여 건 만에 끝났고 셋은 진행 중.</li>
+    <li>전체 백업(JSON)과 가져오기. 예전 실험 노트 백업도 조건·결과·요구만 옮겨 읽는다.</li>
+  </ul>
+  <div class="num">4 / 12</div>
+</section>
+
+<section class="slide">
+  <h2>탭 1 · 프로젝트 (다음 실험 카드)</h2>
+  <img class="shot" src="img/project.jpg" alt="다음 실험 카드: 조건 8개가 크게 적혀 있고 결과 입력 칸 하나, 오른쪽에 목표 현황과 모델 R²">
+  <ul>
+    <li>왼쪽: <b>다음 실험 #226</b> — 조건은 읽기만, 결과 칸에 숫자를 넣고 "저장하고 다음 →". 아래는 최근 결과와 목표 판정(✓ ✗).</li>
+    <li>오른쪽: 목표마다 만족 건수와 가장 가까운 값, 목표 추적 차트(초록 띠가 목표 범위), 모델 요약. 데이터·모델·설정은 상단 버튼.</li>
+  </ul>
+  <div class="num">5 / 12</div>
+</section>
+
+<section class="slide">
+  <h2>탭 2·3 · 데이터와 모델</h2>
+  <div class="cols">
+    <div>
+      <img class="shot" src="img/data.jpg" alt="데이터 탭: 고른 프로젝트와 같은 변수를 가진 프로젝트 11개의 실험 219건을 한 표로">
+      <p class="muted"><b>데이터</b>: 같은 변수를 가진 프로젝트의 실험을 한 표로(모델이 학습하는 표), 또는 전체 프로젝트. 10건씩. 입력 점검(표준화 박스플롯·이상치·소수점 실수), 산점도와 조건별 상관, CSV·백업.</p>
+    </div>
+    <div>
+      <img class="shot" src="img/model.jpg" alt="모델 탭: 교차검증 R², 예측 vs 실제 산점도, 조건 중요도">
+      <p class="muted"><b>모델</b>: 적용 중인 모델의 신뢰도·중요도 → 새 모델 학습(결과·조건·알고리즘·파라미터) → 버전 저장·적용 → 목표 만족 후보, 조건 바꿔 보기.</p>
+    </div>
+  </div>
+  <div class="num">6 / 12</div>
+</section>
+
+<section class="slide">
+  <h2>새 프로젝트 만들기</h2>
+  <div class="cols">
+    <div>
+      <img class="shot" src="img/new.jpg" alt="새 프로젝트: 변수 줄(이름·단위·구분·최소·최대), 탐색 조건 수, CSV로 만들기">
+      <p class="muted">변수 줄 몇 개와 탐색 조건 수만 적으면 첫 계획이 생긴다. CSV가 있으면 열마다 입력/출력만 고르면 끝.</p>
+    </div>
+    <div>
+      <img class="shot" src="img/charts.jpg" alt="목표 추적 차트: 실험 순서에 따른 압축강도가 목표 띠로 올라가는 중">
+      <p class="muted">프로젝트 화면의 목표 추적 차트. 실험이 목표 띠(초록)로 가까워지는지 한눈에.</p>
+    </div>
+  </div>
+  <div class="num">7 / 12</div>
+</section>
+
+<section class="slide">
+  <h2>실험 순서를 정하는 방법</h2>
+  <table>
+    <tr><th style="width:22%">단계</th><th>방법</th></tr>
+    <tr><td>탐색</td><td>가운데 점 1개 + <b>라틴 하이퍼큐브</b>(범위를 차원마다 고르게 덮는 무작위 설계) N−1개. N은 "처음 탐색할 조건 수"(기본 8, 보통 입력 수의 2~3배)</td></tr>
+    <tr><td>측정 시점</td><td>조건 × 시점 값(예: 7일, 28일) 조합으로 펼친다</td></tr>
+    <tr><td>개선</td><td>계획이 바닥나면 자동. 모델이 믿을 만하면 "목표 만족 확률 + 모델이 모르는 정도"로 3조건. 아니면 탐색 조건을 몇 개 더</td></tr>
+    <tr><td>사람이 끼어들기</td><td>후보 카드의 "다음 실험으로", 조건 바꿔 보기, 데이터 표에서 조건 수정·"지금 하기", 직접 추가</td></tr>
+  </table>
+  <p class="muted" style="margin-top:14px">임의로 정하되 근거가 있다: 탐색은 공간을 고르게, 개선은 목표를 향해, 모델이 모르는 곳도 조금 섞어 지역 최적에 갇히지 않게.</p>
+  <div class="num">8 / 12</div>
+</section>
+
+<section class="slide">
+  <h2>모델 (브라우저 안에서, 외부 라이브러리 없이)</h2>
+  <table>
+    <tr><th style="width:22%">항목</th><th>방법</th></tr>
+    <tr><td>학습 데이터</td><td><b>같은 변수를 가진 모든 프로젝트의 완료 실험을 모아서</b>(프로젝트 차이는 표시 변수로). 과거 기록은 참고 프로젝트로 넣으면 학습에만 쓰임 → 예시는 992건</td></tr>
+    <tr><td>입력·출력</td><td>값이 달라지는 입력·측정 시점 변수 → 출력마다 모델 하나. 완료 8건부터</td></tr>
+    <tr><td>직접 학습</td><td>결과·조건·알고리즘(RF·선형·kNN·GBM)·파라미터·교차검증 겹을 골라 학습 → <b>버전 저장·적용</b>. 적용 모델이 제안·예측·계획에 쓰임. 기본은 자동(RF vs 선형)</td></tr>
+    <tr><td>불확실성</td><td>교차검증 오차 ⊕ 나무들의 흩어짐. 본 적 없는 조건일수록 ±가 넓어진다</td></tr>
+    <tr><td>목표 만족 확률</td><td>Φ(여유 ÷ 오차). 필수 목표의 곱. 입력에 건 목표(시멘트 ≤ 300)는 탐색 범위를 좁힌다</td></tr>
+    <tr><td>속도</td><td>232건 학습 0.2초, 1,030건 1.8초, 제안 50 ms</td></tr>
+  </table>
+  <div class="num">9 / 12</div>
+</section>
+
+<section class="slide">
+  <h2>예시 데이터로 확인 (콘크리트 1,030건)</h2>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 440 300" width="100%" role="img" aria-label="프로젝트별 교차검증 R²: 선택한 모델과 선형 회귀 비교">
+        <g font-size="13" fill="#4b5563">
+          <line x1="70" y1="20" x2="70" y2="260" stroke="#d9dee5"/>
+          <line x1="70" y1="260" x2="430" y2="260" stroke="#d9dee5"/>
+          <g fill="#2a78d6">
+            <rect x="100" y="44" width="30" height="216" rx="4"/>
+            <rect x="180" y="44" width="30" height="216" rx="4"/>
+            <rect x="260" y="111" width="30" height="149" rx="4"/>
+            <rect x="340" y="73" width="30" height="187" rx="4"/>
+          </g>
+          <g fill="#eb6834">
+            <rect x="134" y="92" width="22" height="168" rx="4"/>
+            <rect x="214" y="113" width="22" height="147" rx="4"/>
+            <rect x="294" y="111" width="22" height="149" rx="4"/>
+            <rect x="374" y="106" width="22" height="154" rx="4"/>
+          </g>
+          <g fill="#1d2733" font-weight="700">
+            <text x="115" y="37" text-anchor="middle">0.90</text>
+            <text x="195" y="37" text-anchor="middle">0.90</text>
+            <text x="275" y="104" text-anchor="middle">0.62</text>
+            <text x="355" y="66" text-anchor="middle">0.78</text>
+          </g>
+          <g text-anchor="middle">
+            <text x="127" y="280">SM-00</text><text x="207" y="280">ES-30</text><text x="287" y="280">LF-20</text><text x="367" y="280">HB-50</text>
+          </g>
+          <text x="64" y="264" text-anchor="end">0</text><text x="64" y="144" text-anchor="end">0.5</text><text x="64" y="24" text-anchor="end">1.0</text>
+          <text x="20" y="140" transform="rotate(-90 20 140)" text-anchor="middle">교차검증 R²</text>
+        </g>
+      </svg>
+      <div class="legend"><span class="l1">선택한 모델 (LF는 선형)</span><span class="l2">선형 회귀</span></div>
+    </div>
+    <div>
+      <ul>
+        <li>모델이 많이 보는 조건은 재령·시멘트·물. 알려진 지식과 맞는다.</li>
+        <li>전체 1,030건 학습 시 R² 0.84. 목표 40 ± 3 제안은 예측이 목표 ±3 안.</li>
+        <li>예시 프로젝트 12개 + 참고 4개 = 992건을 모아 학습하면 R² 약 0.8. 프로젝트 하나만 쓰면 -0.2~0.96으로 들쭉날쭉.</li>
+        <li><b>HB-70</b>(28일 70 ± 3 MPa, 아직 미달): 실험 순서 차트가 목표로 올라가는 중임을 보여 주고, 모아 학습한 모델이 다음 조건을 제안한다.</li>
+        <li>서비스 테스트 14개 + 화면 흐름 테스트 4개가 이 수치와 흐름(만들기 → 결과 입력 → 다음 실험 자동 생성)을 지킨다.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="num">10 / 12</div>
+</section>
+
+<section class="slide">
+  <h2>어디까지 믿어도 되는가</h2>
+  <div class="cols">
+    <div class="card">
+      <h3>믿어도 되는 것</h3>
+      <ul>
+        <li>교차검증 R² 0.8 이상이면 새 조건에서도 잘 맞히는 편, 0.6~0.8이면 경향은 맞힌다.</li>
+        <li>후보는 실험한 범위 안에서만 고르므로 터무니없는 조건이 나오지 않는다.</li>
+        <li>± 범위는 대략 95%가 들어오는 구간. 본 적 없는 조건일수록 넓어진다.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>조심할 것</h3>
+      <ul>
+        <li>확률은 보장이 아니다. 실험 30건 미만이면 흔들린다. 후보도 실험으로 확인한다.</li>
+        <li>범위 밖은 모른다. 직접 넣은 값이 범위를 벗어나면 경고가 뜬다.</li>
+        <li>문자 조건(기재 종류 등)은 아직 쓰지 않는다. 프로젝트 안의 실험만 쓴다.</li>
+        <li>데이터는 이 브라우저에만 있다. 백업(JSON)을 내려받아 보관한다.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="num">11 / 12</div>
+</section>
+
+<section class="slide">
+  <h2>정리와 다음</h2>
+  <div class="cols">
+    <div>
+      <h3>이번에 만든 것</h3>
+      <ul>
+        <li>상단 탭 셋: 프로젝트(다음 실험 카드) · 데이터(모아 보는 표) · 모델(모아 학습)</li>
+        <li>앱이 정하는 실험 순서(탐색 → 모델 개선), 결과만 입력</li>
+        <li>교차검증으로 고른 모델, 목표 만족 확률, 조건 제안, 조건 바꿔 예측</li>
+        <li>CSV·JSON 가져오기·내보내기, 예전 실험 노트 백업 변환</li>
+        <li>테스트 18개, 문서 <code>docs/01_문제정의와_설계.md</code></li>
+      </ul>
+    </div>
+    <div>
+      <h3>다음 과제</h3>
+      <ul>
+        <li>문자 조건 입력</li>
+        <li>변수 이름이 조금 다른 프로젝트도 맞춰 모으기(별칭)</li>
+        <li>"이 조건은 고정하고 나머지만" 제안 UI</li>
+        <li>실제 팀 데이터로 R² 확인 → 믿을 수 있는 결과부터 쓰기</li>
+        <li>팀 공유(지금은 파일 백업으로)</li>
+      </ul>
+    </div>
+  </div>
+  <p class="muted" style="margin-top:18px">실행: <code>app/</code>에서 <code>npm install</code> → <code>npm run dev</code>. 처음 열면 예시 데이터가 들어 있다.</p>
+  <div class="num">12 / 12</div>
+</section>
+
+</div>
+<div class="nav">
+  <button type="button" id="prev">← 이전</button>
+  <span id="pos">1 / 12</span>
+  <button type="button" id="next">다음 →</button>
+  <button type="button" onclick="window.print()">인쇄/PDF</button>
+  <span>· ← → 키로 넘깁니다</span>
+</div>
+<script>
+  const slides = [...document.querySelectorAll('.slide')]
+  let i = Math.max(0, Math.min(slides.length - 1, Number(location.hash.slice(1)) - 1 || 0))
+  const go = (k) => {
+    i = Math.max(0, Math.min(slides.length - 1, k))
+    slides.forEach((s, j) => s.classList.toggle('is-active', j === i))
+    document.getElementById('pos').textContent = `${i + 1} / ${slides.length}`
+    history.replaceState(null, '', `#${i + 1}`)
+    window.scrollTo(0, 0)
+  }
+  document.getElementById('prev').onclick = () => go(i - 1)
+  document.getElementById('next').onclick = () => go(i + 1)
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') go(i + 1)
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') go(i - 1)
+  })
+  go(i)
+</script>
+</body>
+</html>
