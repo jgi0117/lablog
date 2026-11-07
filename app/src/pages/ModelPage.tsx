@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { GoalMark, ProjectHeader, useModel, useProject, valueText } from '../components'
+import { Link } from 'react-router-dom'
+import { GoalMark, useModel, useProjectParam, valueText } from '../components'
 import { describeGoal, fmt, inputsOf, label, type ID, type Project, type Run } from '../domain/types'
 import { KIND_LABEL, MIN_R2, MIN_TRAIN, checkGoals, describeFit, predictAll, suggest, vectorOf, type Model, type TargetModel } from '../services/model'
 import { expandRuns, nextRun } from '../services/plan'
@@ -85,24 +85,42 @@ function ImportanceBars({ m }: { m: TargetModel }) {
 
 /** 모델 탭: 무엇으로 학습했고 얼마나 믿을 만한지, 목표를 만족할 조건 제안, 조건 바꿔 보며 예측 */
 export function ModelPage() {
-  const { id } = useParams()
   const db = useDb()
-  const { project, runs } = useProject(id)
+  const { project, setProject, projects } = useProjectParam()
   const { model, busy } = useModel(project)
   const pooled = useMemo(() => (project ? pool(db, project) : null), [db, project])
   if (!project || !pooled) {
     return (
-      <p className="muted">
-        프로젝트가 없습니다. <Link to="/">홈으로</Link>
-      </p>
+      <div className="stack">
+        <h1>모델</h1>
+        <p className="muted">
+          프로젝트가 없습니다. <Link to="/new">새 프로젝트</Link>를 만들면 완료 실험 {MIN_TRAIN}건부터 모델이 만들어집니다.
+        </p>
+      </div>
     )
   }
+  const runs = db.runs.filter((r) => r.project === project.id)
   const done = runs.filter((r) => r.status === 'done').length
   const pooledDone = pooled.runs.filter((r) => r.status === 'done').length
   const others = db.projects.filter((q) => q.id !== project.id)
   return (
     <div className="stack">
-      <ProjectHeader project={project} runs={runs} />
+      <div className="row between">
+        <h1>모델</h1>
+        <div className="field">
+          <label htmlFor="mp">제안·예측할 프로젝트</label>
+          <select id="mp" className="input input--sm" value={project.id} onChange={(e) => setProject(e.target.value)}>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <p className="muted small">
+        모델은 같은 변수를 가진 프로젝트의 실험을 모아 하나로 학습합니다. 목표 만족 조건 제안과 예측은 위에서 고른 프로젝트의 목표 기준입니다. <Link to={`/p/${project.id}`}>{project.name} 실험 화면 →</Link>
+      </p>
       <section className="card stack" aria-labelledby="h-fit">
         <h2 id="h-fit">무엇으로 학습했고, 얼마나 믿을 만한가</h2>
         <div className="banner">

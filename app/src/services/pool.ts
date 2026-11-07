@@ -35,6 +35,31 @@ function mapping(p: Project, q: Project): Map<ID, ID> | null {
   return m
 }
 
+/** 변수 이름·구분이 같은 프로젝트들의 실험(계획 포함)을 p의 변수 id로 맞춰 모은다. 표·차트용 */
+export function scopeRuns(db: Db, p: Project, together: boolean): { runs: Run[]; projects: Project[] } {
+  const own = db.runs.filter((r) => r.project === p.id)
+  if (!together) return { runs: own, projects: [p] }
+  const runs = [...own]
+  const projects = [p]
+  for (const q of db.projects) {
+    if (q.id === p.id) continue
+    const m = mapping(p, q)
+    if (!m) continue
+    projects.push(q)
+    for (const r of db.runs) {
+      if (r.project !== q.id) continue
+      const x: Record<ID, number> = {}
+      const y: Record<ID, number> = {}
+      for (const [qid, pid] of m) {
+        if (Number.isFinite(r.x[qid])) x[pid] = r.x[qid]
+        if (Number.isFinite(r.y[qid])) y[pid] = r.y[qid]
+      }
+      runs.push({ ...r, x, y })
+    }
+  }
+  return { runs, projects }
+}
+
 export function pool(db: Db, p: Project): Pooled {
   const own = db.runs.filter((r) => r.project === p.id)
   if (p.pool === false) return { runs: own, projects: [p], extras: [], fixed: {} }

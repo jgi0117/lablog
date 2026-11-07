@@ -1,11 +1,8 @@
-import { useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { ProjectHeader, useProject } from '../components'
-import { describeGoal, fmt, goalCenter, inputsOf, label, levelsOf, outputsOf, type Goal, type Project, type Run, type Variable } from '../domain/types'
+import { fmt, goalCenter, label, type Goal, type Run, type Variable } from './domain/types'
 
 /**
- * 시각화: 1) 목표 추적(실험 순서에 따른 결과와 목표 범위), 2) 조건과 결과의 관계(산점도), 3) 조건별 영향(상관).
- * 외부 라이브러리 없이 SVG로 그린다. 색은 결과 점(파랑), 목표 범위(초록 띠), 음의 영향(주황) 셋뿐이다.
+ * SVG 차트. 외부 라이브러리 없이 그린다. 색은 결과 점(파랑), 목표 범위(초록 띠), 음의 영향(주황) 셋뿐이다.
+ * 실험(run)의 x·y는 호출하는 쪽이 보는 변수 id로 맞춰져 있어야 한다.
  */
 
 const W = 640
@@ -61,7 +58,7 @@ function Axes({ x0, x1, y0, y1, xLabel, yLabel, xTicks, yTicks, sx, sy }: { x0: 
 }
 
 /** 실험 순서에 따른 결과값과 목표 범위 */
-function TrackChart({ runs, y, goal, levelVar }: { runs: Run[]; y: Variable; goal: Goal | undefined; levelVar: Variable | undefined }) {
+export function TrackChart({ runs, y, goal, levelVar }: { runs: Run[]; y: Variable; goal: Goal | undefined; levelVar: Variable | undefined }) {
   const pts = runs
     .filter((r) => r.status === 'done' && Number.isFinite(r.y[y.id]) && (!goal?.at || !levelVar || r.x[levelVar.id] === goal.at.value))
     .map((r) => ({ r, v: r.y[y.id] }))
@@ -99,7 +96,7 @@ function TrackChart({ runs, y, goal, levelVar }: { runs: Run[]; y: Variable; goa
   )
 }
 
-function pearson(xs: number[], ys: number[]): number | null {
+export function pearson(xs: number[], ys: number[]): number | null {
   const n = xs.length
   if (n < 3) return null
   const mx = xs.reduce((a, b) => a + b, 0) / n
@@ -116,7 +113,7 @@ function pearson(xs: number[], ys: number[]): number | null {
   return sxy / Math.sqrt(sxx * syy)
 }
 
-function ScatterChart({ pts, x, y, goal }: { pts: { r: Run; xv: number; yv: number }[]; x: Variable; y: Variable; goal: Goal | undefined }) {
+export function ScatterChart({ pts, x, y, goal }: { pts: { r: Run; xv: number; yv: number }[]; x: Variable; y: Variable; goal: Goal | undefined }) {
   if (pts.length < 2) return <p className="muted">두 값이 모두 있는 실험이 2건 이상 필요합니다.</p>
   const b = band(goal)
   const xv = pts.map((p) => p.xv)
@@ -158,9 +155,9 @@ function ScatterChart({ pts, x, y, goal }: { pts: { r: Run; xv: number; yv: numb
   )
 }
 
-function InfluenceBars({ project, runs, y, levelVar, goal }: { project: Project; runs: Run[]; y: Variable; levelVar: Variable | undefined; goal: Goal | undefined }) {
+export function InfluenceBars({ variables, runs, y, levelVar, goal }: { variables: Variable[]; runs: Run[]; y: Variable; levelVar: Variable | undefined; goal: Goal | undefined }) {
   const done = runs.filter((r) => r.status === 'done' && Number.isFinite(r.y[y.id]) && (!goal?.at || !levelVar || r.x[levelVar.id] === goal.at.value))
-  const rows = [...inputsOf(project), ...levelsOf(project)]
+  const rows = variables
     .map((v) => {
       const pts = done.filter((r) => Number.isFinite(r.x[v.id]))
       return { v, r: pearson(pts.map((r) => r.x[v.id]), pts.map((r) => r.y[y.id])), n: pts.length }
@@ -200,92 +197,3 @@ function InfluenceBars({ project, runs, y, levelVar, goal }: { project: Project;
   )
 }
 
-export function ChartsPage() {
-  const { id } = useParams()
-  const { project, runs } = useProject(id)
-  const [yId, setYId] = useState<string>('')
-  const [xId, setXId] = useState<string>('')
-  const outputs = project ? outputsOf(project) : []
-  const y = outputs.find((v) => v.id === yId) ?? outputs[0]
-  const inputs = project ? [...inputsOf(project), ...levelsOf(project)] : []
-  const goal = useMemo(() => (project && y ? project.goals.find((g) => g.variable === y.id && g.must) ?? project.goals.find((g) => g.variable === y.id) : undefined), [project, y])
-  const levelVar = project ? levelsOf(project)[0] : undefined
-  const scatter = useMemo(() => {
-    if (!project || !y) return { x: undefined as Variable | undefined, pts: [] as { r: Run; xv: number; yv: number }[] }
-    const candidates = inputs.filter((v) => new Set(runs.filter((r) => r.status === 'done').map((r) => r.x[v.id])).size > 1)
-    const x = candidates.find((v) => v.id === xId) ?? candidates[0]
-    if (!x) return { x: undefined, pts: [] }
-    const pts = runs
-      .filter((r) => r.status === 'done' && Number.isFinite(r.x[x.id]) && Number.isFinite(r.y[y.id]) && (!goal?.at || !levelVar || r.x[levelVar.id] === goal.at.value))
-      .map((r) => ({ r, xv: r.x[x.id], yv: r.y[y.id] }))
-    return { x, pts }
-  }, [project, runs, y, xId, inputs, goal, levelVar])
-
-  if (!project) {
-    return (
-      <p className="muted">
-        프로젝트가 없습니다. <Link to="/">홈으로</Link>
-      </p>
-    )
-  }
-  if (!y) {
-    return (
-      <div className="stack">
-        <ProjectHeader project={project} runs={runs} />
-        <p className="muted">출력(측정 결과) 변수가 없습니다.</p>
-      </div>
-    )
-  }
-  const atNote = goal?.at && levelVar ? ` (${levelVar.name} ${goal.at.value}${levelVar.unit} 실험만)` : ''
-
-  return (
-    <div className="stack">
-      <ProjectHeader project={project} runs={runs} />
-      {outputs.length > 1 && (
-        <div className="field" style={{ maxWidth: 280 }}>
-          <label htmlFor="cy">결과</label>
-          <select id="cy" className="input" value={y.id} onChange={(e) => setYId(e.target.value)}>
-            {outputs.map((v) => (
-              <option key={v.id} value={v.id}>
-                {label(v)}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      <section className="card stack" aria-labelledby="h-track">
-        <h2 id="h-track">목표에 가까워지고 있는가{atNote}</h2>
-        <p className="hint">{goal ? `초록 띠가 목표 범위(${describeGoal(project, goal)}), 초록 점은 목표 안에 든 실험입니다.` : '이 결과에 건 목표가 없어 값만 그립니다.'}</p>
-        <TrackChart runs={runs} y={y} goal={goal} levelVar={levelVar} />
-      </section>
-
-      <section className="card stack" aria-labelledby="h-scatter">
-        <h2 id="h-scatter">조건과 결과의 관계</h2>
-        {scatter.x ? (
-          <>
-            <div className="field" style={{ maxWidth: 280 }}>
-              <label htmlFor="cx">조건</label>
-              <select id="cx" className="input input--sm" value={scatter.x.id} onChange={(e) => setXId(e.target.value)}>
-                {inputs.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {label(v)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <ScatterChart pts={scatter.pts} x={scatter.x} y={y} goal={goal} />
-          </>
-        ) : (
-          <p className="muted">값이 달라지는 조건이 없습니다.</p>
-        )}
-      </section>
-
-      <section className="card stack" aria-labelledby="h-infl">
-        <h2 id="h-infl">어떤 조건이 {y.name}을(를) 움직이는가</h2>
-        <p className="hint">조건마다 결과와의 상관계수(−1~1). 길수록 관계가 뚜렷합니다. 상관은 원인이 아니며, 실험이 적으면 우연일 수 있습니다. 모델이 보는 중요도는 모델 탭에 있습니다.</p>
-        <InfluenceBars project={project} runs={runs} y={y} levelVar={levelVar} goal={goal} />
-      </section>
-    </div>
-  )
-}

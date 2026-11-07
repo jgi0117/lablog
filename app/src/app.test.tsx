@@ -94,7 +94,7 @@ describe('예시 데이터', () => {
     expect(runsOf(getDb(), sm.id).filter((r) => r.status === 'planned')).toHaveLength(0)
   }, 30000)
 
-  it('진행 중 프로젝트를 열면 모아 학습한 모델이 다음 실험을 제안하고, 시각화·모델 탭이 열린다', async () => {
+  it('진행 중 프로젝트를 열면 모아 학습한 모델이 다음 실험을 제안하고, 추적 차트가 보이며, 모델 탭은 그 프로젝트 기준으로 열린다', async () => {
     const user = userEvent.setup()
     replaceDb(demoDb())
     const hb = getDb().projects.find((x) => x.name.includes('HB-70'))!
@@ -103,19 +103,31 @@ describe('예시 데이터', () => {
     expect(await screen.findByRole('heading', { name: new RegExp(`다음 실험 #${n + 1}`) }, { timeout: 15000 })).toBeInTheDocument()
     expect(screen.getByText(/아직 목표를 만족한 조건이 없습니다/)).toBeInTheDocument()
     expect(screen.getByText('모델 제안')).toBeInTheDocument()
-    await user.click(screen.getByRole('link', { name: '시각화' }))
-    expect(await screen.findByRole('heading', { name: /목표에 가까워지고 있는가/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /목표에 가까워지고 있는가/ })).toBeInTheDocument()
     expect(screen.getByRole('img', { name: /실험 순서에 따른 압축강도/ })).toBeInTheDocument()
-    await user.click(screen.getByRole('link', { name: '모델' }))
-    expect(await screen.findByRole('heading', { name: '무엇으로 학습했고, 얼마나 믿을 만한가' })).toBeInTheDocument()
+    await user.click(screen.getByRole('link', { name: '자세히 →' }))
+    expect(await screen.findByRole('heading', { name: '모델' })).toBeInTheDocument()
+    expect(screen.getByLabelText('제안·예측할 프로젝트')).toHaveValue(hb.id)
     expect(await screen.findByText(/같은 변수를 가진 프로젝트 11개/)).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: '목표를 만족할 가능성이 큰 조건' })).toBeInTheDocument()
   }, 40000)
 
+  it('상단 탭: 데이터와 모델은 프로젝트 옆에 있고, 데이터 탭은 같은 변수를 가진 프로젝트를 함께 보여 준다', async () => {
+    const user = userEvent.setup()
+    replaceDb(demoDb())
+    open('/')
+    await user.click(await screen.findByRole('link', { name: '데이터' }))
+    expect(await screen.findByRole('heading', { name: '데이터' })).toBeInTheDocument()
+    expect(screen.getByText(/같은 변수를 가진 프로젝트 11개 함께 보기/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /전체 \d+/ })).toHaveTextContent(`전체 ${getDb().runs.length}`)
+    await user.click(screen.getByRole('link', { name: '모델' }))
+    expect(await screen.findByRole('heading', { name: '모델' })).toBeInTheDocument()
+  }, 30000)
+
   it('데이터 화면에서 CSV를 내려받고 값을 고칠 수 있다', async () => {
     replaceDb(demoDb())
     const p = getDb().projects.find((x) => x.name.includes('HB-70'))!
-    open(`/p/${p.id}/data`)
+    open(`/data?p=${p.id}`)
     expect(await screen.findByRole('button', { name: 'CSV 내려받기' })).toBeInTheDocument()
     expect(screen.getAllByRole('row').length).toBeGreaterThan(10)
     const user = userEvent.setup()

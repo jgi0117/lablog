@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { fmt, type Goal, type Project, type Run, type Variable } from './domain/types'
 import { trainModel, type Model } from './services/model'
 import { status, type Status } from './services/plan'
@@ -71,20 +71,34 @@ export function ProjectHeader({ project, runs, children }: { project: Project; r
         <h1 className="row">
           {project.name} <StatusChip s={s} />
         </h1>
-        {children}
+        <div className="row">
+          <Link to={`/data?p=${project.id}`} className="btn">
+            데이터 ({runs.filter((r) => r.status === 'done').length})
+          </Link>
+          <Link to={`/model?p=${project.id}`} className="btn">
+            모델
+          </Link>
+          <Link to={`/p/${project.id}/setup`} className="btn">
+            설정
+          </Link>
+          {children}
+        </div>
       </div>
       {project.note && <p className="muted small">{project.note}</p>}
-      <nav className="tabs" aria-label="프로젝트 탭">
-        <NavLink to={`/p/${project.id}`} end>
-          실험
-        </NavLink>
-        <NavLink to={`/p/${project.id}/data`}>데이터 ({runs.filter((r) => r.status === 'done').length})</NavLink>
-        <NavLink to={`/p/${project.id}/charts`}>시각화</NavLink>
-        <NavLink to={`/p/${project.id}/model`}>모델</NavLink>
-        <NavLink to={`/p/${project.id}/setup`}>설정</NavLink>
-      </nav>
     </div>
   )
+}
+
+/** 데이터·모델 화면의 프로젝트 고르기. 주소의 ?p= 를 쓰고, 없으면 진행 중인 첫 프로젝트 */
+export function useProjectParam(): { project: Project | null; setProject: (id: string) => void; projects: Project[] } {
+  const db = useDb()
+  const [params, setParams] = useSearchParams()
+  const id = params.get('p')
+  const projects = db.projects
+  const fallback = projects.find((p) => !status(p, runsOf(db, p.id)).finished) ?? projects[0] ?? null
+  const project = projects.find((p) => p.id === id) ?? fallback
+  const setProject = (pid: string) => setParams({ p: pid })
+  return { project, setProject, projects }
 }
 
 export function GoalMark({ ok }: { ok: boolean | null }) {

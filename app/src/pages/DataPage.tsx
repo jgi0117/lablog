@@ -1,10 +1,12 @@
 import { useMemo, useRef, useState, type FormEvent } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { ProjectHeader, useProject, valueText } from '../components'
-import { checkGoal, describeGoal, inputsOf, label, levelsOf, outputsOf, type Goal, type ID, type Project, type Run } from '../domain/types'
-import { download, parseCsv, runsToCsv, tableToRuns } from '../services/csv'
+import { Link } from 'react-router-dom'
+import { useProjectParam, valueText } from '../components'
+import { InfluenceBars, ScatterChart } from '../charts'
+import { checkGoal, describeGoal, inputsOf, label, levelsOf, outputsOf, type Goal, type ID, type Project, type Run, type Variable } from '../domain/types'
+import { download, exportDb, parseBackup, parseCsv, runsToCsv, tableToRuns } from '../services/csv'
 import { nextRun } from '../services/plan'
-import { addRuns, deleteRuns, insertPlanned, newId, nextOrder, now, updateRun, useDb } from '../services/store'
+import { scopeRuns } from '../services/pool'
+import { addRuns, deleteRuns, insertPlanned, newId, nextOrder, now, replaceDb, updateRun, useDb } from '../services/store'
 
 function runGoal(p: Project, r: Run, g: Goal): boolean | null {
   if (g.at && r.x[g.at.variable] !== g.at.value) return null
@@ -14,44 +16,67 @@ function runGoal(p: Project, r: Run, g: Goal): boolean | null {
   return Number.isFinite(val) ? checkGoal(g, val).ok : null
 }
 
-/** 데이터: 모든 실험을 한 표로. 완료 값은 칸을 눌러 고치고, 계획 실험은 "지금 하기"로 순서를 당긴다 */
+/**
+ * 데이터: 모든 실험을 한 표로. 같은 변수를 가진 프로젝트를 함께 보면 모델이 학습하는 바로 그 표가 된다.
+ * 고른 프로젝트의 실험은 칸을 눌러 고치고, CSV로 더하거나 내려받는다. 아래에 산점도와 조건별 영향.
+ */
 export function DataPage() {
-  const { id } = useParams()
   const db = useDb()
-  const { project, runs } = useProject(id)
+  const { project, setProject, projects } = useProjectParam()
+  const [together, setTogether] = useState(true)
   const [filter, setFilter] = useState<'all' | 'done' | 'planned'>('all')
   const [adding, setAdding] = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
-  const [msg, setMsg] = useState('')
   const [limit, setLimit] = useState(60)
-  const next = useMemo(() => nextRun(runs), [runs])
+  const [msg, setMsg] = useState('')
+  const [yId, setYId] = useState('')
+  const [xId, setXId] = useState('')
+  const fileRef = useRef<HTMLInputElement>(null)
+  const backupRef = useRef<HTMLInputElement>(null)
+  const scope = useMemo(() => (project ? scopeRuns(db, project, together) : { runs: [], projects: [] }), [db, project, together])
+  const names = useMemo(() => new Map(db.projects.map((p) => [p.id, p.name])), [db])
+
+  const importBackup = async (f: File) => {
+    const parsed = parseBackup(await f.text())
+    if (!parsed) return alert('읽을 수 없는 백업 파일입니다. lablog에서 내보낸 JSON이어야 합니다.')
+    const add = db.projects.length === 0 || confirm(`프로젝트 ${parsed.projects.length}개, 실험 ${parsed.runs.length}건을 읽었습니다.\n확인: 지금 데이터에 더합니다 / 취소: 지금 데이터를 모두 지우고 바꿉니다`)
+    if (add) replaceDb({ version: 3, projects: [...db.projects, ...parsed.projects], runs: [...db.runs, ...parsed.runs] })
+    else replaceDb(parsed)
+  }
 
   if (!project) {
     return (
-      <p className="muted">
-        프로젝트가 없습니다. <Link to="/">홈으로</Link>
-      </p>
+      <div className="stack">
+        <h1>데이터</h1>
+        <p className="muted">
+          프로젝트가 없습니다. <Link to="/new">새 프로젝트</Link>를 만들거나 백업을 가져오세요.
+        </p>
+        <div className="row">
+          <button type="button" className="btn" onClick={() => backupRef.current?.click()}>
+            백업 가져오기
+          </button>
+          <input ref={backupRef} type="file" accept=".json,application/json" hidden aria-label="백업 파일" onChange={(e) => e.target.files?.[0] && importBackup(e.target.files[0])} />
+        </div>
+      </div>
     )
   }
   const inputs = inputsOf(project)
   const levels = levelsOf(project)
   const outputs = outputsOf(project)
   const musts = project.goals.filter((g) => g.must)
-  const filtered = [...runs].filter((r) => filter === 'all' || r.status === filter).sort((a, b) => b.order - a.order)
+  const next = nextRun(db.runs.filter((r) => r.project === project.id))
+  const filtered = [...scope.runs].filter((r) => filter === 'all' || r.status === filter).sort((a, b) => (a.project === b.project ? b.order - a.order : a.project === project.id ? -1 : b.project === project.id ? 1 : 0))
   const shown = filtered.slice(0, limit)
+  const doneScope = scope.runs.filter((r) => r.status === 'done')
 
   const importCsv = async (f: File) => {
     const t = parseCsv(await f.text())
     const { runs: rs, matched, unmatched } = tableToRuns(project, t, nextOrder(db, project.id))
-    if (rs.length === 0) {
-      setMsg(`맞는 열이 없습니다. 머리글이 변수 이름(${project.variables.map((v) => v.name).join(', ')})과 같아야 합니다.`)
-      return
-    }
+    if (rs.length === 0) return setMsg(`맞는 열이 없습니다. 머리글이 변수 이름(${project.variables.map((v) => v.name).join(', ')})과 같아야 합니다.`)
     addRuns(rs)
-    setMsg(`${rs.length}건을 더했습니다 (맞은 열: ${matched.map((v) => v.name).join(', ')}${unmatched.length ? ` · 안 쓴 열: ${unmatched.join(', ')}` : ''})`)
+    setMsg(`${project.name}에 ${rs.length}건을 더했습니다 (맞은 열: ${matched.map((v) => v.name).join(', ')}${unmatched.length ? ` · 안 쓴 열: ${unmatched.join(', ')}` : ''})`)
   }
 
-  const editCell = (r: Run, v: (typeof outputs)[number] | (typeof inputs)[number], raw: string) => {
+  const editCell = (r: Run, v: Variable, raw: string) => {
     const t = raw.trim()
     if (v.role === 'output') {
       const y = { ...r.y }
@@ -62,17 +87,59 @@ export function DataPage() {
     } else if (Number.isFinite(Number(t)) && t !== '') updateRun(r.id, { x: { ...r.x, [v.id]: Number(t) } })
   }
 
+  // 차트
+  const y = outputs.find((v) => v.id === yId) ?? outputs[0]
+  const goal = y ? (project.goals.find((g) => g.variable === y.id && g.must) ?? project.goals.find((g) => g.variable === y.id)) : undefined
+  const levelVar = levels[0]
+  const xCands = [...inputs, ...levels].filter((v) => new Set(doneScope.map((r) => r.x[v.id])).size > 1)
+  const x = xCands.find((v) => v.id === xId) ?? xCands[0]
+  const pts = x && y ? doneScope.filter((r) => Number.isFinite(r.x[x.id]) && Number.isFinite(r.y[y.id]) && (!goal?.at || !levelVar || r.x[levelVar.id] === goal.at.value)).map((r) => ({ r, xv: r.x[x.id], yv: r.y[y.id] })) : []
+
   return (
     <div className="stack">
-      <ProjectHeader project={project} runs={runs} />
       <div className="row between">
+        <h1>데이터</h1>
+        <div className="row">
+          <button type="button" className="btn" onClick={() => download(`lablog-${new Date().toISOString().slice(0, 10)}.json`, exportDb(db), 'application/json')}>
+            전체 백업
+          </button>
+          <button type="button" className="btn" onClick={() => backupRef.current?.click()}>
+            백업 가져오기
+          </button>
+          <input ref={backupRef} type="file" accept=".json,application/json" hidden aria-label="백업 파일" onChange={(e) => e.target.files?.[0] && importBackup(e.target.files[0])} />
+        </div>
+      </div>
+
+      <div className="card row between">
+        <div className="row">
+          <div className="field">
+            <label htmlFor="dp">프로젝트</label>
+            <select id="dp" className="input input--sm" value={project.id} onChange={(e) => setProject(e.target.value)}>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <label className="row small" style={{ marginTop: 18 }}>
+            <input type="checkbox" checked={together} onChange={(e) => setTogether(e.target.checked)} />
+            같은 변수를 가진 프로젝트 {scope.projects.length > 1 ? `${scope.projects.length - 1}개` : ''} 함께 보기 (모델이 학습하는 표)
+          </label>
+        </div>
         <div className="row" role="group" aria-label="보기">
           {(['all', 'done', 'planned'] as const).map((f) => (
             <button key={f} type="button" className={`btn ${filter === f ? 'btn--primary' : ''}`} onClick={() => setFilter(f)}>
-              {f === 'all' ? `전체 ${runs.length}` : f === 'done' ? `완료 ${runs.filter((r) => r.status === 'done').length}` : `계획 ${runs.filter((r) => r.status === 'planned').length}`}
+              {f === 'all' ? `전체 ${scope.runs.length}` : f === 'done' ? `완료 ${doneScope.length}` : `계획 ${scope.runs.filter((r) => r.status === 'planned').length}`}
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="row between">
+        <p className="muted small">
+          <Link to={`/p/${project.id}`}>{project.name} 실험 화면 →</Link> · 고른 프로젝트의 칸은 바로 고칠 수 있고, 다른 프로젝트의 실험은 읽기만 합니다.
+        </p>
         <div className="row">
           <button type="button" className="btn" onClick={() => setAdding((a) => !a)}>
             + 직접 추가
@@ -81,7 +148,7 @@ export function DataPage() {
             CSV 더하기
           </button>
           <input ref={fileRef} type="file" accept=".csv,.txt,.tsv,text/csv" hidden aria-label="CSV 파일" onChange={(e) => e.target.files?.[0] && importCsv(e.target.files[0])} />
-          <button type="button" className="btn" onClick={() => download(`${project.name}.csv`, runsToCsv(project, runs), 'text/csv')}>
+          <button type="button" className="btn" onClick={() => download(`${project.name}.csv`, runsToCsv(project, db.runs.filter((r) => r.project === project.id)), 'text/csv')}>
             CSV 내려받기
           </button>
         </div>
@@ -93,6 +160,7 @@ export function DataPage() {
         <table>
           <thead>
             <tr>
+              {together && <th>프로젝트</th>}
               <th>#</th>
               <th>상태</th>
               {[...inputs, ...levels].map((v) => (
@@ -111,53 +179,69 @@ export function DataPage() {
             </tr>
           </thead>
           <tbody>
-            {shown.map((r) => (
-              <tr key={r.id} className={r.status === 'planned' ? (next?.id === r.id ? 'is-next' : 'is-planned') : ''}>
-                <td>{r.order}</td>
-                <td>{r.status === 'done' ? '완료' : r.status === 'planned' ? (next?.id === r.id ? '다음' : '계획') : '건너뜀'}</td>
-                {[...inputs, ...levels].map((v) => (
-                  <td key={v.id}>
-                    <input className="input input--sm input--num" style={{ width: 90, fontSize: 14, minHeight: 30 }} aria-label={`#${r.order} ${v.name}`} defaultValue={valueText(v, r.x[v.id]) === '—' ? '' : valueText(v, r.x[v.id])} onBlur={(e) => editCell(r, v, e.target.value)} />
-                  </td>
-                ))}
-                {outputs.map((v) => (
-                  <td key={v.id}>
-                    <input className="input input--sm input--num" style={{ width: 90, fontSize: 14, minHeight: 30 }} aria-label={`#${r.order} ${v.name}`} defaultValue={Number.isFinite(r.y[v.id]) ? String(r.y[v.id]) : ''} onBlur={(e) => editCell(r, v, e.target.value)} />
-                  </td>
-                ))}
-                {musts.map((g) => {
-                  const ok = runGoal(project, r, g)
-                  return (
-                    <td key={g.id} className={ok === null ? '' : ok ? 'pass' : 'fail'}>
-                      {ok === null ? '' : ok ? '✓' : '✗'}
+            {shown.map((r) => {
+              const own = r.project === project.id
+              return (
+                <tr key={r.id} className={r.status === 'planned' ? (next?.id === r.id ? 'is-next' : 'is-planned') : ''}>
+                  {together && <td>{own ? <b>{names.get(r.project)}</b> : <span className="muted">{names.get(r.project)}</span>}</td>}
+                  <td>{r.order}</td>
+                  <td>{r.status === 'done' ? '완료' : r.status === 'planned' ? (next?.id === r.id ? '다음' : '계획') : '건너뜀'}</td>
+                  {[...inputs, ...levels].map((v) => (
+                    <td key={v.id}>
+                      {own ? (
+                        <input className="input input--sm input--num" style={{ width: 90, fontSize: 14, minHeight: 30 }} aria-label={`#${r.order} ${v.name}`} defaultValue={valueText(v, r.x[v.id]) === '—' ? '' : valueText(v, r.x[v.id])} onBlur={(e) => editCell(r, v, e.target.value)} />
+                      ) : (
+                        valueText(v, r.x[v.id])
+                      )}
                     </td>
-                  )
-                })}
-                <td style={{ textAlign: 'left' }}>
-                  <input className="input input--sm" style={{ width: 140, fontSize: 13, minHeight: 30 }} aria-label={`#${r.order} 메모`} defaultValue={r.note} onBlur={(e) => e.target.value !== r.note && updateRun(r.id, { note: e.target.value })} />
-                </td>
-                <td>
-                  <div className="row" style={{ gap: 4, flexWrap: 'nowrap' }}>
-                    {r.status === 'planned' && next && next.id !== r.id && (
-                      <button type="button" className="btn btn--ghost small" onClick={() => {
-                          deleteRuns([r.id])
-                          insertPlanned(project.id, [{ ...r, id: newId('r') }], next.order)
-                        }}>
-                        지금 하기
-                      </button>
+                  ))}
+                  {outputs.map((v) => (
+                    <td key={v.id}>
+                      {own ? (
+                        <input className="input input--sm input--num" style={{ width: 90, fontSize: 14, minHeight: 30 }} aria-label={`#${r.order} ${v.name}`} defaultValue={Number.isFinite(r.y[v.id]) ? String(r.y[v.id]) : ''} onBlur={(e) => editCell(r, v, e.target.value)} />
+                      ) : (
+                        <b>{valueText(v, r.y[v.id])}</b>
+                      )}
+                    </td>
+                  ))}
+                  {musts.map((g) => {
+                    const ok = own ? runGoal(project, r, g) : null
+                    return (
+                      <td key={g.id} className={ok === null ? '' : ok ? 'pass' : 'fail'}>
+                        {ok === null ? '' : ok ? '✓' : '✗'}
+                      </td>
+                    )
+                  })}
+                  <td style={{ textAlign: 'left' }}>{own ? <input className="input input--sm" style={{ width: 140, fontSize: 13, minHeight: 30 }} aria-label={`#${r.order} 메모`} defaultValue={r.note} onBlur={(e) => e.target.value !== r.note && updateRun(r.id, { note: e.target.value })} /> : <span className="muted small">{r.note}</span>}</td>
+                  <td>
+                    {own && (
+                      <div className="row" style={{ gap: 4, flexWrap: 'nowrap' }}>
+                        {r.status === 'planned' && next && next.id !== r.id && (
+                          <button
+                            type="button"
+                            className="btn btn--ghost small"
+                            onClick={() => {
+                              deleteRuns([r.id])
+                              insertPlanned(project.id, [{ ...r, id: newId('r') }], next.order)
+                            }}
+                          >
+                            지금 하기
+                          </button>
+                        )}
+                        {r.status === 'skipped' && (
+                          <button type="button" className="btn btn--ghost small" onClick={() => updateRun(r.id, { status: 'planned' })}>
+                            되살리기
+                          </button>
+                        )}
+                        <button type="button" className="btn btn--ghost small" aria-label={`#${r.order} 지우기`} onClick={() => (r.status === 'done' ? confirm(`#${r.order} 결과를 지울까요?`) && deleteRuns([r.id]) : deleteRuns([r.id]))}>
+                          ✕
+                        </button>
+                      </div>
                     )}
-                    {r.status === 'skipped' && (
-                      <button type="button" className="btn btn--ghost small" onClick={() => updateRun(r.id, { status: 'planned' })}>
-                        되살리기
-                      </button>
-                    )}
-                    <button type="button" className="btn btn--ghost small" aria-label={`#${r.order} 지우기`} onClick={() => (r.status === 'done' ? confirm(`#${r.order} 결과를 지울까요?`) && deleteRuns([r.id]) : deleteRuns([r.id]))}>
-                      ✕
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
@@ -166,7 +250,50 @@ export function DataPage() {
           더 보기 ({shown.length} / {filtered.length})
         </button>
       )}
-      <p className="hint">칸을 고치면 바로 저장됩니다. 계획 실험의 조건도 고칠 수 있습니다.</p>
+
+      {y && (
+        <div className="split">
+          <section className="card stack" aria-labelledby="h-scatter">
+            <h2 id="h-scatter">조건과 결과의 관계</h2>
+            <div className="row">
+              {outputs.length > 1 && (
+                <div className="field">
+                  <label htmlFor="cy">결과</label>
+                  <select id="cy" className="input input--sm" value={y.id} onChange={(e) => setYId(e.target.value)}>
+                    {outputs.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {label(v)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {x && (
+                <div className="field">
+                  <label htmlFor="cx">조건</label>
+                  <select id="cx" className="input input--sm" value={x.id} onChange={(e) => setXId(e.target.value)}>
+                    {xCands.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {label(v)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+            {x ? <ScatterChart pts={pts} x={x} y={y} goal={goal} /> : <p className="muted">값이 달라지는 조건이 없습니다.</p>}
+            <p className="hint">
+              {together ? `같은 변수를 가진 프로젝트 ${scope.projects.length}개의 완료 실험` : `${project.name}의 완료 실험`}
+              {goal?.at && levelVar ? ` 중 ${levelVar.name} ${goal.at.value}${levelVar.unit}인 것` : ''}. 초록 띠는 {project.name}의 목표 범위.
+            </p>
+          </section>
+          <section className="card stack" aria-labelledby="h-infl">
+            <h2 id="h-infl">어떤 조건이 {y.name}을(를) 움직이는가</h2>
+            <p className="hint">조건마다 결과와의 상관계수(−1~1). 상관은 원인이 아니며, 실험이 적으면 우연일 수 있습니다. 모델이 보는 중요도는 모델 탭에 있습니다.</p>
+            <InfluenceBars variables={[...inputs, ...levels]} runs={doneScope} y={y} levelVar={levelVar} goal={goal} />
+          </section>
+        </div>
+      )}
     </div>
   )
 }
@@ -192,7 +319,7 @@ function ManualRun({ project, onDone }: { project: Project; onDone: () => void }
   }
   return (
     <form className="card stack" onSubmit={submit}>
-      <h2>실험 직접 추가</h2>
+      <h2>{project.name}에 실험 직접 추가</h2>
       <p className="hint">결과를 비워 두면 계획 실험으로, 넣으면 완료 실험으로 들어갑니다.</p>
       <div className="cond-grid">
         {vars.map((v) => (

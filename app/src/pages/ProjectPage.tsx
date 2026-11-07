@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { TrackChart } from '../charts'
 import { GoalMark, ProjectHeader, useModel, useProject, useStatus, valueText } from '../components'
 import { checkGoal, describeGoal, fmt, inputsOf, label, levelsOf, outputsOf, type Goal, type ID, type Project, type Run } from '../domain/types'
 import { describeFit, type Model } from '../services/model'
@@ -117,7 +118,7 @@ export function ProjectPage() {
           <div className="card stack">
             <h2>
               최근 결과{' '}
-              <Link to={`/p/${project.id}/data`} className="small">
+              <Link to={`/data?p=${project.id}`} className="small">
                 전체 데이터 →
               </Link>
             </h2>
@@ -211,10 +212,18 @@ export function ProjectPage() {
             </div>
           </div>
 
+          {outputs[0] && (
+            <div className="card stack">
+              <h2>목표에 가까워지고 있는가</h2>
+              <TrackChart runs={runs} y={outputs[0]} goal={project.goals.find((g) => g.variable === outputs[0].id && g.must) ?? project.goals.find((g) => g.variable === outputs[0].id)} levelVar={levels[0]} />
+              <p className="hint">초록 띠가 목표 범위, 초록 점은 목표 안에 든 실험입니다.</p>
+            </div>
+          )}
+
           <div className="card stack">
             <h2>
               모델{' '}
-              <Link to={`/p/${project.id}/model`} className="small">
+              <Link to={`/model?p=${project.id}`} className="small">
                 자세히 →
               </Link>
             </h2>
@@ -234,7 +243,7 @@ export function ProjectPage() {
                 ))}
               </ul>
             )}
-            <p className="hint">모델 탭에서 목표를 만족할 조건 제안과 조건 바꿔 보기를 할 수 있습니다.</p>
+            <p className="hint">{model && model.pooledProjects > 1 ? `같은 변수를 가진 프로젝트 ${model.pooledProjects}개의 실험을 모아 학습했습니다. ` : ''}모델 탭에서 목표를 만족할 조건 제안과 조건 바꿔 보기를 할 수 있습니다.</p>
           </div>
         </div>
       </div>
