@@ -537,8 +537,27 @@ td.fail {
 
 .split {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 18px;
+}
+
+/* 두 카드 높이를 맞추고, 짧은 차트는 세로 가운데에 */
+.chart-fill {
+  margin: auto 0;
+}
+
+.chart-ctl {
+  gap: 12px;
+}
+
+.chart-ctl label {
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.chart-ctl .input {
+  width: auto;
+  min-width: 0;
 }
 
 .split > * {

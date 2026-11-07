@@ -165,32 +165,37 @@ export function InfluenceBars({ variables, runs, y, levelVar, goal }: { variable
     .filter((d) => d.r !== null)
     .sort((a, b) => Math.abs(b.r as number) - Math.abs(a.r as number))
   if (rows.length === 0) return <p className="muted">값이 달라지는 조건이 3건 이상 있어야 합니다.</p>
-  const rowH = 30
-  const h = rows.length * rowH + 30
-  const mid = 240
-  const half = 180
+  // 가로 전체를 쓴다: 왼쪽 이름 칸(labelW) + 가운데 0 축을 중심으로 좌우 half씩
+  const rowH = 34
+  const labelW = 150
+  const half = (W - labelW - 56) / 2
+  const mid = labelW + 28 + half
+  const h = rows.length * rowH + 44
   return (
     <svg className="chart" viewBox={`0 0 ${W} ${h}`} role="img" aria-label={`${y.name}에 대한 조건별 상관`}>
-      <line x1={mid} x2={mid} y1={8} y2={h - 22} stroke={C.grid} />
+      {[-1, -0.5, 0.5, 1].map((t) => (
+        <line key={t} x1={mid + t * half} x2={mid + t * half} y1={6} y2={h - 30} stroke={C.grid} strokeDasharray="3 4" />
+      ))}
+      <line x1={mid} x2={mid} y1={6} y2={h - 30} stroke={C.ink} strokeOpacity="0.4" />
       {rows.map((d, i) => {
         const r = d.r as number
         const w = Math.abs(r) * half
         return (
-          <g key={d.v.id} transform={`translate(0 ${10 + i * rowH})`}>
-            <text x={mid - half - 10} y={16} textAnchor="end" fontSize="13" fill={C.ink}>
+          <g key={d.v.id} transform={`translate(0 ${8 + i * rowH})`}>
+            <text x={labelW} y={19} textAnchor="end" fontSize="15" fill={C.ink}>
               {d.v.name}
             </text>
-            <rect x={r >= 0 ? mid : mid - w} y={4} width={w} height={18} rx="4" fill={r >= 0 ? C.point : C.neg} />
-            <text x={r >= 0 ? mid + w + 6 : mid - w - 6} y={17} textAnchor={r >= 0 ? 'start' : 'end'} fontSize="12" fill={C.ink}>
+            <rect x={r >= 0 ? mid : mid - w} y={5} width={w} height={20} rx="5" fill={r >= 0 ? C.point : C.neg} />
+            <text x={r >= 0 ? mid + w + 6 : mid - w - 6} y={19} textAnchor={r >= 0 ? 'start' : 'end'} fontSize="14" fontWeight="600" fill={C.ink}>
               {r.toFixed(2)}
             </text>
           </g>
         )
       })}
-      <text x={mid - half / 2} y={h - 6} textAnchor="middle" fontSize="12" fill={C.ink}>
+      <text x={mid - half / 2} y={h - 8} textAnchor="middle" fontSize="13" fill={C.neg}>
         ← 클수록 {y.name} 낮아짐
       </text>
-      <text x={mid + half / 2} y={h - 6} textAnchor="middle" fontSize="12" fill={C.ink}>
+      <text x={mid + half / 2} y={h - 8} textAnchor="middle" fontSize="13" fill={C.point}>
         클수록 {y.name} 높아짐 →
       </text>
     </svg>

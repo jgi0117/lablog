@@ -27,7 +27,7 @@ function runGoal(p: Project, r: Run, g: Goal): boolean | null {
 export function DataPage() {
   const db = useDb()
   const [params, setParams] = useSearchParams()
-  const [together, setTogether] = useState(true)
+  const [together, setTogether] = useState(false)
   const [filter, setFilter] = useState<'all' | 'done' | 'planned'>('all')
   const [adding, setAdding] = useState(false)
   const [page, setPage] = useState(0)
@@ -60,6 +60,8 @@ export function DataPage() {
   }, [db, project, together, isAll])
   const vars = [...view.inputs, ...view.levels, ...view.outputs]
   const multi = isAll || view.projects.length > 1
+  // 함께 볼 수 있는 같은 변수 프로젝트 수(체크 여부와 무관)
+  const mates = useMemo(() => (project ? scopeRuns(db, project, true).projects.length - 1 : 0), [db, project])
 
   const importBackup = async (f: File) => {
     const parsed = parseBackup(await f.text())
@@ -179,10 +181,17 @@ export function DataPage() {
               ))}
             </select>
           </div>
-          {!isAll && (
+          {!isAll && mates > 0 && (
             <label className="row small" style={{ marginTop: 18 }}>
-              <input type="checkbox" checked={together} onChange={(e) => setTogether(e.target.checked)} />
-              같은 변수 프로젝트 {view.projects.length > 1 ? `${view.projects.length - 1}개` : ''} 함께 (모델이 학습하는 표)
+              <input
+                type="checkbox"
+                checked={together}
+                onChange={(e) => {
+                  setTogether(e.target.checked)
+                  setPage(0)
+                }}
+              />
+              같은 변수 프로젝트 {mates}개 함께 (모델이 학습하는 표)
             </label>
           )}
         </div>
@@ -410,44 +419,48 @@ export function DataPage() {
       {y && (
         <div className="split">
           <section className="card stack" aria-labelledby="h-scatter">
-            <h2 id="h-scatter">조건과 결과의 관계</h2>
-            <div className="row">
-              {view.outputs.length > 1 && (
-                <div className="field">
-                  <label htmlFor="cy">결과</label>
-                  <select id="cy" className="input input--sm" value={y.id} onChange={(e) => setYId(e.target.value)}>
-                    {view.outputs.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {label(v)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              {x && (
-                <div className="field">
-                  <label htmlFor="cx">조건</label>
-                  <select id="cx" className="input input--sm" value={x.id} onChange={(e) => setXId(e.target.value)}>
-                    {xCands.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {label(v)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+            <div className="row between">
+              <h2 id="h-scatter">조건과 결과의 관계</h2>
+              <div className="row chart-ctl">
+                {view.outputs.length > 1 && (
+                  <label className="row small">
+                    결과
+                    <select aria-label="결과" className="input input--sm" value={y.id} onChange={(e) => setYId(e.target.value)}>
+                      {view.outputs.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {label(v)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {x && (
+                  <label className="row small">
+                    조건
+                    <select aria-label="조건" className="input input--sm" value={x.id} onChange={(e) => setXId(e.target.value)}>
+                      {xCands.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {label(v)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
             </div>
-            {x ? <ScatterChart pts={pts} x={x} y={y} goal={goal} /> : <p className="muted">값이 달라지는 조건 없음</p>}
             <p className="hint">
               {multi ? `프로젝트 ${view.projects.filter((q) => !q.reference).length}개${view.projects.some((q) => q.reference) ? ' + 과거 기록' : ''}의 완료 실험` : `${project?.name ?? ''}의 완료 실험`}
               {goal?.at && levelVar ? ` 중 ${levelVar.name} ${goal.at.value}${levelVar.unit}` : ''}
               {goal && project ? ` · 초록 띠 = ${project.name} 목표` : ''}
             </p>
+            {x ? <ScatterChart pts={pts} x={x} y={y} goal={goal} /> : <p className="muted">값이 달라지는 조건 없음</p>}
           </section>
           <section className="card stack" aria-labelledby="h-infl">
             <h2 id="h-infl">어떤 조건이 {y.name}을(를) 움직이는가</h2>
-            <p className="hint">상관계수(−1~1) · 상관 ≠ 원인 · 실험 적으면 우연일 수 있음 · 모델 중요도는 모델 탭</p>
-            <InfluenceBars variables={[...view.inputs, ...view.levels]} runs={doneScope} y={y} levelVar={levelVar} goal={goal} />
+            <p className="hint">막대 = 상관계수(−1~1) · 길수록 함께 움직임 · 상관 ≠ 원인 · 모델이 본 중요도는 모델 탭</p>
+            <div className="chart-fill">
+              <InfluenceBars variables={[...view.inputs, ...view.levels]} runs={doneScope} y={y} levelVar={levelVar} goal={goal} />
+            </div>
           </section>
         </div>
       )}

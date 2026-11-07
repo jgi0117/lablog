@@ -121,7 +121,13 @@ describe('예시 데이터', () => {
     open('/')
     await user.click(await screen.findByRole('link', { name: '데이터' }))
     expect(await screen.findByRole('heading', { name: '데이터' })).toBeInTheDocument()
-    expect(screen.getByText(/같은 변수 프로젝트 15개 함께/)).toBeInTheDocument()
+    // 기본은 고른 프로젝트의 실험만, 체크하면 같은 변수 프로젝트를 합친다
+    const picked = (screen.getByRole('combobox', { name: '프로젝트' }) as HTMLSelectElement).value
+    const own = getDb().runs.filter((r) => r.project === picked).length
+    expect(own).toBeGreaterThan(0)
+    expect(own).toBeLessThan(getDb().runs.length)
+    expect(screen.getByRole('button', { name: /전체 \d+/ })).toHaveTextContent(`전체 ${own}`)
+    await user.click(screen.getByLabelText(/같은 변수 프로젝트 15개 함께/))
     expect(screen.getByRole('button', { name: /전체 \d+/ })).toHaveTextContent(`전체 ${getDb().runs.length}`)
     // 전체 프로젝트 보기: 변수 이름 기준으로 합쳐 읽기만
     await user.selectOptions(screen.getByLabelText('프로젝트'), 'all')
