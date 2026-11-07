@@ -439,7 +439,7 @@ export function DataPage() {
             </div>
             {x ? <ScatterChart pts={pts} x={x} y={y} goal={goal} /> : <p className="muted">값이 달라지는 조건 없음</p>}
             <p className="hint">
-              {multi ? `프로젝트 ${view.projects.length}개의 완료 실험` : `${project?.name ?? ''}의 완료 실험`}
+              {multi ? `프로젝트 ${view.projects.filter((q) => !q.reference).length}개${view.projects.some((q) => q.reference) ? ' + 과거 기록' : ''}의 완료 실험` : `${project?.name ?? ''}의 완료 실험`}
               {goal?.at && levelVar ? ` 중 ${levelVar.name} ${goal.at.value}${levelVar.unit}` : ''}
               {goal && project ? ` · 초록 띠 = ${project.name} 목표` : ''}
             </p>

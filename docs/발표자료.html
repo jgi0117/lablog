@@ -7,160 +7,325 @@
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
-  :root { --bg: #f4f6f9; --card: #fff; --ink: #141c27; --ink-2: #44505e; --ink-3: #6b7684; --line: #dbe1e8; --accent: #2a78d6; --accent-soft: #e6effb; --green: #1baf7a; --green-bg: #e2f6ec; --orange: #eb6834; --orange-bg: #fdeae2; --violet: #6250d6; }
+  :root { --ink: #141c27; --ink-2: #44505e; --ink-3: #6b7684; --line: #dbe3ee; --blue: #2f6fe4; --blue-2: #5b8ff0; --blue-soft: #e8f0fd; --blue-pale: #c7d7f3; --green: #1baf7a; --orange: #eb6834; --shadow: 0 12px 34px rgba(47, 111, 228, 0.12); }
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: #141c27; color: var(--ink); font-family: 'Pretendard Variable', Pretendard, 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif; }
+  html, body { margin: 0; background: #141c27; color: var(--ink); font-family: 'Pretendard Variable', Pretendard, 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif; word-break: keep-all; }
   .deck { position: fixed; inset: 0 0 52px 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
   .frame { position: relative; flex: none; width: 1280px; height: 720px; }
   /* 슬라이드는 16:9(1280×720)로 고정하고, 화면 크기에 맞춰 통째로 축소·확대한다 */
-  .slide { display: none; background: var(--card); border-radius: 18px; padding: 56px 64px; width: 1280px; height: 720px; overflow: hidden; position: absolute; left: 0; top: 0; transform-origin: 0 0; }
-  .slide.is-active { display: flex; flex-direction: column; justify-content: center; }
-  .kicker { margin: 0 0 14px; color: var(--accent); font-size: 13px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
-  h1 { margin: 0; font-size: 54px; line-height: 1.1; letter-spacing: -0.04em; }
-  h2 { margin: 0 0 28px; font-size: 40px; line-height: 1.15; letter-spacing: -0.035em; }
-  .sub { margin: 18px 0 0; color: var(--ink-2); font-size: 24px; }
+  .slide { display: none; width: 1280px; height: 720px; overflow: hidden; position: absolute; left: 0; top: 0; transform-origin: 0 0; padding: 28px 56px 44px; background: linear-gradient(135deg, #f4f7fc 0%, #e5edf9 100%); border-radius: 18px; }
+  .slide.is-active { display: flex; flex-direction: column; }
+  /* 배경 장식: 연한 원·점 */
+  .slide::before { content: ''; position: absolute; right: -140px; top: -160px; width: 420px; height: 420px; border-radius: 50%; background: radial-gradient(circle, rgba(47,111,228,.10), rgba(47,111,228,0) 70%); pointer-events: none; }
+  .slide::after { content: ''; position: absolute; left: 40px; bottom: 36px; width: 60px; height: 8px; background: radial-gradient(circle, var(--blue-pale) 2px, transparent 2.5px) 0 0/12px 8px repeat-x; pointer-events: none; }
+
+  /* 상단 바: 로고 · 점 셋 */
+  .bar { display: flex; align-items: center; justify-content: space-between; height: 34px; font-size: 13px; font-weight: 800; letter-spacing: .12em; color: var(--ink-3); text-transform: uppercase; }
+  .bar .logo { display: flex; align-items: center; gap: 8px; color: var(--ink); }
+  .bar .logo i { width: 12px; height: 12px; border-radius: 50%; background: linear-gradient(135deg, var(--blue), var(--blue-2)); box-shadow: 0 0 0 4px var(--blue-soft); }
+  .bar .dots { display: flex; gap: 6px; }
+  .bar .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--blue-pale); }
+  .bar .dots i:first-child { background: var(--blue); }
+
+  /* 제목 줄: 파란 불릿 + 제목, 오른쪽 페이지 번호 */
+  .head { display: flex; align-items: center; justify-content: space-between; margin: 26px 0 22px; }
+  .head h2 { display: flex; align-items: center; gap: 14px; margin: 0; font-size: 34px; letter-spacing: -0.03em; line-height: 1.15; }
+  .head h2::before { content: ''; flex: none; width: 14px; height: 28px; border-radius: 0 999px 999px 0; background: linear-gradient(135deg, var(--blue), var(--blue-2)); }
+  .head .pg { font-size: 26px; font-weight: 800; color: var(--blue-pale); letter-spacing: -0.02em; }
+  .body { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
+  .wcard { background: #fff; border-radius: 18px; box-shadow: var(--shadow); padding: 28px 30px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .num { display: inline-grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: linear-gradient(135deg, var(--blue), var(--blue-2)); color: #fff; font-weight: 800; font-size: 18px; box-shadow: 0 6px 16px rgba(47,111,228,.3); }
+  .wcard h3 { margin: 14px 0 10px; font-size: 26px; letter-spacing: -0.025em; line-height: 1.25; }
+  .wcard p { margin: 0; color: var(--ink-2); font-size: 19px; line-height: 1.5; }
+  .wcard .now, .wcard .ideal { display: block; margin-top: 10px; font-size: 19px; color: var(--ink-2); line-height: 1.45; }
+  .wcard .now::before { content: '✕ 현재 '; color: var(--orange); font-weight: 800; }
+  .wcard .ideal::before { content: '✓ 이상 '; color: var(--green); font-weight: 800; }
+  .ico { display: grid; place-items: center; width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, var(--blue), var(--blue-2)); color: #fff; box-shadow: 0 8px 20px rgba(47,111,228,.3); }
+  .ico svg { width: 30px; height: 30px; }
   .muted { color: var(--ink-3); }
-  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-  .box { border: 1px solid var(--line); border-radius: 16px; padding: 28px; background: #fafbfc; }
-  .box small { display: block; color: var(--c, var(--accent)); font-size: 13px; font-weight: 800; letter-spacing: .14em; }
-  .box h3 { margin: 8px 0 10px; font-size: 30px; line-height: 1.2; letter-spacing: -0.03em; }
-  .box p { margin: 0; color: var(--ink-2); font-size: 20px; line-height: 1.5; }
-  .box .now, .box .ideal { display: block; margin-top: 8px; color: var(--ink-2); font-size: 20px; line-height: 1.45; }
-  .box .now::before { content: '✕ 현재 '; color: var(--orange); font-weight: 800; }
-  .box .ideal::before { content: '✓ 이상 '; color: var(--green); font-weight: 800; }
-  .box.bad { --c: var(--orange); } .box.good { --c: var(--green); } .box.plan { --c: var(--violet); }
-  .num { font-size: 88px; font-weight: 800; letter-spacing: -0.05em; line-height: 1; color: var(--accent); margin: 6px 0; white-space: nowrap; }
-  .num small { font-size: 26px; color: var(--ink-3); font-weight: 600; letter-spacing: 0; margin-left: 8px; }
-  img.shot { display: block; max-width: 100%; max-height: 470px; margin: 0 auto; object-fit: contain; border: 1px solid var(--line); border-radius: 12px; }
-  .caption { margin: 14px 0 0; font-size: 22px; color: var(--ink-2); text-align: center; }
-  .flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
-  .flow div { position: relative; padding: 22px 14px; border-radius: 14px; background: var(--accent-soft); text-align: center; font-size: 20px; font-weight: 700; line-height: 1.3; }
-  .flow div b { display: block; color: var(--accent); font-size: 13px; letter-spacing: .14em; margin-bottom: 8px; }
-  .flow div:not(:last-child)::after { content: '›'; position: absolute; right: -11px; top: 50%; transform: translateY(-55%); color: var(--ink-3); font-size: 28px; font-weight: 800; }
-  .n { position: absolute; right: 26px; bottom: 18px; color: var(--ink-3); font-size: 13px; }
+
+  /* 표지 */
+  .cover { padding: 40px 56px; }
+  .cover .sheet { position: relative; flex: 1; background: #fff; border-radius: 22px; box-shadow: var(--shadow); display: grid; grid-template-columns: 1fr 460px 44px; overflow: hidden; }
+  .cover .text { padding: 72px 0 60px 64px; display: flex; flex-direction: column; justify-content: center; }
+  .cover .kick { font-size: 13px; font-weight: 800; letter-spacing: .2em; color: var(--blue); text-transform: uppercase; margin-bottom: 18px; }
+  .cover .ghost { font-size: 44px; font-weight: 300; color: #c9d4e6; letter-spacing: -0.02em; line-height: 1; margin-bottom: 6px; }
+  .cover h1 { margin: 0; font-size: 44px; line-height: 1.2; letter-spacing: -0.04em; }
+  .cover h1 em { font-style: normal; color: var(--blue); }
+  .cover .pills { display: flex; gap: 10px; margin-top: 34px; }
+  .cover .pills span { display: inline-flex; align-items: center; gap: 8px; border: 1.5px solid var(--blue-pale); border-radius: 999px; padding: 6px 14px 6px 6px; font-size: 15px; color: var(--ink-2); }
+  .cover .pills b { background: var(--blue); color: #fff; border-radius: 999px; padding: 3px 12px; font-size: 13px; }
+  .cover .shots { display: flex; gap: 18px; align-items: center; justify-content: center; padding: 40px 0; }
+  .cover .shots img { width: 120px; height: 330px; object-fit: cover; object-position: left top; border-radius: 999px; box-shadow: var(--shadow); }
+  .cover .shots img:nth-child(2) { height: 400px; }
+  .band { background: linear-gradient(180deg, var(--blue), var(--blue-2)); color: #fff; display: grid; place-items: center; }
+  .band span { writing-mode: vertical-rl; font-size: 13px; font-weight: 800; letter-spacing: .3em; }
+
+  /* 목차 */
+  .toc { display: grid; grid-template-columns: 120px 1fr; gap: 20px; align-items: center; flex: 1; }
+  .toc .v { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 38px; font-weight: 800; letter-spacing: .25em; color: var(--blue); justify-self: center; }
+  .toc .items { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  .toc .item { background: #fff; border-radius: 16px; box-shadow: var(--shadow); padding: 26px 28px; display: flex; align-items: center; gap: 18px; }
+  .toc .item small { display: block; font-size: 12px; font-weight: 800; letter-spacing: .18em; color: var(--blue); }
+  .toc .item strong { display: block; font-size: 24px; letter-spacing: -0.02em; margin-top: 4px; }
+
+  /* PART 구분 */
+  .part { padding-right: 0; }
+  .part .wrap { flex: 1; display: grid; grid-template-columns: 1fr 520px 44px; gap: 40px; align-items: center; }
+  .part .kick { font-size: 40px; font-weight: 300; letter-spacing: .12em; color: var(--blue-pale); text-transform: uppercase; }
+  .part h1 { margin: 10px 0 18px; font-size: 48px; letter-spacing: -0.04em; line-height: 1.15; }
+  .part p { margin: 0; font-size: 22px; color: var(--ink-2); }
+  .part img { width: 100%; height: 360px; object-fit: cover; object-position: left top; border-radius: 28px 28px 28px 120px; box-shadow: var(--shadow); border: 6px solid #fff; }
+  .part .band { align-self: stretch; margin: -28px 0 -44px; }
+
+  /* 흐름: 화살표 바 + 카드 다섯 */
+  .flowbar { position: relative; height: 56px; margin: 10px 0 40px; background: linear-gradient(90deg, var(--blue-pale), var(--blue)); clip-path: polygon(0 0, calc(100% - 40px) 0, 100% 50%, calc(100% - 40px) 100%, 0 100%); }
+  .flowbar .num { position: absolute; top: 5px; border: 3px solid #fff; }
+  .flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
+  .flow .wcard { padding: 20px 18px; text-align: center; }
+  .flow b { display: block; font-size: 20px; letter-spacing: -0.02em; }
+  .flow span { display: block; margin-top: 8px; font-size: 15px; color: var(--ink-3); line-height: 1.4; }
+
+  /* 화면: 캡처 + 설명 */
+  .shot { display: grid; grid-template-columns: 1fr 330px; gap: 26px; align-items: stretch; }
+  .shot figure { margin: 0; background: #fff; border-radius: 18px; box-shadow: var(--shadow); padding: 12px; }
+  .shot img { display: block; width: 100%; height: 470px; object-fit: cover; object-position: left top; border-radius: 10px; }
+  .shot ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; align-content: center; }
+  .shot li { background: #fff; border-radius: 16px; box-shadow: var(--shadow); padding: 20px 22px; font-size: 19px; line-height: 1.45; color: var(--ink-2); }
+  .shot li b { display: block; color: var(--ink); font-size: 20px; margin-bottom: 4px; }
+
+  /* 결과: 원형 통계 + 파란 띠 */
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; padding: 0 120px; }
+  .stat { text-align: center; }
+  .stat .ring { width: 200px; height: 200px; margin: 0 auto 18px; border-radius: 50%; border: 10px solid var(--blue-soft); background: #fff; display: grid; place-items: center; box-shadow: var(--shadow); position: relative; }
+  .stat .ring::before { content: ''; position: absolute; inset: -10px; border-radius: 50%; border: 10px solid transparent; border-top-color: var(--blue); border-right-color: var(--blue); transform: rotate(-45deg); }
+  .stat .ring b { font-size: 52px; letter-spacing: -0.04em; color: var(--blue); line-height: 1; }
+  .stat .ring b small { font-size: 22px; margin-left: 2px; }
+  .stat strong { display: block; font-size: 24px; letter-spacing: -0.02em; }
+  .stat span { display: block; margin-top: 6px; font-size: 17px; color: var(--ink-2); }
+  .ribbon { margin-top: 34px; background: linear-gradient(90deg, var(--blue), var(--blue-2)); color: #fff; border-radius: 14px; padding: 16px 28px; font-size: 20px; font-weight: 600; text-align: center; box-shadow: 0 10px 26px rgba(47,111,228,.28); }
+
+  /* 목표 달성: 타일 12 + 큰 숫자 */
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .tile { border-radius: 14px; padding: 16px 14px; text-align: center; font-weight: 700; font-size: 18px; background: linear-gradient(135deg, var(--blue), var(--blue-2)); color: #fff; box-shadow: 0 8px 20px rgba(47,111,228,.22); }
+  .tile small { display: block; font-size: 12px; font-weight: 600; opacity: .85; margin-top: 4px; letter-spacing: .04em; }
+  .tile.open { background: #fff; color: var(--blue); border: 2px dashed var(--blue-pale); box-shadow: none; }
+  .bignum { font-size: 96px; font-weight: 800; letter-spacing: -0.05em; color: var(--blue); line-height: 1; }
+  .bignum small { font-size: 32px; color: var(--blue-pale); margin-left: 6px; }
+
+  /* 끝 */
+  .end .sheet { position: relative; flex: 1; background: #fff; border-radius: 22px; box-shadow: var(--shadow); display: grid; grid-template-columns: 1fr 44px; overflow: hidden; }
+  .end .text { padding: 60px 72px; display: flex; flex-direction: column; justify-content: center; }
+  .end h1 { margin: 0; font-size: 72px; letter-spacing: -0.04em; color: var(--blue); line-height: 1; }
+  .end .sub { margin: 24px 0 0; font-size: 24px; color: var(--ink-2); }
+  .end a { color: var(--blue); font-weight: 700; text-decoration: none; }
+  .end .links { display: flex; gap: 12px; margin-top: 30px; }
+  .end .links a { border: 1.5px solid var(--blue-pale); border-radius: 999px; padding: 8px 18px; font-size: 16px; }
+
   .nav { position: fixed; left: 0; right: 0; bottom: 0; background: rgba(20,28,39,.95); color: #e5e7eb; display: flex; gap: 12px; align-items: center; justify-content: center; padding: 10px; font-size: 14px; }
   .nav button { background: #fff; color: var(--ink); border: 1px solid var(--line); padding: 6px 14px; border-radius: 6px; font-size: 14px; cursor: pointer; }
   @page { size: 1280px 720px; margin: 0; }
-  @media print { html, body { background: #fff; } .deck { position: static; display: block; } .frame { width: auto !important; height: auto !important; } .slide { display: flex; flex-direction: column; justify-content: center; position: relative; transform: none !important; page-break-after: always; border-radius: 0; } .nav { display: none; } }
+  @media print { html, body { background: #fff; } .deck { position: static; display: block; } .frame { width: auto !important; height: auto !important; } .slide { display: flex; position: relative; transform: none !important; page-break-after: always; border-radius: 0; } .nav { display: none; } }
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-collect" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M4 10h16M4 15h16M10 4v16"/></g></symbol>
+  <symbol id="i-sim" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5M4 19h16"/><path d="M7 15l4-5 3 3 5-7"/></g></symbol>
+  <symbol id="i-limit" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></g></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></g></symbol>
+</svg>
 <div class="deck"><div class="frame" id="frame">
 
-<section class="slide is-active">
-  <p class="kicker">lablog · 제품개발팀 실험 관리</p>
-  <h1>흩어진 실험을 한 곳에 모으고,<br>조건을 머신러닝으로 예측·시뮬레이션한다</h1>
-  <p class="sub">실험 관리 도구 lablog — 기록은 한 표에, 다음 조건은 쌓인 데이터로</p>
-  <p class="muted" style="margin-top:40px">2026-11-07 · 외부 공개 데이터 사용: UCI Concrete Compressive Strength 1,030건</p>
-  <div class="n">1 / 12</div>
-</section>
-
-<section class="slide">
-  <p class="kicker">01 · 문제 정의 = 현재와 이상의 차이</p>
-  <h2>문제 상황 둘</h2>
-  <div class="two">
-    <div class="box bad"><small>문제 ①</small><h3>실험 기록이<br>흩어져 있다</h3><span class="now">엑셀·노트·메신저에 따로 적혀 모이지 않음</span><span class="ideal">모든 프로젝트의 실험이 한 표에 모여 있음</span></div>
-    <div class="box bad"><small>문제 ②</small><h3>다음 실험 조건을<br>짐작한다</h3><span class="now">경험으로 정하고, 빗나가면 하루가 감</span><span class="ideal">머신러닝으로 결과를 예측·시뮬레이션해 정함</span></div>
+<!-- 1 표지 -->
+<section class="slide cover is-active">
+  <div class="sheet">
+    <div class="text">
+      <div class="kick">lablog · 실험 관리 + 머신러닝 시뮬레이션</div>
+      <div class="ghost">R&amp;D Lab Notebook</div>
+      <h1>흩어진 실험을 <em>한 곳에</em> 모으고,<br>조건을 <em>머신러닝</em>으로<br>예측·시뮬레이션한다</h1>
+      <div class="pills"><span><b>Report</b> 김경제</span><span><b>Time</b> 2026.11</span><span><b>Data</b> UCI Concrete 1,030건</span></div>
+    </div>
+    <div class="shots"><img src="img/project.jpg" alt=""><img src="img/model.jpg" alt=""><img src="img/check.jpg" alt=""></div>
+    <div class="band"><span>2026 · LABLOG</span></div>
   </div>
-  <div class="n">2 / 12</div>
 </section>
 
+<!-- 2 목차 -->
 <section class="slide">
-  <p class="kicker">02 · 해결 = 기능 둘</p>
-  <h2>모으는 기능 + 시뮬레이션하는 기능</h2>
-  <div class="two">
-    <div class="box good"><small>① 한 곳에 모으는 기능</small><h3>조건·결과만<br>같은 틀로 기록</h3><p>입력·측정 시점·출력·목표(목표값 ± 허용)만 적는다. 프로젝트가 달라도 한 표에 쌓여 바로 비교·학습 가능.</p></div>
-    <div class="box plan"><small>② 시뮬레이션하는 기능</small><h3>결과를 예측하고<br>조건을 제안</h3><p>쌓인 데이터로 머신러닝 학습. 조건을 넣으면 결과를 예측하고, 목표를 만족할 조건을 제안. 달성하면 종료.</p></div>
+  <div class="bar"><div class="logo"><i></i>lablog · 실험 관리 도구</div><div class="dots"><i></i><i></i><i></i></div></div>
+  <div class="toc">
+    <div class="v">CONTENTS</div>
+    <div class="items">
+      <div class="item"><span class="num">01</span><div><small>PART ONE</small><strong>문제 정의 · 현재와 이상</strong></div></div>
+      <div class="item"><span class="num">02</span><div><small>PART TWO</small><strong>해결 · 기능 둘과 흐름</strong></div></div>
+      <div class="item"><span class="num">03</span><div><small>PART THREE</small><strong>화면 · 실험 · 모델 · 데이터</strong></div></div>
+      <div class="item"><span class="num">04</span><div><small>PART FOUR</small><strong>결과 · 한계 · 향후</strong></div></div>
+    </div>
   </div>
-  <div class="n">3 / 12</div>
 </section>
 
-<section class="slide">
-  <p class="kicker">03 · 한 실험의 흐름</p>
-  <h2>5단계</h2>
-  <div class="flow">
-    <div><b>01</b>변수·목표 입력</div>
-    <div><b>02</b>처음 조건 제안<br><span class="muted" style="font-size:15px;font-weight:500">범위를 고르게 덮는 설계</span></div>
-    <div><b>03</b>결과만 입력</div>
-    <div><b>04</b>머신러닝이<br>다음 조건 제안<br><span class="muted" style="font-size:15px;font-weight:500">결과 예측 · 목표 만족 확률</span></div>
-    <div><b>05</b>목표 달성 → 종료</div>
+<!-- 3 PART ONE -->
+<section class="slide part">
+  <div class="bar" style="padding-right:56px"><div class="logo"><i></i>lablog · 실험 관리 도구</div><div class="dots"><i></i><i></i><i></i></div></div>
+  <div class="wrap">
+    <div><div class="kick">Part One</div><h1>문제 정의</h1><p>현재 상황과 이상적인 상황의 차이에서 출발한다</p></div>
+    <img src="img/home.jpg" alt="">
+    <div class="band"><span>PART 01</span></div>
   </div>
-  <div class="n">4 / 12</div>
 </section>
 
+<!-- 4 문제 상황 둘 -->
 <section class="slide">
-  <p class="kicker">04 · 화면 · 실험</p>
-  <img class="shot" src="img/project.jpg" alt="다음 실험 카드: 조건 8개가 적혀 있고 결과 입력 칸 하나, 오른쪽에 목표 현황과 가장 가까운 조건">
-  <p class="caption">다음 실험 카드 — 제안받은 조건 확인, 결과 숫자만 입력, 목표 ± 허용 판정</p>
-  <div class="n">5 / 12</div>
+  <div class="bar"><div class="logo"><i></i>lablog · 실험 관리 도구</div><div class="dots"><i></i><i></i><i></i></div></div>
+  <div class="head"><h2>문제 상황 둘</h2><div class="pg">01</div></div>
+  <div class="body"><div class="two">
+    <div class="wcard"><span class="num">01</span><h3>실험 기록이 흩어져 있다</h3><span class="now">엑셀·노트·메신저에 따로 적혀 모이지 않음</span><span class="ideal">모든 프로젝트의 실험이 한 표에 모여 있음</span></div>
+    <div class="wcard"><span class="num">02</span><h3>다음 실험 조건을 짐작한다</h3><span class="now">경험으로 정하고, 빗나가면 하루가 감</span><span class="ideal">머신러닝으로 결과를 예측·시뮬레이션해 정함</span></div>
+  </div></div>
 </section>
 
-<section class="slide">
-  <p class="kicker">05 · 화면 · 모델</p>
-  <img class="shot" src="img/model.jpg" alt="모델 탭: 적용 중인 모델의 교차검증 R², 예측 vs 실제 산점도, 조건 중요도">
-  <p class="caption">모델 탭 — 예측 정확도·오차, 조건 중요도 · 알고리즘·파라미터를 골라 직접 학습, 버전 저장·적용</p>
-  <div class="n">6 / 12</div>
-</section>
-
-<section class="slide">
-  <p class="kicker">06 · 화면 · 데이터 점검</p>
-  <img class="shot" src="img/check.jpg" alt="표준화 박스플롯: 변수마다 상자와 수염, 밖의 주황 점이 이상치 후보">
-  <p class="caption">표준화 박스플롯 — 이상치와 소수점 실수를 한눈에, 누르면 표에서 찾기</p>
-  <div class="n">7 / 12</div>
-</section>
-
-<section class="slide">
-  <p class="kicker">07 · 결과 · 한 표와 예측</p>
-  <h2>한 표에 모인 실험, 결과 예측 정확도</h2>
-  <div class="two">
-    <div class="box good"><small>한 표에 모인 실험</small><div class="num">992<small>건</small></div><p>프로젝트 12개와 과거 기록 전부가 한 표에. 흩어진 기록 없음.</p></div>
-    <div class="box good"><small>결과 예측 정확도</small><div class="num">80<small>%</small></div><p>실험 전에 결과를 맞히는 정도(R² 0.8, 교차검증). 프로젝트 하나만으로 학습하면 −20~96%.</p></div>
+<!-- 5 PART TWO -->
+<section class="slide part">
+  <div class="bar" style="padding-right:56px"><div class="logo"><i></i>lablog · 실험 관리 도구</div><div class="dots"><i></i><i></i><i></i></div></div>
+  <div class="wrap">
+    <div><div class="kick">Part Two</div><h1>해결</h1><p>모으는 기능 하나, 시뮬레이션하는 기능 하나</p></div>
+    <img src="img/project.jpg" alt="">
+    <div class="band"><span>PART 02</span></div>
   </div>
-  <div class="n">8 / 12</div>
 </section>
 
+<!-- 6 기능 둘 -->
 <section class="slide">
-  <p class="kicker">08 · 결과 · 목표 달성</p>
-  <h2>예시 프로젝트 12개 중 9개가 목표 달성</h2>
-  <div class="two">
-    <div class="box good"><small>목표 달성 프로젝트</small><div class="num">9<small>/ 12</small></div><p>실험 10~23번 만에 목표 ± 허용 안. 달성하면 종료, 다음 실험을 더 짜지 않는다.</p></div>
-    <div class="box plan"><small>진행 중 3개</small><h3>머신러닝이<br>다음 조건 제안</h3><p>목표 만족 확률이 가장 큰 조건 3개를 제안, 이미 계획한 조건은 피한다.</p></div>
+  <div class="bar"><div class="logo"><i></i>lablog · 실험 관리 도구</div><div class="dots"><i></i><i></i><i></i></div></div>
+  <div class="head"><h2>모으는 기능 + 시뮬레이션하는 기능</h2><div class="pg">02</div></div>
+  <div class="body"><div class="two">
+    <div class="wcard"><div class="ico"><svg><use href="#i-collect"/></svg></div><h3>① 한 곳에 모으는 기능</h3><p>조건·결과만 같은 틀로 기록한다. 입력·측정 시점·출력·목표(목표값 ± 허용)만 적으면, 프로젝트가 달라도 한 표에 쌓여 바로 비교·학습할 수 있다.</p></div>
+    <div class="wcard"><div class="ico"><svg><use href="#i-sim"/></svg></div><h3>② 시뮬레이션하는 기능</h3><p>쌓인 데이터로 머신러닝을 학습한다. 조건을 넣으면 결과를 예측하고, 목표를 만족할 조건을 제안한다. 목표를 달성하면 실험이 끝난다.</p></div>
+  </div></div>
+</section>
+
+<!-- 7 흐름 -->
+<section class="slide">
+  <div class="bar"><div class="logo"><i></i>lablog · 실험 관리 도구</div><div class="dots"><i></i><i></i><i></i></div></div>
+  <div class="head"><h2>한 실험의 흐름 · 5단계</h2><div class="pg">03</div></div>
+  <div class="body">
+    <div class="flowbar"><span class="num" style="left:9%">01</span><span class="num" style="left:28%">02</span><span class="num" style="left:47%">03</span><span class="num" style="left:66%">04</span><span class="num" style="left:85%">05</span></div>
+    <div class="flow">
+      <div class="wcard"><b>변수·목표 입력</b><span>입력 범위 · 측정 시점 · 목표값 ± 허용</span></div>
+      <div class="wcard"><b>처음 조건 제안</b><span>범위를 고르게 덮는 설계</span></div>
+      <div class="wcard"><b>결과 숫자 입력</b><span>저장 1번, 목표 판정</span></div>
+      <div class="wcard"><b>머신러닝이 다음 조건 제안</b><span>결과 예측 · 목표 만족 확률</span></div>
+      <div class="wcard"><b>목표 달성 → 종료</b><span>더 이상 실험을 짜지 않음</span></div>
+    </div>
   </div>
-  <div class="n">9 / 12</div>
 </section>
 
-<section class="slide">
-  <p class="kicker">09 · 한계</p>
-  <h2>아직 못 하는 것</h2>
-  <div class="two">
-    <div class="box bad"><small>데이터</small><h3>숫자 조건만</h3><p>기재 종류 같은 문자 조건은 아직 입력에 쓰지 않는다. 변수 이름이 다르면 모으지 못한다.</p></div>
-    <div class="box bad"><small>신뢰</small><h3>범위 밖은 모른다</h3><p>실험한 범위 안에서만 유효. 확률은 보장이 아니고, 후보도 실험으로 확인해야 한다.</p></div>
+<!-- 8 PART THREE -->
+<section class="slide part">
+  <div class="bar" style="padding-right:56px"><div class="logo"><i></i>lablog · 실험 관리 도구</div><div class="dots"><i></i><i></i><i></i></div></div>
+  <div class="wrap">
+    <div><div class="kick">Part Three</div><h1>화면</h1><p>프로젝트 · 데이터 · 모델, 탭 셋</p></div>
+    <img src="img/model.jpg" alt="">
+    <div class="band"><span>PART 03</span></div>
   </div>
-  <div class="n">10 / 12</div>
 </section>
 
+<!-- 9 실험 화면 -->
 <section class="slide">
-  <p class="kicker">10 · 향후</p>
-  <h2>다음에 할 것</h2>
-  <div class="two">
-    <div class="box plan"><small>기능</small><h3>문자 조건 · 변수 별칭</h3><p>원-핫 입력과 이름 맞추기로 더 많은 프로젝트를 한 모델로.</p></div>
-    <div class="box plan"><small>검증</small><h3>실제 팀 데이터 · 팀 공유</h3><p>현장 데이터로 R² 확인, 브라우저 저장을 넘어 공유 저장소.</p></div>
+  <div class="bar"><div class="logo"><i></i>lablog · 실험 관리 도구</div><div class="dots"><i></i><i></i><i></i></div></div>
+  <div class="head"><h2>화면 · 실험</h2><div class="pg">04</div></div>
+  <div class="body"><div class="shot">
+    <figure><img src="img/project.jpg" alt="다음 실험 카드와 목표 현황"></figure>
+    <ul><li><b>다음 실험 카드</b>제안받은 조건을 확인하고 결과 숫자만 넣는다</li><li><b>목표 ± 허용 판정</b>저장하면 바로 달성 여부가 보인다</li></ul>
+  </div></div>
+</section>
+
+<!-- 10 모델 화면 -->
+<section class="slide">
+  <div class="bar"><div class="logo"><i></i>lablog · 실험 관리 도구</div><div class="dots"><i></i><i></i><i></i></div></div>
+  <div class="head"><h2>화면 · 모델</h2><div class="pg">05</div></div>
+  <div class="body"><div class="shot">
+    <figure><img src="img/model.jpg" alt="모델 탭: 예측 정확도, 조건 중요도"></figure>
+    <ul><li><b>예측 정확도 · 오차 · 조건 중요도</b>같은 변수 프로젝트를 모아 학습한 결과</li><li><b>직접 학습 · 버전 저장·적용</b>알고리즘과 파라미터를 골라 학습하고, 적용한 모델이 제안에 쓰인다</li></ul>
+  </div></div>
+</section>
+
+<!-- 11 데이터 점검 -->
+<section class="slide">
+  <div class="bar"><div class="logo"><i></i>lablog · 실험 관리 도구</div><div class="dots"><i></i><i></i><i></i></div></div>
+  <div class="head"><h2>화면 · 데이터 점검</h2><div class="pg">06</div></div>
+  <div class="body"><div class="shot">
+    <figure><img src="img/check.jpg" alt="표준화 박스플롯"></figure>
+    <ul><li><b>표준화 박스플롯</b>변수마다 분포를 같은 눈금으로, 이상치와 소수점 실수를 한눈에</li><li><b>누르면 표에서 찾기</b>의심 값을 바로 고친다</li></ul>
+  </div></div>
+</section>
+
+<!-- 12 PART FOUR -->
+<section class="slide part">
+  <div class="bar" style="padding-right:56px"><div class="logo"><i></i>lablog · 실험 관리 도구</div><div class="dots"><i></i><i></i><i></i></div></div>
+  <div class="wrap">
+    <div><div class="kick">Part Four</div><h1>결과</h1><p>한 표에 모인 실험, 예측 정확도, 목표 달성</p></div>
+    <img src="img/check.jpg" alt="">
+    <div class="band"><span>PART 04</span></div>
   </div>
-  <div class="n">11 / 12</div>
 </section>
 
+<!-- 13 숫자 둘 -->
 <section class="slide">
-  <p class="kicker">끝</p>
-  <h1>써 보기</h1>
-  <p class="sub"><a href="https://lablog-kgt8.vercel.app/">lablog-kgt8.vercel.app</a> — 브라우저에서 바로. 처음 열면 예시 프로젝트 12개가 들어 있습니다.</p>
-  <p class="muted" style="margin-top:28px">문서: docs/01_문제정의와_설계.md · 테스트 25개 · GitHub Pages / Vercel 배포</p>
-  <div class="n">12 / 12</div>
+  <div class="bar"><div class="logo"><i></i>lablog · 실험 관리 도구</div><div class="dots"><i></i><i></i><i></i></div></div>
+  <div class="head"><h2>한 표에 모인 실험, 결과 예측 정확도</h2><div class="pg">07</div></div>
+  <div class="body">
+    <div class="stats">
+      <div class="stat"><div class="ring"><b>992<small>건</small></b></div><strong>한 표에 모인 실험</strong><span>프로젝트 12개와 과거 기록 전부</span></div>
+      <div class="stat"><div class="ring"><b>80<small>%</small></b></div><strong>결과 예측 정확도</strong><span>실험 전에 결과를 맞히는 정도 (R² 0.8, 교차검증)</span></div>
+    </div>
+    <div class="ribbon">프로젝트 하나만으로 학습하면 −20~96%로 들쭉날쭉 → 모아서 학습하면 80%</div>
+  </div>
+</section>
+
+<!-- 14 목표 달성 -->
+<section class="slide">
+  <div class="bar"><div class="logo"><i></i>lablog · 실험 관리 도구</div><div class="dots"><i></i><i></i><i></i></div></div>
+  <div class="head"><h2>예시 프로젝트 12개 중 9개가 목표 달성</h2><div class="pg">08</div></div>
+  <div class="body"><div class="two" style="grid-template-columns: 1.3fr 1fr; align-items: center">
+    <div class="tiles">
+      <div class="tile">SM-25<small>달성</small></div><div class="tile">SM-35<small>달성</small></div><div class="tile">SM-45<small>달성</small></div><div class="tile open">SM-55<small>진행 중</small></div>
+      <div class="tile">ES-40<small>달성</small></div><div class="tile">ES-50<small>달성</small></div><div class="tile open">ES-60<small>진행 중</small></div><div class="tile">LF-35<small>달성</small></div>
+      <div class="tile">LF-45<small>달성</small></div><div class="tile">HB-45<small>달성</small></div><div class="tile">HB-60<small>달성</small></div><div class="tile open">HB-70<small>진행 중</small></div>
+    </div>
+    <div class="wcard"><div class="bignum">9<small>/ 12</small></div><h3>실험 10~23번 만에 목표 ± 허용 안</h3><p>달성하면 종료. 진행 중인 3개는 머신러닝이 목표 만족 확률이 큰 조건을 제안한다.</p></div>
+  </div></div>
+</section>
+
+<!-- 15 한계 · 향후 -->
+<section class="slide">
+  <div class="bar"><div class="logo"><i></i>lablog · 실험 관리 도구</div><div class="dots"><i></i><i></i><i></i></div></div>
+  <div class="head"><h2>한계와 다음에 할 것</h2><div class="pg">09</div></div>
+  <div class="body"><div class="two">
+    <div class="wcard"><div class="ico"><svg><use href="#i-limit"/></svg></div><h3>한계</h3><p>숫자 조건만 다룬다. 기재 종류 같은 문자 조건과 이름이 다른 변수는 아직 모으지 못한다.</p><p style="margin-top:10px">실험한 범위 안에서만 유효하다. 확률은 보장이 아니고, 제안도 실험으로 확인해야 한다.</p></div>
+    <div class="wcard"><div class="ico"><svg><use href="#i-next"/></svg></div><h3>향후</h3><p>문자 조건과 변수 별칭을 넣어 더 많은 프로젝트를 한 모델로 학습한다.</p><p style="margin-top:10px">실제 팀 데이터로 정확도를 확인하고, 브라우저 저장을 넘어 팀이 공유하는 저장소로 간다.</p></div>
+  </div></div>
+</section>
+
+<!-- 16 끝 -->
+<section class="slide end cover">
+  <div class="sheet">
+    <div class="text">
+      <h1>THANK YOU</h1>
+      <p class="sub">브라우저에서 바로 써 볼 수 있습니다. 처음 열면 예시 프로젝트 12개가 들어 있습니다.</p>
+      <div class="links"><a href="https://lablog-kgt8.vercel.app/" target="_blank" rel="noreferrer">lablog-kgt8.vercel.app ↗</a><a href="https://github.com/jgi0117/lablog" target="_blank" rel="noreferrer">GitHub ↗</a></div>
+      <p class="muted" style="margin-top:28px;font-size:15px">공개 데이터: UCI Concrete Compressive Strength (Yeh 1998, CC BY 4.0) · 테스트 25개 · Vercel 배포</p>
+    </div>
+    <div class="band"><span>2026 · LABLOG</span></div>
+  </div>
 </section>
 
 </div></div>
 <div class="nav">
   <button type="button" id="prev">← 이전</button>
-  <span id="pos">1 / 12</span>
+  <span id="pos">1 / 16</span>
   <button type="button" id="next">다음 →</button>
   <button type="button" onclick="window.print()">인쇄/PDF</button>
   <span>· ← → 키</span>

@@ -1,12 +1,15 @@
 :root {
-  --bg: #f3f5f8;
+  --bg: #eef3fa;
+  --bg-2: #e2eaf7;
   --card: #ffffff;
   --ink: #16202b;
   --ink-2: #44505e;
   --ink-3: #6b7684;
-  --line: #d8dee6;
-  --accent: #2a78d6;
-  --accent-soft: #e6effb;
+  --line: #dbe3ee;
+  --accent: #2f6fe4;
+  --accent-2: #5b8ff0;
+  --accent-soft: #e8f0fd;
+  --shadow: 0 8px 28px rgba(47, 111, 228, 0.1);
   --accent-ink: #ffffff;
   --ok: #1baf7a;
   --ok-bg: #e2f6ec;
@@ -14,7 +17,7 @@
   --warn-bg: #fff3d1;
   --bad: #e34948;
   --bad-bg: #fde8e8;
-  --radius: 12px;
+  --radius: 16px;
   --font: 'Pretendard Variable', 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
 }
 
@@ -25,7 +28,7 @@
 html,
 body {
   margin: 0;
-  background: var(--bg);
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%) fixed;
   color: var(--ink);
   font-family: var(--font);
   font-size: 17px;
@@ -47,17 +50,31 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 24px;
+  padding: 10px 18px 10px 20px;
+  margin: 16px 0 24px;
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   font-weight: 800;
   font-size: 22px;
   letter-spacing: -0.01em;
   color: var(--ink);
   text-decoration: none;
+}
+
+.brand::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 0 0 4px var(--accent-soft);
 }
 
 .top nav {
@@ -68,21 +85,38 @@ a {
 .top nav a {
   color: var(--ink-2);
   text-decoration: none;
-  padding: 8px 14px;
-  border-radius: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
   font-weight: 600;
 }
 
-.top nav a.active {
+.top nav a:hover {
   background: var(--accent-soft);
   color: var(--accent);
 }
 
+.top nav a.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+}
+
 h1 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   font-size: 30px;
   line-height: 1.25;
   letter-spacing: -0.01em;
   margin: 0 0 6px;
+}
+
+h1::before {
+  content: '';
+  flex: none;
+  width: 12px;
+  height: 22px;
+  border-radius: 0 999px 999px 0;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
 }
 
 h2 {
@@ -144,15 +178,15 @@ p {
 
 .card {
   background: var(--card);
-  border: 1px solid var(--line);
+  border: 1px solid transparent;
   border-radius: var(--radius);
   padding: 22px 24px;
-  box-shadow: 0 1px 2px rgba(22, 32, 43, 0.04);
+  box-shadow: var(--shadow);
 }
 
 .card--focus {
   border: 2px solid var(--accent);
-  box-shadow: 0 6px 24px rgba(42, 120, 214, 0.12);
+  box-shadow: 0 12px 36px rgba(47, 111, 228, 0.18);
 }
 
 .card h2 {
@@ -183,9 +217,10 @@ p {
 }
 
 .btn--primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
   color: var(--accent-ink);
+  box-shadow: 0 6px 16px rgba(47, 111, 228, 0.25);
 }
 
 .btn--primary:hover {
@@ -223,8 +258,8 @@ p {
   border-radius: 999px;
   font-size: 13px;
   font-weight: 700;
-  background: #e9edf2;
-  color: var(--ink-2);
+  background: var(--accent-soft);
+  color: var(--accent);
   white-space: nowrap;
   vertical-align: middle;
 }
@@ -311,7 +346,7 @@ p {
 .table-wrap {
   overflow: auto;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 12px;
   background: #fff;
 }
 
@@ -331,8 +366,8 @@ td {
 }
 
 th {
-  background: #f1f4f8;
-  color: var(--ink-2);
+  background: var(--accent-soft);
+  color: var(--accent);
   font-weight: 700;
   position: sticky;
   top: 0;
@@ -380,8 +415,8 @@ td.fail {
   flex-direction: column;
   gap: 2px;
   padding: 10px 12px;
-  background: #f3f5f8;
-  border-radius: 10px;
+  background: #f3f7fd;
+  border-radius: 12px;
 }
 
 .cond .name {
@@ -469,6 +504,15 @@ td.fail {
   font-size: 21px;
 }
 
+.proj {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.proj:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 36px rgba(47, 111, 228, 0.16);
+}
+
 .tabs {
   display: flex;
   gap: 6px;
@@ -523,12 +567,12 @@ td.fail {
 
 .cand {
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 14px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: #f8fafc;
+  background: #f6f9fe;
 }
 
 .cand .kv {
@@ -550,7 +594,7 @@ details summary {
 
 .banner {
   padding: 14px 18px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid var(--line);
   background: #fff;
   font-size: 16px;
