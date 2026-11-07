@@ -51,7 +51,8 @@ export const OVERALL: Record<Status['overall'], { text: string; cls: string }> =
   'no-goal': { text: '목표 없음', cls: '' },
 }
 
-export function StatusChip({ s }: { s: Status }) {
+export function StatusChip({ s, reference }: { s: Status; reference?: boolean }) {
+  if (reference) return <span className="chip">참고 데이터</span>
   const o = OVERALL[s.overall]
   return <span className={`chip ${o.cls}`}>{o.text}</span>
 }
@@ -70,7 +71,7 @@ export function ProjectHeader({ project, runs, children }: { project: Project; r
       </p>
       <div className="row between">
         <h1 className="row">
-          {project.name} <StatusChip s={s} />
+          {project.name} <StatusChip s={s} reference={project.reference} />
         </h1>
         <div className="row">
           <Link to={`/data?p=${project.id}`} className="btn">
@@ -96,7 +97,7 @@ export function useProjectParam(): { project: Project | null; setProject: (id: s
   const [params, setParams] = useSearchParams()
   const id = params.get('p')
   const projects = db.projects
-  const fallback = projects.find((p) => !status(p, runsOf(db, p.id)).finished) ?? projects[0] ?? null
+  const fallback = projects.find((p) => !p.reference && !status(p, runsOf(db, p.id)).finished) ?? projects.find((p) => !p.reference) ?? projects[0] ?? null
   const project = projects.find((p) => p.id === id) ?? fallback
   const setProject = (pid: string) => setParams({ p: pid })
   return { project, setProject, projects }

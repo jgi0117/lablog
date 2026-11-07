@@ -44,11 +44,11 @@ describe('목표 판정', () => {
 })
 
 describe('예시 데이터', () => {
-  it('프로젝트 12개: 아홉은 마지막 실험에서 목표를 만족해 끝났고, 셋은 진행 중이다', () => {
-    expect(demo.projects).toHaveLength(12)
+  it('프로젝트 12개 + 참고 4개: 아홉은 끝났고 셋은 진행 중, 공개 데이터 1,030행을 모두 쓴다', () => {
+    expect(demo.projects).toHaveLength(16)
+    expect(demo.projects.filter((p) => p.reference)).toHaveLength(4)
     expect(demo.runs.every((r) => r.status === 'done')).toBe(true)
-    expect(demo.runs.length).toBeGreaterThan(150)
-    expect(demo.runs.length).toBeLessThan(300)
+    expect(demo.runs.length).toBeGreaterThan(980) // 1,030행 중 같은 배합·같은 재령 중복 38행 제외
     // 같은 배합은 한 프로젝트에만
     const keys = demo.runs.map((r) => `${r.project}|${Object.entries(r.x).filter(([k]) => !k.includes('재령')).map(([, v]) => v).join(',')}`)
     expect(new Set(keys).size).toBe(keys.length)
@@ -76,14 +76,16 @@ describe('예시 데이터', () => {
     const hb = projectOf('HB-45')
     const own = trainModel(hb, runsOf(hb))
     const pd = pool(demo, hb)
-    expect(pd.projects).toHaveLength(12)
+    expect(pd.projects).toHaveLength(16)
     expect(pd.runs.length).toBe(demo.runs.length)
-    expect(pd.extras).toHaveLength(12)
+    expect(pd.extras).toHaveLength(16)
     expect(pd.fixed[`${PROJECT_PREFIX}${hb.id}`]).toBe(1)
     expect(Object.values(pd.fixed).filter((v) => v === 1)).toHaveLength(1)
     const pooled = trainModel(hb, pd.runs, { extras: pd.extras, fixed: pd.fixed, pooledProjects: pd.projects.length })
     expect(pooled.models[0].n).toBe(demo.runs.length)
-    expect(pooled.models[0].r2).toBeGreaterThan(0.6)
+    expect(pooled.models[0].r2).toBeGreaterThan(0.7)
+    expect(pooled.models[0].rmse).toBeCloseTo(Math.sqrt(pooled.models[0].mse), 9)
+    expect(pooled.models[0].mae).toBeLessThan(pooled.models[0].rmse)
     expect(pooled.models[0].r2).toBeGreaterThan(own.models[0]?.r2 ?? -1)
     // 제안은 이 프로젝트의 표시 변수를 1로 고정하고, 제안 값에 표시 변수가 없다
     const res = suggest(pooled, hb, { n: 2 })

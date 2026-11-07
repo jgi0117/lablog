@@ -83,8 +83,9 @@ describe('예시 데이터', () => {
     const user = userEvent.setup()
     replaceDb(demoDb())
     open('/')
-    expect(await screen.findAllByRole('heading', { level: 2 })).toHaveLength(12)
+    expect(await screen.findAllByRole('heading', { level: 2 })).toHaveLength(16)
     expect(screen.getAllByText('목표 달성 · 종료')).toHaveLength(9)
+    expect(screen.getAllByText('참고 데이터')).toHaveLength(4)
     expect(screen.getAllByRole('link', { name: '결과 보기 →' })).toHaveLength(9)
     await user.click(screen.getByRole('link', { name: '스탠다드믹스 SM-35' }))
     expect(await screen.findByText(/목표 달성\. 실험 \d+건으로 끝났습니다/)).toBeInTheDocument()
@@ -108,7 +109,7 @@ describe('예시 데이터', () => {
     await user.click(screen.getByRole('link', { name: '자세히 →' }))
     expect(await screen.findByRole('heading', { name: '모델' })).toBeInTheDocument()
     expect(screen.getByLabelText('프로젝트', { selector: '#mp' })).toHaveValue(hb.id)
-    expect(await screen.findByText(/같은 변수 프로젝트 11개/)).toBeInTheDocument()
+    expect(await screen.findByText(/같은 변수 프로젝트 15개/)).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: '목표를 만족할 가능성이 큰 조건' })).toBeInTheDocument()
   }, 40000)
 
@@ -118,7 +119,7 @@ describe('예시 데이터', () => {
     open('/')
     await user.click(await screen.findByRole('link', { name: '데이터' }))
     expect(await screen.findByRole('heading', { name: '데이터' })).toBeInTheDocument()
-    expect(screen.getByText(/같은 변수를 가진 프로젝트 11개 함께 보기/)).toBeInTheDocument()
+    expect(screen.getByText(/같은 변수를 가진 프로젝트 15개 함께 보기/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /전체 \d+/ })).toHaveTextContent(`전체 ${getDb().runs.length}`)
     await user.click(screen.getByRole('link', { name: '모델' }))
     expect(await screen.findByRole('heading', { name: '모델' })).toBeInTheDocument()
@@ -134,14 +135,14 @@ describe('예시 데이터', () => {
     // 조건 둘만 빼고 학습
     await user.click(screen.getByLabelText('굵은 골재'))
     await user.click(screen.getByLabelText('잔골재'))
-    expect(screen.getByText(/조건 \(feature\) · 18개 선택/)).toBeInTheDocument()
+    expect(screen.getByText(/조건 \(feature\) · 22개 선택/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '학습하기' }))
     expect(await screen.findByRole('button', { name: '저장하고 적용' }, { timeout: 20000 })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '저장하고 적용' }))
     expect(await screen.findByText('적용 중')).toBeInTheDocument()
     expect(getDb().models).toHaveLength(1)
     expect(getDb().models![0]).toMatchObject({ version: 1, algo: 'gbm', applied: true, target: '압축강도' })
-    expect(getDb().models![0].features).toHaveLength(18)
+    expect(getDb().models![0].features).toHaveLength(22)
     expect(await screen.findByText(/v1 GBM/, {}, { timeout: 15000 })).toBeInTheDocument()
     // 자동으로 되돌리기
     await user.click(screen.getByRole('button', { name: '자동으로' }))
@@ -153,8 +154,16 @@ describe('예시 데이터', () => {
     const p = getDb().projects.find((x) => x.name.includes('HB-70'))!
     open(`/data?p=${p.id}`)
     expect(await screen.findByRole('button', { name: 'CSV 내려받기' })).toBeInTheDocument()
-    expect(screen.getAllByRole('row').length).toBeGreaterThan(10)
+    // 한 쪽에 10건, 다음 쪽으로 넘어갔다가 돌아온다
+    expect(screen.getByText(/1 \/ \d+ 쪽/)).toBeInTheDocument()
+    expect(screen.getAllByRole('row')).toHaveLength(11 + (screen.queryByRole('heading', { name: /입력 점검/ }) ? screen.getAllByRole('row').length - 11 : 0))
     const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: '다음 ›' }))
+    expect(screen.getByText(/2 \/ \d+ 쪽/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '‹ 이전' }))
+    // 입력 점검: 변수별 박스플롯과 이상치 후보
+    expect(screen.getByRole('heading', { name: /입력 점검/ })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: '변수별 분포와 이상치 후보' })).toBeInTheDocument()
     const last = runsOf(getDb(), p.id).at(-1)!
     const cell = screen.getByLabelText(`#${last.order} 압축강도`)
     await user.clear(cell)

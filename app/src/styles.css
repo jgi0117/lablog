@@ -351,6 +351,10 @@ tr.is-next td {
   background: #eef5ff;
 }
 
+tr.is-hl td {
+  background: var(--warn-bg);
+}
+
 td.pass {
   background: var(--ok-bg);
   color: #0d6e4a;

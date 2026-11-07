@@ -197,3 +197,99 @@ export function InfluenceBars({ variables, runs, y, levelVar, goal }: { variable
   )
 }
 
+
+// ---------- 입력 점검: 박스플롯 ----------
+
+export interface BoxStats {
+  q1: number
+  med: number
+  q3: number
+  /** 수염 끝(1.5 IQR 안의 최소·최대) */
+  lo: number
+  hi: number
+  /** 수염 밖 값의 번호 */
+  outliers: number[]
+}
+
+export function boxStats(values: number[]): BoxStats | null {
+  const v = values.filter((x) => Number.isFinite(x))
+  if (v.length < 4) return null
+  const s = [...v].sort((a, b) => a - b)
+  const q = (p: number) => {
+    const pos = (s.length - 1) * p
+    const a = Math.floor(pos)
+    const b = Math.ceil(pos)
+    return s[a] + (s[b] - s[a]) * (pos - a)
+  }
+  const q1 = q(0.25)
+  const med = q(0.5)
+  const q3 = q(0.75)
+  const iqr = q3 - q1
+  const fenceLo = q1 - 1.5 * iqr
+  const fenceHi = q3 + 1.5 * iqr
+  const inside = v.filter((x) => x >= fenceLo && x <= fenceHi)
+  const outliers = values.map((x, i) => (Number.isFinite(x) && (x < fenceLo || x > fenceHi) ? i : -1)).filter((i) => i >= 0)
+  return { q1, med, q3, lo: inside.length ? Math.min(...inside) : q1, hi: inside.length ? Math.max(...inside) : q3, outliers }
+}
+
+/** 값이 중앙값의 10^k 배(k ≠ 0)에 가까우면 소수점 자리 실수일 수 있다 */
+export function decimalSuspect(value: number, med: number): number | null {
+  if (!(med > 0) || !(value > 0)) return null
+  const k = Math.round(Math.log10(value / med))
+  if (k === 0) return null
+  const ratio = value / (med * 10 ** k)
+  return ratio > 0.7 && ratio < 1.4 ? k : null
+}
+
+export interface BoxRow {
+  key: string
+  name: string
+  unit: string
+  values: number[]
+  /** 각 값의 꼬리표(실험 번호 등) */
+  labels: string[]
+  stats: BoxStats
+}
+
+/** 변수마다 한 줄: 상자(Q1~Q3), 가운데 선(중앙값), 수염(1.5 IQR), 밖의 점(이상치 후보). 변수마다 자기 범위로 그린다 */
+export function BoxPlots({ rows, onPick }: { rows: BoxRow[]; onPick?: (key: string, index: number) => void }) {
+  const rowH = 34
+  const L = 150
+  const RW = W - L - 110
+  const h = rows.length * rowH + 8
+  return (
+    <svg className="chart" viewBox={`0 0 ${W} ${h}`} role="img" aria-label="변수별 분포와 이상치 후보">
+      {rows.map((r, i) => {
+        const all = r.values.filter((v) => Number.isFinite(v))
+        const lo = Math.min(...all)
+        const hi = Math.max(...all)
+        const sx = (v: number) => L + ((v - lo) / Math.max(hi - lo, 1e-9)) * RW
+        const y = i * rowH + 4
+        const mid = y + 13
+        return (
+          <g key={r.key}>
+            <text x={L - 10} y={mid + 4} textAnchor="end" fontSize="13" fill={C.ink}>
+              {r.name}
+            </text>
+            <line x1={sx(r.stats.lo)} x2={sx(r.stats.q1)} y1={mid} y2={mid} stroke={C.ink} />
+            <line x1={sx(r.stats.q3)} x2={sx(r.stats.hi)} y1={mid} y2={mid} stroke={C.ink} />
+            <line x1={sx(r.stats.lo)} x2={sx(r.stats.lo)} y1={mid - 6} y2={mid + 6} stroke={C.ink} />
+            <line x1={sx(r.stats.hi)} x2={sx(r.stats.hi)} y1={mid - 6} y2={mid + 6} stroke={C.ink} />
+            <rect x={sx(r.stats.q1)} y={mid - 9} width={Math.max(2, sx(r.stats.q3) - sx(r.stats.q1))} height={18} fill={C.band} stroke={C.bandLine} rx="3" />
+            <line x1={sx(r.stats.med)} x2={sx(r.stats.med)} y1={mid - 9} y2={mid + 9} stroke={C.bandLine} strokeWidth="2" />
+            {r.stats.outliers.map((idx) => (
+              <circle key={idx} cx={sx(r.values[idx])} cy={mid} r="5" fill={C.neg} stroke="#fff" strokeWidth="1.2" style={{ cursor: onPick ? 'pointer' : undefined }} onClick={() => onPick?.(r.key, idx)}>
+                <title>
+                  {r.labels[idx]}: {fmt(r.values[idx])} {r.unit}
+                </title>
+              </circle>
+            ))}
+            <text x={W - 6} y={mid + 4} textAnchor="end" fontSize="11" fill={C.ink}>
+              {fmt(lo)} ~ {fmt(hi)}
+            </text>
+          </g>
+        )
+      })}
+    </svg>
+  )
+}

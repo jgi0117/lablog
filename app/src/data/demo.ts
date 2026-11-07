@@ -8,7 +8,8 @@ import csv from './concrete/concrete.csv?raw'
  * 예시 데이터: UCI 콘크리트 압축강도 공개 데이터(Yeh 1998, CC BY 4.0)에서 뽑은 네 프로젝트.
  * 실제 프로젝트처럼 "목표에서 먼 배합부터 시작해 점점 가까워지다가, 목표 ±허용 안에 들어오면 끝난다"는 순서로
  * 배합을 골라 실험 기록을 만들었다. 값은 바꾸지 않았고 프로젝트 이름·고객·목표는 지어낸 것이다.
- * 결합재 종류 4가지 × 목표 강도가 다른 프로젝트 12개. 아홉은 목표를 달성해 끝났고 셋은 진행 중이다. 같은 변수를 쓰므로 모델은 전체를 모아 학습한다.
+ * 결합재 종류 4가지 × 목표 강도가 다른 프로젝트 12개(아홉 완료, 셋 진행 중) + 남은 배합을 모은 참고 프로젝트 4개.
+ * 같은 변수를 쓰므로 모델은 공개 데이터 1,030행 전부를 모아 학습한다.
  */
 
 const NAMES = ['시멘트', '고로슬래그', '플라이애시', '물', '고성능 감수제', '굵은 골재', '잔골재']
@@ -143,10 +144,8 @@ export function demoDb(): Db {
     picked.forEach((m, i) => {
       const x: Record<ID, number> = {}
       NAMES.forEach((name, j) => (x[vid(name)] = m.x[j]))
-      // 같은 배합을 7일에도 쟀으면 함께 기록한다(참고값)
-      for (const a of [7, 28]) {
-        const s = m.byAge.get(a)
-        if (s === undefined) continue
+      // 같은 배합을 다른 재령에서도 쟀으면 함께 기록한다(목표 판정은 28일만, 나머지는 참고값이자 학습 데이터)
+      for (const [a, s] of [...m.byAge.entries()].sort((p1, p2) => p1[0] - p2[0])) {
         runs.push({
           id: newId('r'),
           project: project.id,
@@ -156,10 +155,35 @@ export function demoDb(): Db {
           status: 'done',
           source: i === 0 ? 'manual' : i < 8 ? 'plan' : 'model',
           note: '',
-          date: new Date(day0 + (i * 9 + (a === 7 ? 7 : 28)) * 86400000).toISOString(),
+          date: new Date(day0 + (i * 9 + Math.min(a, 90)) * 86400000).toISOString(),
         })
       }
     })
+  }
+  // 남은 배합(프로젝트에 쓰지 않은 것)은 결합재 종류별 "참고 데이터" 프로젝트로 넣는다. 계획은 짜지 않고 학습에만 쓴다
+  const REF: Record<Key, string> = { SM: '시멘트 단독', ES: '시멘트 + 고로슬래그', LF: '시멘트 + 플라이애시', HB: '시멘트 + 고로슬래그 + 플라이애시' }
+  for (const key of ['SM', 'ES', 'LF', 'HB'] as Key[]) {
+    const all = mixes.get(key) ?? []
+    const rest = all.filter((m) => !used.has(m))
+    if (rest.length === 0) continue
+    const variables: Variable[] = NAMES.map((name, j) => {
+      const vals = all.map((m) => m.x[j]).sort((a, b) => a - b)
+      return { id: newId('v'), name, unit: UNIT, role: 'input', min: pct(vals, 0.02), max: pct(vals, 0.98), decimals: 1 }
+    })
+    const age: Variable = { id: newId('v'), name: '재령', unit: '일', role: 'level', decimals: 0, levels: [28] }
+    const strength: Variable = { id: newId('v'), name: '압축강도', unit: 'MPa', role: 'output', decimals: 2 }
+    variables.push(age, strength)
+    const vid = (name: string) => variables.find((v) => v.name === name)!.id
+    const project: Project = { id: newId('p'), name: `참고 · 과거 배합 기록 (${REF[key]})`, note: `공개 데이터(UCI 콘크리트)에서 프로젝트에 쓰지 않은 배합 ${rest.length}개, 모든 재령. 학습에만 쓴다`, variables, goals: [], initialRuns: 8, reference: true, created: now(), updated: now() }
+    projects.push(project)
+    let order = 1
+    for (const m of rest) {
+      const x: Record<ID, number> = {}
+      NAMES.forEach((name, j) => (x[vid(name)] = m.x[j]))
+      for (const [a, sv] of [...m.byAge.entries()].sort((p1, p2) => p1[0] - p2[0])) {
+        runs.push({ id: newId('r'), project: project.id, order: order++, x: { ...x, [age.id]: a }, y: { [strength.id]: sv }, status: 'done', source: 'import', note: '', date: null })
+      }
+    }
   }
   return { version: 3, projects, runs }
 }

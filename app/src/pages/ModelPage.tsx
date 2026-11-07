@@ -166,9 +166,9 @@ export function ModelPage() {
                     R² {m.r2.toFixed(2)} · {describeFit(m.r2)}
                   </span>
                   <span className="muted small">
-                    오차 ±{Number(m.mae.toPrecision(2))}
-                    {m.target.unit ? ` ${m.target.unit}` : ''} · 조건 {m.featureIdx.length}개 · {m.folds}겹 교차검증
-                    {!m.versionId && m.cv.ridge !== undefined && m.cv.forest !== undefined && ` · 자동 비교: RF ${m.cv.forest.toFixed(2)} / 선형 ${m.cv.ridge.toFixed(2)}`}
+                    MAE {Number(m.mae.toPrecision(3))} · RMSE {Number(m.rmse.toPrecision(3))} · MSE {Number(m.mse.toPrecision(3))}
+                    {m.target.unit ? ` (${m.target.unit})` : ''} · 실험 {m.n}건 · 조건 {m.featureIdx.length}개 · {m.folds}겹 교차검증
+                    {!m.versionId && m.cv.ridge !== undefined && m.cv.forest !== undefined && ` · 자동 비교 R²: RF ${m.cv.forest.toFixed(2)} / 선형 ${m.cv.ridge.toFixed(2)}`}
                   </span>
                 </li>
               ))}
@@ -181,7 +181,7 @@ export function ModelPage() {
             </>
           )}
         </ul>
-        <p className="hint">R² = 학습에 쓰지 않은 실험을 맞히는 정도(교차검증). 0.3 미만이면 제안·예측에 쓰지 않음. 실험 범위 안에서만 유효.</p>
+        <p className="hint">모두 교차검증 값(학습에 쓰지 않은 실험으로) · R² 1에 가까울수록, MAE·RMSE·MSE 작을수록 좋음 · R² 0.3 미만이면 제안·예측에 쓰지 않음 · 실험 범위 안에서만 유효</p>
         {model && model.models.length > 0 && (
           <div className="stack">
             {model.models.map((m) => (
@@ -218,7 +218,8 @@ export function ModelPage() {
                   <th>조건</th>
                   <th>실험</th>
                   <th>R²</th>
-                  <th>오차</th>
+                  <th>MAE</th>
+                  <th>RMSE</th>
                   <th>학습일</th>
                   <th>상태</th>
                   <th></th>
@@ -238,7 +239,8 @@ export function ModelPage() {
                     <td>
                       <b>{v.r2.toFixed(2)}</b>
                     </td>
-                    <td>±{Number(v.mae.toPrecision(2))}</td>
+                    <td>{Number(v.mae.toPrecision(3))}</td>
+                    <td>{Number((v.rmse ?? v.residSd).toPrecision(3))}</td>
                     <td className="small">{v.trainedAt.slice(0, 16).replace('T', ' ')}</td>
                     <td>{v.applied ? <span className="chip chip--ok">적용 중</span> : <span className="muted small">—</span>}</td>
                     <td>
@@ -415,7 +417,7 @@ function TrainCard({ project, model, versions, group, pooledProjects }: { projec
               R² {result.tm.r2.toFixed(2)} · {describeFit(result.tm.r2)}
             </span>
             <span className="muted small">
-              오차 ±{Number(result.tm.mae.toPrecision(2))} · 실험 {result.tm.n}건 · 조건 {result.tm.featureIdx.length}개 · {result.ms}ms
+              MAE {Number(result.tm.mae.toPrecision(3))} · RMSE {Number(result.tm.rmse.toPrecision(3))} · MSE {Number(result.tm.mse.toPrecision(3))} · 실험 {result.tm.n}건 · 조건 {result.tm.featureIdx.length}개 · {result.ms}ms
             </span>
           </div>
           <div className="split">

@@ -357,6 +357,9 @@ export interface TargetModel {
   r2: number
   residSd: number
   mae: number
+  /** 교차검증 RMSE·MSE */
+  rmse: number
+  mse: number
   ysd: number
   importance: { variable: Variable; share: number }[]
   reliable: boolean
@@ -432,6 +435,7 @@ export function trainTarget(dataset: Dataset, target: Variable, spec: TrainSpec)
   if (!pred || !predictor) return { reason: '조건끼리 같은 정보라서 모델을 풀 수 없습니다' }
   const resid = y.map((v, i) => v - pred[i])
   const r2 = r2Of(y, pred)
+  const mse = resid.reduce((s, v) => s + v * v, 0) / resid.length
   return {
     target,
     featureIdx: spec.featureIdx,
@@ -440,8 +444,10 @@ export function trainTarget(dataset: Dataset, target: Variable, spec: TrainSpec)
     params: spec.params,
     folds: spec.folds,
     r2,
-    residSd: Math.sqrt(resid.reduce((s, v) => s + v * v, 0) / resid.length),
+    residSd: Math.sqrt(mse),
     mae: mean(resid.map(Math.abs)),
+    rmse: Math.sqrt(mse),
+    mse,
     ysd: sd(y),
     importance: spec.featureIdx.map((j, k) => ({ variable: dataset.features[j], share: predictor.importance[k] })).sort((a, b) => b.share - a.share),
     reliable: r2 >= MIN_R2,
@@ -483,6 +489,8 @@ export function fromVersion(dataset: Dataset, v: ModelVersion): TargetModel | nu
     r2: v.r2,
     residSd: v.residSd,
     mae: v.mae,
+    rmse: v.rmse ?? v.residSd,
+    mse: v.mse ?? v.residSd ** 2,
     ysd: v.ysd,
     importance: featureIdx.map((j, k) => ({ variable: dataset.features[j], share: v.importance[k] ?? 0 })).sort((a, b) => b.share - a.share),
     reliable: v.r2 >= MIN_R2,
@@ -554,6 +562,8 @@ export function toVersion(tm: TargetModel, dataset: Dataset, meta: { id: string;
     n: tm.n,
     r2: tm.r2,
     mae: tm.mae,
+    rmse: tm.rmse,
+    mse: tm.mse,
     residSd: tm.residSd,
     ysd: tm.ysd,
     importance: tm.featureIdx.map((j) => tm.importance.find((i) => i.variable.id === dataset.features[j].id)?.share ?? 0),

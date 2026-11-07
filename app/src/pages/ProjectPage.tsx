@@ -38,7 +38,7 @@ export function ProjectPage() {
   const s = useStatus(project, runs)
   const next = useMemo(() => nextRun(runs), [runs])
   const [more, setMore] = useState(false)
-  const finished = !!s?.finished && !more
+  const finished = (!!s?.finished || !!project?.reference) && !more
 
   // 계획이 비면 자동으로 다음 계획을 짠다(목표를 달성해 끝났으면 짜지 않는다)
   useEffect(() => {
@@ -77,7 +77,7 @@ export function ProjectPage() {
                 .join('')}
             </span>
           )}
-          {!more && (
+          {!more && !project.reference && (
             <span>
               <button type="button" className="btn btn--ghost" onClick={() => setMore(true)}>
                 그래도 실험을 더 하려면 →
@@ -98,7 +98,8 @@ export function ProjectPage() {
             .join(', ')}
         </div>
       )}
-      {project.goals.length === 0 && (
+      {project.reference && <div className="banner">참고 데이터 · 실험 계획 없음 · 같은 변수를 가진 프로젝트의 모델 학습에 쓰임</div>}
+      {project.goals.length === 0 && !project.reference && (
         <div className="banner">
           목표 없음 → <Link to={`/p/${project.id}/setup`}>설정</Link>에서 추가 (예: 압축강도 35 ± 3 MPa)
         </div>

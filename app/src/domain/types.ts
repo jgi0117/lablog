@@ -54,6 +54,8 @@ export interface Project {
   initialRuns: number
   /** 같은 변수를 가진 다른 프로젝트의 실험도 모아 학습하는가(기본 true) */
   pool?: boolean
+  /** 참고 데이터(과거 기록 등): 실험 계획을 짜지 않고 학습에만 쓴다 */
+  reference?: boolean
   created: string
   updated: string
 }
@@ -95,6 +97,9 @@ export interface ModelVersion {
   n: number
   r2: number
   mae: number
+  /** 교차검증 RMSE(= residSd)와 MSE */
+  rmse?: number
+  mse?: number
   residSd: number
   ysd: number
   importance: number[]

@@ -1,8 +1,8 @@
 import { useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useProjectParam, valueText } from '../components'
-import { InfluenceBars, ScatterChart } from '../charts'
-import { checkGoal, describeGoal, inputsOf, label, levelsOf, outputsOf, type Goal, type ID, type Project, type Run, type Variable } from '../domain/types'
+import { BoxPlots, InfluenceBars, ScatterChart, boxStats, decimalSuspect, type BoxRow } from '../charts'
+import { checkGoal, describeGoal, fmt, inputsOf, label, levelsOf, outputsOf, type Goal, type ID, type Project, type Run, type Variable } from '../domain/types'
 import { download, exportDb, parseBackup, parseCsv, runsToCsv, tableToRuns } from '../services/csv'
 import { nextRun } from '../services/plan'
 import { scopeRuns } from '../services/pool'
@@ -26,7 +26,9 @@ export function DataPage() {
   const [together, setTogether] = useState(true)
   const [filter, setFilter] = useState<'all' | 'done' | 'planned'>('all')
   const [adding, setAdding] = useState(false)
-  const [limit, setLimit] = useState(60)
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
+  const [hl, setHl] = useState<string | null>(null)
   const [msg, setMsg] = useState('')
   const [yId, setYId] = useState('')
   const [xId, setXId] = useState('')
@@ -65,7 +67,18 @@ export function DataPage() {
   const musts = project.goals.filter((g) => g.must)
   const next = nextRun(db.runs.filter((r) => r.project === project.id))
   const filtered = [...scope.runs].filter((r) => filter === 'all' || r.status === filter).sort((a, b) => (a.project === b.project ? b.order - a.order : a.project === project.id ? -1 : b.project === project.id ? 1 : 0))
-  const shown = filtered.slice(0, limit)
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
+  const cur = Math.min(page, pageCount - 1)
+  const shown = filtered.slice(cur * pageSize, (cur + 1) * pageSize)
+  /** 이상치 후보를 누르면 표에서 그 실험이 있는 쪽으로 간다 */
+  const jumpTo = (runId: string) => {
+    const all = [...scope.runs].sort((a, b) => (a.project === b.project ? b.order - a.order : a.project === project.id ? -1 : b.project === project.id ? 1 : 0))
+    const i = all.findIndex((r) => r.id === runId)
+    if (i < 0) return
+    setFilter('all')
+    setPage(Math.floor(i / pageSize))
+    setHl(runId)
+  }
   const doneScope = scope.runs.filter((r) => r.status === 'done')
 
   const importCsv = async (f: File) => {
@@ -86,6 +99,20 @@ export function DataPage() {
       updateRun(r.id, { y, status: Object.keys(y).length > 0 ? 'done' : r.status === 'done' ? 'planned' : r.status, date: r.date ?? now() })
     } else if (Number.isFinite(Number(t)) && t !== '') updateRun(r.id, { x: { ...r.x, [v.id]: Number(t) } })
   }
+
+  // 입력 점검: 변수마다 분포와 이상치 후보(1.5 IQR 밖). 중앙값의 10^k 배면 소수점 의심
+  const checkRows: BoxRow[] = []
+  const suspects: { row: BoxRow; idx: number; run: Run; k: number | null }[] = []
+  const withValues = scope.runs.filter((r) => Object.keys(r.x).length > 0 || Object.keys(r.y).length > 0)
+  for (const v of [...inputs, ...levels, ...outputs]) {
+    const vals = withValues.map((r) => (v.role === 'output' ? r.y[v.id] : r.x[v.id]))
+    const st = boxStats(vals.map((x) => (Number.isFinite(x) ? x : NaN)))
+    if (!st || new Set(vals.filter((x) => Number.isFinite(x))).size < 2) continue
+    const row: BoxRow = { key: v.id, name: v.name, unit: v.unit, values: vals, labels: withValues.map((r) => `#${r.order}${together ? ` ${names.get(r.project) ?? ''}` : ''}`), stats: st }
+    checkRows.push(row)
+    for (const idx of st.outliers) suspects.push({ row, idx, run: withValues[idx], k: decimalSuspect(vals[idx], st.med) })
+  }
+  suspects.sort((a, b) => Number(b.k !== null) - Number(a.k !== null))
 
   // 차트
   const y = outputs.find((v) => v.id === yId) ?? outputs[0]
@@ -114,7 +141,15 @@ export function DataPage() {
         <div className="row">
           <div className="field">
             <label htmlFor="dp">프로젝트</label>
-            <select id="dp" className="input input--sm" value={project.id} onChange={(e) => setProject(e.target.value)}>
+            <select
+              id="dp"
+              className="input input--sm"
+              value={project.id}
+              onChange={(e) => {
+                setProject(e.target.value)
+                setPage(0)
+              }}
+            >
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -129,7 +164,15 @@ export function DataPage() {
         </div>
         <div className="row" role="group" aria-label="보기">
           {(['all', 'done', 'planned'] as const).map((f) => (
-            <button key={f} type="button" className={`btn ${filter === f ? 'btn--primary' : ''}`} onClick={() => setFilter(f)}>
+            <button
+              key={f}
+              type="button"
+              className={`btn ${filter === f ? 'btn--primary' : ''}`}
+              onClick={() => {
+                setFilter(f)
+                setPage(0)
+              }}
+            >
               {f === 'all' ? `전체 ${scope.runs.length}` : f === 'done' ? `완료 ${doneScope.length}` : `계획 ${scope.runs.filter((r) => r.status === 'planned').length}`}
             </button>
           ))}
@@ -182,7 +225,7 @@ export function DataPage() {
             {shown.map((r) => {
               const own = r.project === project.id
               return (
-                <tr key={r.id} className={r.status === 'planned' ? (next?.id === r.id ? 'is-next' : 'is-planned') : ''}>
+                <tr key={r.id} className={`${r.status === 'planned' ? (next?.id === r.id ? 'is-next' : 'is-planned') : ''}${hl === r.id ? ' is-hl' : ''}`}>
                   {together && <td>{own ? <b>{names.get(r.project)}</b> : <span className="muted">{names.get(r.project)}</span>}</td>}
                   <td>{r.order}</td>
                   <td>{r.status === 'done' ? '완료' : r.status === 'planned' ? (next?.id === r.id ? '다음' : '계획') : '건너뜀'}</td>
@@ -245,10 +288,84 @@ export function DataPage() {
           </tbody>
         </table>
       </div>
-      {filtered.length > shown.length && (
-        <button type="button" className="btn" onClick={() => setLimit((l) => l + 200)}>
-          더 보기 ({shown.length} / {filtered.length})
-        </button>
+      <div className="row between">
+        <div className="row" role="group" aria-label="페이지">
+          <button type="button" className="btn" disabled={cur === 0} onClick={() => setPage(cur - 1)}>
+            ‹ 이전
+          </button>
+          <span className="small">
+            {cur + 1} / {pageCount} 쪽 · {filtered.length}건
+          </span>
+          <button type="button" className="btn" disabled={cur >= pageCount - 1} onClick={() => setPage(cur + 1)}>
+            다음 ›
+          </button>
+        </div>
+        <div className="field">
+          <label htmlFor="ps">한 쪽에</label>
+          <select
+            id="ps"
+            className="input input--sm"
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value))
+              setPage(0)
+            }}
+          >
+            {[10, 25, 50, 100].map((n) => (
+              <option key={n} value={n}>
+                {n}건
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {checkRows.length > 0 && (
+        <section className="card stack" aria-labelledby="h-check">
+          <h2 id="h-check">입력 점검 · 분포와 이상치 후보</h2>
+          <p className="hint">변수마다 상자 = 가운데 50%(Q1~Q3), 선 = 중앙값, 수염 = 1.5 IQR 안 · 주황 점 = 밖(이상치 후보, 누르면 표에서 찾기) · 소수점 실수(×10, ×0.1)는 따로 표시</p>
+          <BoxPlots rows={checkRows} onPick={(_, idx) => jumpTo(withValues[idx].id)} />
+          {suspects.length === 0 ? (
+            <p className="muted small">이상치 후보 없음</p>
+          ) : (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>변수</th>
+                    <th>실험</th>
+                    <th>값</th>
+                    <th>중앙값</th>
+                    <th>판단</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {suspects.slice(0, 30).map((q) => (
+                    <tr key={`${q.row.key}-${q.run.id}`}>
+                      <td>{q.row.name}</td>
+                      <td>
+                        #{q.run.order}
+                        {together && q.run.project !== project.id ? ` · ${names.get(q.run.project)}` : ''}
+                      </td>
+                      <td>
+                        <b>{fmt(q.row.values[q.idx])}</b>
+                      </td>
+                      <td>{fmt(q.row.stats.med)}</td>
+                      <td style={{ textAlign: 'left' }}>{q.k !== null ? <span className="chip chip--bad">소수점 의심 (×{q.k > 0 ? 10 ** q.k : `0.${'0'.repeat(-q.k - 1)}1`})</span> : <span className="chip chip--warn">범위 밖</span>}</td>
+                      <td>
+                        <button type="button" className="btn btn--ghost small" onClick={() => jumpTo(q.run.id)}>
+                          표에서 보기
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {suspects.length > 30 && <p className="muted small">후보 {suspects.length}건 중 30건 표시</p>}
+        </section>
       )}
 
       {y && (

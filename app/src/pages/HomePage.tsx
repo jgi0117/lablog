@@ -35,7 +35,7 @@ export function HomePage() {
       )}
 
       <div className="grid">
-        {db.projects.map((p) => {
+        {[...db.projects].sort((a, b) => Number(!!a.reference) - Number(!!b.reference)).map((p) => {
           const runs = runsOf(db, p.id)
           const s = status(p, runs)
           const next = nextRun(runs)
@@ -43,16 +43,14 @@ export function HomePage() {
           return (
             <div key={p.id} className="card proj">
               <h2>
-                <Link to={`/p/${p.id}`}>{p.name}</Link> <StatusChip s={s} />
+                <Link to={`/p/${p.id}`}>{p.name}</Link> <StatusChip s={s} reference={p.reference} />
               </h2>
-              <p className="muted small">
-                완료 {s.done}건 · 계획 {s.planned}건 · 목표 {p.goals.length}개
-              </p>
+              <p className="muted small">{p.reference ? `완료 ${s.done}건 · 학습에만 사용` : `완료 ${s.done}건 · 계획 ${s.planned}건 · 목표 ${p.goals.length}개`}</p>
               {s.overall === 'achieved' && <p className="small">실험 {s.done}건 만에 달성</p>}
               {s.overall === 'in-progress' && miss && <p className="small">부족: {describeGoal(p, miss.goal)}</p>}
-              {s.overall === 'no-goal' && <p className="small muted">목표 없음 → 설정에서 추가</p>}
-              <Link to={`/p/${p.id}`} className={`btn ${s.finished ? '' : 'btn--primary'}`}>
-                {s.finished ? '결과 보기 →' : next ? `다음 실험 #${next.order} 결과 넣기 →` : '다음 실험 받기 →'}
+              {s.overall === 'no-goal' && !p.reference && <p className="small muted">목표 없음 → 설정에서 추가</p>}
+              <Link to={p.reference ? `/data?p=${p.id}` : `/p/${p.id}`} className={`btn ${s.finished || p.reference ? '' : 'btn--primary'}`}>
+                {p.reference ? '데이터 보기 →' : s.finished ? '결과 보기 →' : next ? `다음 실험 #${next.order} 결과 넣기 →` : '다음 실험 받기 →'}
               </Link>
             </div>
           )
