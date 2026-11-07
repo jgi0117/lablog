@@ -17,13 +17,15 @@ interface GoalDraft {
   op: GoalOp
   lo: string
   hi: string
+  target: string
+  tol: string
   atVar: ID
   atValue: string
   must: boolean
 }
 
 const toVarDraft = (v: Variable): VarDraft => ({ ...v, min: v.min === undefined ? '' : String(v.min), max: v.max === undefined ? '' : String(v.max), decimals: String(v.decimals), levels: (v.levels ?? []).join(', ') })
-const toGoalDraft = (g: Goal): GoalDraft => ({ id: g.id, variable: g.variable, op: g.op, lo: g.lo === undefined ? '' : String(g.lo), hi: g.hi === undefined ? '' : String(g.hi), atVar: g.at?.variable ?? '', atValue: g.at ? String(g.at.value) : '', must: g.must })
+const toGoalDraft = (g: Goal): GoalDraft => ({ id: g.id, variable: g.variable, op: g.op, lo: g.lo === undefined ? '' : String(g.lo), hi: g.hi === undefined ? '' : String(g.hi), target: g.target === undefined ? '' : String(g.target), tol: g.tol === undefined ? '' : String(g.tol), atVar: g.at?.variable ?? '', atValue: g.at ? String(g.at.value) : '', must: g.must })
 
 /** 설정: 이름·변수·목표를 고친다. 저장하면 바로 반영되고, 계획을 다시 짤 수 있다 */
 export function SetupPage() {
@@ -83,6 +85,18 @@ export function SetupPage() {
       if (!variables.some((v) => v.id === g.variable)) continue
       const lo = g.lo === '' ? undefined : Number(g.lo)
       const hi = g.hi === '' ? undefined : Number(g.hi)
+      if (g.op === 'target') {
+        const t = Number(g.target)
+        const tol = g.tol === '' ? 0 : Number(g.tol)
+        if (g.target === '' || !Number.isFinite(t) || !Number.isFinite(tol) || tol < 0) {
+          setError('목표값과 허용 오차(0 이상)를 적어 주세요')
+          return null
+        }
+        const goal: Goal = { id: g.id, variable: g.variable, op: 'target', target: t, tol, must: g.must }
+        if (g.atVar && g.atValue !== '' && Number.isFinite(Number(g.atValue)) && variables.some((v) => v.id === g.atVar)) goal.at = { variable: g.atVar, value: Number(g.atValue) }
+        gs.push(goal)
+        continue
+      }
       if (g.op === '>=' && lo === undefined) {
         setError('목표의 "이상" 값을 적어 주세요')
         return null
@@ -220,7 +234,7 @@ export function SetupPage() {
 
         <div className="card stack">
           <h2>목표</h2>
-          <p className="hint">필수 목표를 모두 만족한 조건이 나오면 "목표 달성"입니다. 입력 조건에 목표를 걸면(예: 시멘트 ≤ 300) 그 범위 안에서만 제안합니다.</p>
+          <p className="hint">"목표값 ±"는 목표값에 가까울수록 좋고 허용 오차 안이면 만족입니다(예: 강도 35 ± 3). 필수 목표를 모두 만족한 조건이 나오면 "목표 달성"이고 실험이 끝납니다. 입력 조건에 목표를 걸면(예: 시멘트 ≤ 300) 그 범위 안에서만 제안합니다.</p>
           {goals.map((g, i) => (
             <div key={g.id} className="goal-row">
               <div className="field">
@@ -240,19 +254,35 @@ export function SetupPage() {
               <div className="field">
                 <label htmlFor={`go-${i}`}>조건</label>
                 <select id={`go-${i}`} className="input input--sm" value={g.op} onChange={(e) => ug(g.id, { op: e.target.value as GoalOp })}>
+                  <option value="target">목표값 ±</option>
                   <option value=">=">이상</option>
                   <option value="<=">이하</option>
                   <option value="between">범위</option>
                 </select>
               </div>
-              <div className="field">
-                <label htmlFor={`glo-${i}`}>{g.op === '<=' ? '—' : g.op === '>=' ? '이상' : '최소'}</label>
-                <input id={`glo-${i}`} className="input input--sm" inputMode="decimal" value={g.lo} disabled={g.op === '<='} onChange={(e) => ug(g.id, { lo: e.target.value })} />
-              </div>
-              <div className="field">
-                <label htmlFor={`ghi-${i}`}>{g.op === '>=' ? '—' : g.op === '<=' ? '이하' : '최대'}</label>
-                <input id={`ghi-${i}`} className="input input--sm" inputMode="decimal" value={g.hi} disabled={g.op === '>='} onChange={(e) => ug(g.id, { hi: e.target.value })} />
-              </div>
+              {g.op === 'target' ? (
+                <>
+                  <div className="field">
+                    <label htmlFor={`gt-${i}`}>목표값</label>
+                    <input id={`gt-${i}`} className="input input--sm" inputMode="decimal" value={g.target} onChange={(e) => ug(g.id, { target: e.target.value })} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor={`gtol-${i}`}>± 허용</label>
+                    <input id={`gtol-${i}`} className="input input--sm" inputMode="decimal" value={g.tol} onChange={(e) => ug(g.id, { tol: e.target.value })} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="field">
+                    <label htmlFor={`glo-${i}`}>{g.op === '<=' ? '—' : g.op === '>=' ? '이상' : '최소'}</label>
+                    <input id={`glo-${i}`} className="input input--sm" inputMode="decimal" value={g.lo} disabled={g.op === '<='} onChange={(e) => ug(g.id, { lo: e.target.value })} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor={`ghi-${i}`}>{g.op === '>=' ? '—' : g.op === '<=' ? '이하' : '최대'}</label>
+                    <input id={`ghi-${i}`} className="input input--sm" inputMode="decimal" value={g.hi} disabled={g.op === '>='} onChange={(e) => ug(g.id, { hi: e.target.value })} />
+                  </div>
+                </>
+              )}
               <div className="field">
                 <label htmlFor={`ga-${i}`}>측정 시점일 때</label>
                 <div className="row" style={{ flexWrap: 'nowrap', gap: 4 }}>
@@ -280,7 +310,7 @@ export function SetupPage() {
             </div>
           ))}
           <div className="row">
-            <button type="button" className="btn" onClick={() => setGoals((gs) => [...gs, { id: newId('g'), variable: vars.find((v) => v.role === 'output')?.id ?? '', op: '>=', lo: '', hi: '', atVar: '', atValue: '', must: true }])}>
+            <button type="button" className="btn" onClick={() => setGoals((gs) => [...gs, { id: newId('g'), variable: vars.find((v) => v.role === 'output')?.id ?? '', op: 'target', lo: '', hi: '', target: '', tol: '', atVar: '', atValue: '', must: true }])}>
               + 목표
             </button>
           </div>

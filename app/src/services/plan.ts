@@ -135,6 +135,8 @@ export interface Status {
   achieved: Recipe[]
   closest: Recipe | null
   overall: 'achieved' | 'in-progress' | 'no-data' | 'no-goal'
+  /** 필수 목표를 모두 만족한 조건이 나와 실험이 끝났는가 */
+  finished: boolean
 }
 
 function valueFor(p: Project, r: Run, g: Goal): number | null {
@@ -195,7 +197,7 @@ export function status(p: Project, runs: Run[]): Status {
   const achieved = recipes.filter((r) => r.achieved)
   const closest = achieved.length > 0 || musts.length === 0 ? null : ([...recipes].sort((a, b) => b.mustMet - a.mustMet || a.distance - b.distance)[0] ?? null)
   const overall: Status['overall'] = musts.length === 0 ? 'no-goal' : achieved.length > 0 ? 'achieved' : goals.every((g) => g.judged === 0) ? 'no-data' : 'in-progress'
-  return { done: done.length, planned: planned.length, goals, recipes, achieved, closest, overall }
+  return { done: done.length, planned: planned.length, goals, recipes, achieved, closest, overall, finished: overall === 'achieved' }
 }
 
 /** 다음에 할 실험: 계획 중 순서가 가장 빠른 것 */

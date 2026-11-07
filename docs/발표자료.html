@@ -50,9 +50,9 @@
 <section class="slide is-active">
   <div class="kicker">lablog v3</div>
   <h1>조건은 앱이 정하고,<br>사람은 결과 숫자만 넣는다</h1>
-  <p class="lead">제품개발 실험 관리 + 조건 → 결과 예측 + 목표를 만족할 조건 제안. 화면 4개.</p>
+  <p class="lead">제품개발 실험 관리 + 조건 → 결과 예측 + 목표를 만족할 조건 제안. 목표는 "목표값 ± 허용", 만족하면 실험 종료.</p>
   <p class="muted">제품개발팀 공유용 · 2026-11-07 · 예시 데이터는 UCI 콘크리트 공개 데이터 1,030건</p>
-  <div class="num">1 / 11</div>
+  <div class="num">1 / 12</div>
 </section>
 
 <section class="slide">
@@ -69,14 +69,14 @@
     <div class="card">
       <h3><span class="ok">v3</span></h3>
       <ul>
-        <li>프로젝트에 <b>입력(바꿀 조건과 범위) · 출력 · 목표</b>만 적는다</li>
+        <li>프로젝트에 <b>입력(바꿀 조건과 범위) · 출력 · 목표</b>만 적는다. 목표는 <b>목표값 ± 허용</b>(강도 35 ± 3): 10이 목표인데 20이면 만족이 아니다</li>
         <li>앱이 실험 순서를 정한다. 카드에 조건이 적혀 있고, 사람은 <b>결과 숫자 + 저장 1번</b></li>
         <li>조건과 결과만 쌓이니 그 표가 그대로 학습 데이터. 8건부터 모델이 돈다</li>
       </ul>
     </div>
   </div>
   <p class="muted" style="margin-top:18px">절차·단계·메모 체크리스트는 없앴다. 데이터(콘크리트 1,030건)와 고객 목표 판정만 남기고 전부 다시 만들었다.</p>
-  <div class="num">2 / 11</div>
+  <div class="num">2 / 12</div>
 </section>
 
 <section class="slide">
@@ -90,7 +90,7 @@
     <div class="arrow">→</div>
     <div class="step"><b>4. 모델이 다음 조건</b><br><span class="muted">목표를 향해 3개씩</span></div>
     <div class="arrow">→</div>
-    <div class="step"><b>5. 목표 달성</b><br><span class="muted">필수 목표 모두 만족</span></div>
+    <div class="step"><b>5. 목표 달성 → 종료</b><br><span class="muted">허용 안에 들면 실험 끝</span></div>
   </div>
   <div class="cols">
     <div>
@@ -103,17 +103,17 @@
       <p>재령 7일·28일처럼 한 배합을 여러 시점에 재면, 조건 하나가 실험 여러 건으로 펼쳐진다. 목표의 "28일일 때"에서 시점이 자동으로 정해진다.</p>
     </div>
   </div>
-  <div class="num">3 / 11</div>
+  <div class="num">3 / 12</div>
 </section>
 
 <section class="slide">
   <h2>화면 · 프로젝트 목록</h2>
   <img class="shot" src="img/home.jpg" alt="프로젝트 카드 4개: 목표 상태, 완료·계획 수, 다음 실험 결과 넣기 버튼">
   <ul>
-    <li>카드마다 목표 상태(달성 / 진행 중 / 측정 전), 완료·계획 수, 부족한 목표, "다음 실험 결과 넣기" 버튼.</li>
+    <li>카드마다 목표 상태(달성·종료 / 진행 중), 완료·계획 수, 부족한 목표, "다음 실험 결과 넣기" 버튼. 예시 넷 중 셋은 20여 건 만에 끝났고 하나는 진행 중.</li>
     <li>전체 백업(JSON)과 가져오기. 예전 실험 노트 백업도 조건·결과·요구만 옮겨 읽는다.</li>
   </ul>
-  <div class="num">4 / 11</div>
+  <div class="num">4 / 12</div>
 </section>
 
 <section class="slide">
@@ -123,7 +123,22 @@
     <li>왼쪽: <b>다음 실험 #226</b> — 조건은 읽기만, 결과 칸에 숫자를 넣고 "저장하고 다음 →". 아래는 최근 결과와 목표 판정(✓ ✗).</li>
     <li>오른쪽: 목표마다 만족 건수와 가장 좋은 값, 진행률, 모델 신뢰도(교차검증 R²), 목표를 만족할 후보 3개, 조건 바꿔 보며 예측.</li>
   </ul>
-  <div class="num">5 / 11</div>
+  <div class="num">5 / 12</div>
+</section>
+
+<section class="slide">
+  <h2>화면 · 시각화와 모델</h2>
+  <div class="cols">
+    <div>
+      <img class="shot" src="img/charts.jpg" alt="목표 추적 차트: 실험 순서에 따른 압축강도가 목표 띠(70 ± 3)로 올라가는 중">
+      <p class="muted"><b>시각화</b>: 목표에 가까워지고 있는가(초록 띠 = 목표 범위), 조건–결과 산점도, 조건별 상관.</p>
+    </div>
+    <div>
+      <img class="shot" src="img/model.jpg" alt="모델 탭: 교차검증 R², 예측 vs 실제 산점도, 조건 중요도">
+      <p class="muted"><b>모델</b>: 무엇으로 학습했고 얼마나 믿을 만한지(교차검증 R², 예측 vs 실제), 조건 중요도, 목표 만족 후보, 조건 바꿔 보기. 약하면 약하다고 말한다.</p>
+    </div>
+  </div>
+  <div class="num">6 / 12</div>
 </section>
 
 <section class="slide">
@@ -138,7 +153,7 @@
       <p class="muted">모든 실험이 한 표. 칸을 고치면 바로 저장, 계획 실험을 "지금 하기"로 당기고, CSV로 더하고 내려받는다.</p>
     </div>
   </div>
-  <div class="num">6 / 11</div>
+  <div class="num">7 / 12</div>
 </section>
 
 <section class="slide">
@@ -151,7 +166,7 @@
     <tr><td>사람이 끼어들기</td><td>후보 카드의 "다음 실험으로", 조건 바꿔 보기, 데이터 표에서 조건 수정·"지금 하기", 직접 추가</td></tr>
   </table>
   <p class="muted" style="margin-top:14px">임의로 정하되 근거가 있다: 탐색은 공간을 고르게, 개선은 목표를 향해, 모델이 모르는 곳도 조금 섞어 지역 최적에 갇히지 않게.</p>
-  <div class="num">7 / 11</div>
+  <div class="num">8 / 12</div>
 </section>
 
 <section class="slide">
@@ -164,7 +179,7 @@
     <tr><td>목표 만족 확률</td><td>Φ(여유 ÷ 오차). 필수 목표의 곱. 입력에 건 목표(시멘트 ≤ 300)는 탐색 범위를 좁힌다</td></tr>
     <tr><td>속도</td><td>232건 학습 0.2초, 1,030건 1.8초, 제안 50 ms</td></tr>
   </table>
-  <div class="num">8 / 11</div>
+  <div class="num">9 / 12</div>
 </section>
 
 <section class="slide">
@@ -205,14 +220,14 @@
     <div>
       <ul>
         <li>모델이 많이 보는 조건은 재령·시멘트·물. 알려진 지식과 맞는다.</li>
-        <li><b>SM-00</b>(28일 ≥ 30, 7일 ≥ 20 MPa): 목표 달성. 모델 제안 후보는 만족 확률 80% 이상.</li>
-        <li><b>ES-30</b>(시멘트 ≤ 300, 슬래그 ≥ 120): 세 후보 모두 제한 안에서 28일 59~61 MPa 예측.</li>
-        <li><b>HB-50</b>(28일 ≥ 80 MPa, 아무도 못 넘음): 가장 좋은 후보도 14%. "지금 범위에서는 어렵다"를 숫자로.</li>
+        <li>전체 1,030건 학습 시 R² 0.84. 목표 40 ± 3 제안은 예측이 목표 ±3 안.</li>
+        <li>예시 프로젝트(14~28건)는 R² 0.0~0.5. 소규모 프로젝트의 실제 모습이며, 모델 탭이 그대로 보여 준다.</li>
+        <li><b>HB-50</b>(28일 70 ± 3 MPa, 아직 미달): 실험 순서 차트가 목표로 올라가는 중임을 보여 주고, 다음 조건은 탐색 계획이 짠다.</li>
         <li>서비스 테스트 14개 + 화면 흐름 테스트 4개가 이 수치와 흐름(만들기 → 결과 입력 → 다음 실험 자동 생성)을 지킨다.</li>
       </ul>
     </div>
   </div>
-  <div class="num">9 / 11</div>
+  <div class="num">10 / 12</div>
 </section>
 
 <section class="slide">
@@ -236,7 +251,7 @@
       </ul>
     </div>
   </div>
-  <div class="num">10 / 11</div>
+  <div class="num">11 / 12</div>
 </section>
 
 <section class="slide">
@@ -264,13 +279,13 @@
     </div>
   </div>
   <p class="muted" style="margin-top:18px">실행: <code>app/</code>에서 <code>npm install</code> → <code>npm run dev</code>. 처음 열면 예시 데이터가 들어 있다.</p>
-  <div class="num">11 / 11</div>
+  <div class="num">12 / 12</div>
 </section>
 
 </div>
 <div class="nav">
   <button type="button" id="prev">← 이전</button>
-  <span id="pos">1 / 11</span>
+  <span id="pos">1 / 12</span>
   <button type="button" id="next">다음 →</button>
   <button type="button" onclick="window.print()">인쇄/PDF</button>
   <span>· ← → 키로 넘깁니다</span>

@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { GoalMark, ProjectHeader, StatusChip, useModel, useProject, useStatus, valueText } from '../components'
+import { GoalMark, ProjectHeader, useModel, useProject, useStatus, valueText } from '../components'
 import { checkGoal, describeGoal, fmt, inputsOf, label, levelsOf, outputsOf, type Goal, type ID, type Project, type Run } from '../domain/types'
-import { KIND_LABEL, checkGoals, describeFit, predictAll, suggest, vectorOf, type Model } from '../services/model'
+import { describeFit, type Model } from '../services/model'
 import { designPoints, expandRuns, modelPlan, nextRun } from '../services/plan'
-import { addRuns, insertPlanned, newId, nextOrder, now, updateRun } from '../services/store'
+import { addRuns, newId, now, updateRun } from '../services/store'
 
-const pct = (p: number) => `${Math.round(p * 100)}%`
 const SOURCE: Record<Run['source'], string> = { plan: '탐색 계획', model: '모델 제안', manual: '직접 정함', import: '가져옴' }
 
 /** 계획이 바닥나면 다음 계획을 짠다: 모델이 믿을 만하면 모델 제안, 아니면 탐색 조건을 더 */
@@ -30,20 +29,22 @@ function runGoal(p: Project, r: Run, g: Goal): boolean | null {
   return Number.isFinite(val) ? checkGoal(g, val).ok : null
 }
 
-/** 프로젝트 화면: 다음 실험 카드(결과만 넣는다) + 현황 + 모델 제안 + 조건 바꿔 예측 */
+/** 프로젝트 화면: 다음 실험 카드(결과만 넣는다) + 목표 현황 + 최근 결과. 목표를 달성하면 실험이 끝난다 */
 export function ProjectPage() {
   const { id } = useParams()
   const { project, runs } = useProject(id)
   const { model, busy } = useModel(project, runs)
   const s = useStatus(project, runs)
   const next = useMemo(() => nextRun(runs), [runs])
+  const [more, setMore] = useState(false)
+  const finished = !!s?.finished && !more
 
-  // 계획이 비면 자동으로 다음 계획을 짠다
+  // 계획이 비면 자동으로 다음 계획을 짠다(목표를 달성해 끝났으면 짜지 않는다)
   useEffect(() => {
-    if (!project || next || busy || !model) return
+    if (!project || next || busy || !model || finished) return
     const extra = extendPlan(project, runs, model)
     if (extra.length > 0) addRuns(extra)
-  }, [project, runs, next, busy, model])
+  }, [project, runs, next, busy, model, finished])
 
   if (!project || !s) {
     return (
@@ -55,31 +56,41 @@ export function ProjectPage() {
   const outputs = outputsOf(project)
   const inputs = inputsOf(project)
   const levels = levelsOf(project)
-  const total = s.done + s.planned
   const recent = runs.filter((r) => r.status === 'done').slice(-6).reverse()
   const musts = project.goals.filter((g) => g.must)
+  const best = s.achieved[0] ?? s.closest
 
   return (
     <div className="stack">
       <ProjectHeader project={project} runs={runs} />
 
       {s.overall === 'achieved' && (
-        <div className="banner banner--ok">
-          <b>필수 목표를 모두 만족한 조건이 {s.achieved.length}개 있습니다.</b>{' '}
-          {s.achieved.slice(0, 2).map((r, i) => (
-            <span key={r.key}>
-              {i > 0 && ' / '}
-              {inputs.map((v) => `${v.name} ${valueText(v, r.x[v.id])}`).join(', ')}
+        <div className="banner banner--ok stack" style={{ gap: 6 }}>
+          <b>목표 달성. 실험 {s.done}건으로 끝났습니다.</b>
+          {s.achieved[0] && (
+            <span>
+              달성한 조건: {inputs.map((v) => `${v.name} ${valueText(v, s.achieved[0].x[v.id])}`).join(' · ')}
+              {s.achieved[0].verdicts
+                .filter((v) => v.value !== null && project.variables.find((x) => x.id === v.goal.variable)?.role === 'output')
+                .map((v) => ` → ${describeGoal(project, v.goal)}: ${fmt(v.value)}`)
+                .join('')}
             </span>
-          ))}
+          )}
+          {!more && (
+            <span>
+              <button type="button" className="btn btn--ghost" onClick={() => setMore(true)}>
+                그래도 실험을 더 하려면 →
+              </button>
+            </span>
+          )}
         </div>
       )}
       {s.overall === 'in-progress' && s.closest && (
         <div className="banner banner--warn">
           <b>
-            필수 목표 {s.closest.mustTotal}개 중 {s.closest.mustMet}개까지 만족한 조건이 있습니다.
+            아직 목표를 만족한 조건이 없습니다 (필수 {s.closest.mustTotal}개 중 {s.closest.mustMet}개까지 만족).
           </b>{' '}
-          부족한 것:{' '}
+          가장 가까운 조건에서 부족한 것:{' '}
           {s.closest.verdicts
             .filter((v) => v.goal.must && v.ok !== true)
             .map((v) => `${describeGoal(project, v.goal)}${v.value !== null ? ` (지금 ${fmt(v.value)})` : ' (값 없음)'}`)
@@ -88,14 +99,14 @@ export function ProjectPage() {
       )}
       {project.goals.length === 0 && (
         <div className="banner">
-          목표가 없습니다. <Link to={`/p/${project.id}/setup`}>설정</Link>에서 목표(예: 압축강도 ≥ 30 MPa)를 적으면 달성 여부를 판정하고 모델이 그 목표를 향해 조건을 제안합니다.
+          목표가 없습니다. <Link to={`/p/${project.id}/setup`}>설정</Link>에서 목표(예: 압축강도 35 ± 3 MPa)를 적으면 달성 여부를 판정하고, 모델이 그 목표를 향해 조건을 제안합니다.
         </div>
       )}
 
       <div className="split">
         <div className="stack">
-          {next ? (
-            <NextRunCard key={next.id} project={project} run={next} total={total} done={s.done} />
+          {finished ? null : next ? (
+            <NextRunCard key={next.id} project={project} run={next} total={s.done + s.planned} done={s.done} />
           ) : (
             <div className="card stack">
               <h2>다음 실험</h2>
@@ -105,7 +116,10 @@ export function ProjectPage() {
 
           <div className="card stack">
             <h2>
-              최근 결과 <Link to={`/p/${project.id}/data`} className="small">전체 데이터 →</Link>
+              최근 결과{' '}
+              <Link to={`/p/${project.id}/data`} className="small">
+                전체 데이터 →
+              </Link>
             </h2>
             {recent.length === 0 ? (
               <p className="muted">아직 완료한 실험이 없습니다.</p>
@@ -116,7 +130,7 @@ export function ProjectPage() {
                     <tr>
                       <th>#</th>
                       {[...inputs, ...levels].map((v) => (
-                        <th key={v.id}>{label(v)}</th>
+                        <th key={v.id}>{v.name}</th>
                       ))}
                       {outputs.map((v) => (
                         <th key={v.id}>{label(v)}</th>
@@ -159,40 +173,69 @@ export function ProjectPage() {
 
         <div className="stack">
           <div className="card stack">
-            <h2>
-              목표 <StatusChip s={s} />
-            </h2>
+            <h2>목표</h2>
             {project.goals.length === 0 ? (
               <p className="muted">없음</p>
             ) : (
-              <ul className="goal-list">
+              <ul className="goal-list goal-list--big">
                 {s.goals.map((g) => (
                   <li key={g.goal.id}>
-                    <span>{describeGoal(project, g.goal)}</span>
-                    <span className="chip">{g.goal.must ? '필수' : '참고'}</span>
-                    <GoalMark ok={g.judged === 0 ? null : g.passing > 0} />
+                    <div className="row between" style={{ width: '100%' }}>
+                      <span>
+                        <b>{describeGoal(project, g.goal)}</b> <span className="chip">{g.goal.must ? '필수' : '참고'}</span>
+                      </span>
+                      <GoalMark ok={g.judged === 0 ? null : g.passing > 0} />
+                    </div>
                     <span className="muted small">
-                      {g.passing}/{g.judged}건
-                      {g.best && ` · 가장 좋은 값 ${fmt(g.best.value)} (#${g.best.run.order})`}
+                      만족 {g.passing} / 판정 {g.judged}건{g.best && ` · 가장 가까운 값 ${fmt(g.best.value)} (#${g.best.run.order})`}
                     </span>
                   </li>
                 ))}
               </ul>
             )}
+            {best && (
+              <p className="small">
+                {s.achieved.length > 0 ? '달성한 조건' : '가장 가까운 조건'}: {inputs.map((v) => `${v.name} ${valueText(v, best.x[v.id])}`).join(' · ')}
+              </p>
+            )}
             <div>
               <div className="row between small muted">
                 <span>
-                  완료 {s.done} / 계획 {s.planned}
+                  완료 {s.done}건{s.planned > 0 && ` · 계획 ${s.planned}건`}
                 </span>
-                <span>{total > 0 ? Math.round((s.done / total) * 100) : 0}%</span>
+                <span>{s.finished ? '종료' : '진행 중'}</span>
               </div>
               <div className="progress">
-                <div style={{ width: `${total > 0 ? (s.done / total) * 100 : 0}%` }} />
+                <div style={{ width: `${s.done + s.planned > 0 ? (s.done / (s.done + s.planned)) * 100 : 0}%` }} />
               </div>
             </div>
           </div>
 
-          <ModelCard project={project} runs={runs} model={model} busy={busy} next={next} />
+          <div className="card stack">
+            <h2>
+              모델{' '}
+              <Link to={`/p/${project.id}/model`} className="small">
+                자세히 →
+              </Link>
+            </h2>
+            {!model ? (
+              <p className="muted">{busy ? '만드는 중…' : ''}</p>
+            ) : model.models.length === 0 ? (
+              <p className="muted small">{model.skipped[0]?.reason}</p>
+            ) : (
+              <ul className="goal-list">
+                {model.models.map((m) => (
+                  <li key={m.target.id}>
+                    <span>{m.target.name}</span>
+                    <span className={`chip ${m.r2 >= 0.6 ? 'chip--ok' : m.reliable ? 'chip--warn' : 'chip--bad'}`}>
+                      R² {m.r2.toFixed(2)} · {describeFit(m.r2)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="hint">모델 탭에서 목표를 만족할 조건 제안과 조건 바꿔 보기를 할 수 있습니다.</p>
+          </div>
         </div>
       </div>
     </div>
@@ -225,10 +268,10 @@ function NextRunCard({ project, run, total, done }: { project: Project; run: Run
   return (
     <form className="card card--focus stack" onSubmit={save} noValidate aria-labelledby="h-next">
       <div className="row between">
-        <h2 id="h-next">
+        <h2 id="h-next" className="h-big">
           다음 실험 #{run.order} <span className="chip chip--accent">{SOURCE[run.source]}</span>
         </h2>
-        <span className="muted small">
+        <span className="muted">
           {done + 1} / {total}
         </span>
       </div>
@@ -258,7 +301,7 @@ function NextRunCard({ project, run, total, done }: { project: Project; run: Run
             </div>
           ))}
         </div>
-        <button type="button" className="btn btn--ghost small" onClick={() => setEditing((x) => !x)}>
+        <button type="button" className="btn btn--ghost" onClick={() => setEditing((x) => !x)}>
           {editing ? '조건 수정 끝' : '조건을 고쳐야 한다면'}
         </button>
       </div>
@@ -300,143 +343,3 @@ function NextRunCard({ project, run, total, done }: { project: Project; run: Run
     </form>
   )
 }
-
-function ModelCard({ project, runs, model, busy, next }: { project: Project; runs: Run[]; model: Model | null; busy: boolean; next: Run | null }) {
-  const sug = useMemo(() => (model && model.models.some((m) => m.reliable) && project.goals.some((g) => g.must) ? suggest(model, project, { n: 3, explore: 0 }) : null), [model, project])
-  const features = useMemo(() => model?.dataset.features ?? [], [model])
-  const [draft, setDraft] = useState<Record<ID, string>>({})
-  const what = useMemo(() => {
-    if (!model || !model.models.some((m) => m.reliable)) return null
-    const values: Record<ID, number | null> = {}
-    for (const f of features) {
-      const t = draft[f.id] ?? (next && Number.isFinite(next.x[f.id]) ? String(next.x[f.id]) : '')
-      values[f.id] = t.trim() === '' ? null : Number(t)
-    }
-    const v = vectorOf(model, values)
-    return { ...v, values, predictions: predictAll(model, v.x), goals: checkGoals(model, project, v.x) }
-  }, [model, features, draft, next, project])
-
-  const takeCandidate = (x: Record<ID, number>) => {
-    const full: Record<ID, number> = {}
-    for (const v of inputsOf(project)) full[v.id] = Number.isFinite(x[v.id]) ? x[v.id] : (next?.x[v.id] ?? v.min ?? 0)
-    const planned = expandRuns(project, [full], 0, 'model', () => newId('r'))
-    if (next) insertPlanned(project.id, planned, next.order)
-    else addRuns(planned.map((r, i) => ({ ...r, order: nextOrder({ version: 3, projects: [project], runs }, project.id) + i })))
-  }
-
-  return (
-    <div className="card stack">
-      <h2>모델</h2>
-      {!model ? (
-        <p className="muted">{busy ? '모델을 만드는 중…' : ''}</p>
-      ) : (
-        <>
-          <ul className="goal-list">
-            {model.models.map((m) => (
-              <li key={m.target.id}>
-                <span>{m.target.name}</span>
-                <span className={`chip ${m.r2 >= 0.6 ? 'chip--ok' : m.reliable ? 'chip--warn' : 'chip--bad'}`}>
-                  R² {m.r2.toFixed(2)} · {describeFit(m.r2)}
-                </span>
-                <span className="muted small">
-                  {KIND_LABEL[m.kind]} · 실험 {m.n}건 · 평균 오차 ±{Number(m.mae.toPrecision(2))}
-                </span>
-              </li>
-            ))}
-            {model.skipped.map((sk) => (
-              <li key={sk.target.id}>
-                <span>{sk.target.name}</span>
-                <span className="muted small">{sk.reason}</span>
-              </li>
-            ))}
-          </ul>
-          {model.models.length > 0 && (
-            <p className="hint">R²는 학습에 쓰지 않은 실험을 얼마나 맞히는지(5겹 교차검증)입니다. 0.3 미만이면 예측·제안에 쓰지 않습니다. 모델은 실험한 범위 안에서만 믿을 수 있습니다.</p>
-          )}
-          {sug && !sug.problem && sug.candidates.length > 0 && (
-            <div className="stack" style={{ gap: 8 }}>
-              <h3>목표를 만족할 가능성이 큰 조건</h3>
-              <div className="cands">
-                {sug.candidates.map((c, i) => (
-                  <div key={i} className="cand">
-                    <div className="row between">
-                      <b>후보 {i + 1}</b>
-                      <span className={`chip ${c.allOk ? 'chip--ok' : 'chip--warn'}`}>{pct(c.prob)}</span>
-                    </div>
-                    {c.values.map((v) => (
-                      <div key={v.variable.id} className="kv">
-                        <span className="muted">{v.variable.name}</span>
-                        <b>{valueText(v.variable, v.value)}</b>
-                      </div>
-                    ))}
-                    {c.checks
-                      .filter((k) => !k.onCondition)
-                      .map((k) => (
-                        <div key={k.goal.id} className="kv small">
-                          <span className="muted">{describeGoal(project, k.goal)}</span>
-                          <span>
-                            {fmt(k.mean)} ± {fmt(1.96 * k.sd, 1)}
-                          </span>
-                        </div>
-                      ))}
-                    {c.known && <span className="muted small">이미 해 본 조건과 거의 같음</span>}
-                    <button type="button" className="btn" onClick={() => takeCandidate(Object.fromEntries(c.values.map((v) => [v.variable.id, v.value])))}>
-                      다음 실험으로 →
-                    </button>
-                  </div>
-                ))}
-              </div>
-              {sug.unmodeled.length > 0 && <p className="hint">{sug.unmodeled.map((u) => `${describeGoal(project, u.goal)}: ${u.reason}`).join(' / ')}</p>}
-            </div>
-          )}
-          {sug?.problem && <p className="hint">{sug.problem}</p>}
-          {what && (
-            <details>
-              <summary>조건을 바꿔 보며 예측하기</summary>
-              <div className="stack" style={{ gap: 10, marginTop: 10 }}>
-                <div className="cond-grid">
-                  {features.map((f) => (
-                    <div key={f.id} className="field">
-                      <label htmlFor={`w-${f.id}`}>{label(f)}</label>
-                      <input id={`w-${f.id}`} className="input input--sm input--num" inputMode="decimal" value={draft[f.id] ?? (what.values[f.id] === null ? '' : String(what.values[f.id]))} onChange={(e) => setDraft((d) => ({ ...d, [f.id]: e.target.value }))} />
-                    </div>
-                  ))}
-                </div>
-                {what.outOfRange.length > 0 && <p className="error">{what.outOfRange.map((v) => v.name).join(', ')}이(가) 실험한 범위를 벗어났습니다. 범위 밖은 거의 맞히지 못합니다.</p>}
-                <ul className="goal-list">
-                  {what.predictions.map((p) => (
-                    <li key={p.model.target.id}>
-                      <span>{label(p.model.target)}</span>
-                      <b>{fmt(p.mean)}</b>
-                      <span className="muted small">
-                        95% 구간 {fmt(p.lo)} ~ {fmt(p.hi)}
-                      </span>
-                    </li>
-                  ))}
-                  {what.goals.checks.map((k) => (
-                    <li key={k.goal.id}>
-                      <span className="small">{describeGoal(project, k.goal)}</span>
-                      <GoalMark ok={k.ok} />
-                      {!k.onCondition && <span className="muted small">만족 가능성 {pct(k.prob)}</span>}
-                    </li>
-                  ))}
-                </ul>
-                <div className="row">
-                  <button type="button" className="btn" onClick={() => takeCandidate(Object.fromEntries(features.filter((f) => f.role === 'input').map((f) => [f.id, what.values[f.id] ?? 0])))}>
-                    이 조건을 다음 실험으로 →
-                  </button>
-                  {Object.keys(draft).length > 0 && (
-                    <button type="button" className="btn btn--ghost" onClick={() => setDraft({})}>
-                      되돌리기
-                    </button>
-                  )}
-                </div>
-              </div>
-            </details>
-          )}
-        </>
-      )}
-    </div>
-  )
-}
-

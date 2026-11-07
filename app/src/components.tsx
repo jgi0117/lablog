@@ -41,7 +41,7 @@ export function useStatus(project: Project | null, runs: Run[]): Status | null {
 }
 
 export const OVERALL: Record<Status['overall'], { text: string; cls: string }> = {
-  achieved: { text: '목표 달성', cls: 'chip--ok' },
+  achieved: { text: '목표 달성 · 종료', cls: 'chip--ok' },
   'in-progress': { text: '진행 중', cls: 'chip--warn' },
   'no-data': { text: '측정 전', cls: '' },
   'no-goal': { text: '목표 없음', cls: '' },
@@ -76,6 +76,8 @@ export function ProjectHeader({ project, runs, children }: { project: Project; r
           실험
         </NavLink>
         <NavLink to={`/p/${project.id}/data`}>데이터 ({runs.filter((r) => r.status === 'done').length})</NavLink>
+        <NavLink to={`/p/${project.id}/charts`}>시각화</NavLink>
+        <NavLink to={`/p/${project.id}/model`}>모델</NavLink>
         <NavLink to={`/p/${project.id}/setup`}>설정</NavLink>
       </nav>
     </div>

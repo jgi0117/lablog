@@ -70,11 +70,11 @@ export function HomePage() {
               <p className="muted small">
                 완료 {s.done}건 · 계획 {s.planned}건 · 목표 {p.goals.length}개
               </p>
-              {s.overall === 'achieved' && <p className="small">필수 목표를 모두 만족한 조건 {s.achieved.length}개</p>}
+              {s.overall === 'achieved' && <p className="small">실험 {s.done}건으로 목표를 만족한 조건을 찾았습니다</p>}
               {s.overall === 'in-progress' && miss && <p className="small">가장 가까운 조건에서 "{describeGoal(p, miss.goal)}"이(가) 아직 부족합니다</p>}
               {s.overall === 'no-goal' && <p className="small muted">목표를 적으면 달성 여부를 판정합니다</p>}
-              <Link to={`/p/${p.id}`} className="btn btn--primary">
-                {next ? `다음 실험 #${next.order} 결과 넣기 →` : '다음 실험 받기 →'}
+              <Link to={`/p/${p.id}`} className={`btn ${s.finished ? '' : 'btn--primary'}`}>
+                {s.finished ? '결과 보기 →' : next ? `다음 실험 #${next.order} 결과 넣기 →` : '다음 실험 받기 →'}
               </Link>
             </div>
           )

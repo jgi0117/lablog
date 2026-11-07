@@ -25,7 +25,8 @@ export interface Variable {
   levels?: number[]
 }
 
-export type GoalOp = '>=' | '<=' | 'between'
+/** target: 목표값에 가까울수록 좋고 ±허용 안이면 만족. >=, <=: 한쪽 한계. between: 범위 */
+export type GoalOp = 'target' | '>=' | '<=' | 'between'
 
 export interface Goal {
   id: ID
@@ -34,6 +35,9 @@ export interface Goal {
   op: GoalOp
   lo?: number
   hi?: number
+  /** target일 때 목표값과 허용 오차(±) */
+  target?: number
+  tol?: number
   /** 이 level 값일 때만 판정한다(예: 재령 28일 때) */
   at?: { variable: ID; value: number }
   /** 필수 목표인가(모두 만족해야 "달성"). 아니면 참고 목표 */
@@ -90,7 +94,14 @@ export function describeGoal(p: Project, g: Goal): string {
   const v = variableOf(p, g.variable)
   const name = v?.name ?? g.variable
   const unit = v?.unit ? ` ${v.unit}` : ''
-  const rule = g.op === '>=' ? `≥ ${fmt(g.lo)}${unit}` : g.op === '<=' ? `≤ ${fmt(g.hi)}${unit}` : `${fmt(g.lo)} ~ ${fmt(g.hi)}${unit}`
+  const rule =
+    g.op === 'target'
+      ? `${fmt(g.target)} ± ${fmt(g.tol)}${unit}`
+      : g.op === '>='
+        ? `≥ ${fmt(g.lo)}${unit}`
+        : g.op === '<='
+          ? `≤ ${fmt(g.hi)}${unit}`
+          : `${fmt(g.lo)} ~ ${fmt(g.hi)}${unit}`
   const atVar = g.at ? variableOf(p, g.at.variable) : undefined
   const when = g.at ? `${atVar?.name ?? ''} ${fmt(g.at.value)}${atVar?.unit ? atVar.unit : ''}일 때 ` : ''
   return `${when}${name} ${rule}`
@@ -102,11 +113,22 @@ export function fmt(n: number | undefined | null, decimals?: number): string {
   return String(Number(n.toPrecision(5)))
 }
 
-/** 값이 목표를 만족하는가와 여유(음수면 미달, 목표 크기에 대한 비율) */
+/** 목표의 중심값(가까움을 잴 기준). target은 목표값, 한계는 그 값, 범위는 가운데 */
+export function goalCenter(g: Goal): number {
+  if (g.op === 'target') return g.target ?? 0
+  if (g.op === '>=') return g.lo ?? 0
+  if (g.op === '<=') return g.hi ?? 0
+  return ((g.lo ?? 0) + (g.hi ?? 0)) / 2
+}
+
+/** 값이 목표를 만족하는가와 여유(음수면 미달, 목표 크기에 대한 비율). target은 허용 오차 안쪽이 여유 */
 export function checkGoal(g: Goal, v: number): { ok: boolean; margin: number } {
   let gap = 0
   let base = 1
-  if (g.op === '>=') {
+  if (g.op === 'target') {
+    base = g.target ?? 0
+    gap = (g.tol ?? 0) - Math.abs(v - base)
+  } else if (g.op === '>=') {
     base = g.lo ?? 0
     gap = v - base
   } else if (g.op === '<=') {

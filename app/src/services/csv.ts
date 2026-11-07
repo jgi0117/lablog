@@ -278,9 +278,9 @@ function fromLegacy(o: Record<string, unknown>): Db {
         g.lo = r.min
         g.hi = r.max
       } else {
-        g.op = 'between'
-        g.lo = (r.target ?? 0) - (r.tolerance ?? 0)
-        g.hi = (r.target ?? 0) + (r.tolerance ?? 0)
+        g.op = 'target'
+        g.target = r.target ?? 0
+        g.tol = r.tolerance ?? 0
       }
       if (at && r.at) g.at = { variable: at.id, value: r.at.value }
       goals.push(g)

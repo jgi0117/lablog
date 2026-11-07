@@ -259,6 +259,9 @@ export interface TargetModel {
   importance: { variable: Variable; share: number }[]
   reliable: boolean
   predictor: Forest | Ridge
+  /** 교차검증에서 학습에 쓰지 않은 채 맞힌 값(실제값과 나란히, 산점도용) */
+  cv_pred: number[]
+  cv_actual: number[]
 }
 
 export interface Model {
@@ -357,6 +360,8 @@ export function trainModel(p: Project, runs: Run[], opts: { seed?: number; folds
       importance: dataset.features.map((variable, j) => ({ variable, share: predictor.importance[j] })).sort((a, b) => b.share - a.share),
       reliable: r2 >= MIN_R2,
       predictor,
+      cv_pred: pred,
+      cv_actual: y,
     })
   }
   return { dataset, models, skipped, seed }
@@ -416,11 +421,14 @@ export function predictAll(model: Model, x: number[]): Prediction[] {
 // ---------- 목표 판정(예측값으로) ----------
 
 export function checkPredicted(g: Goal, mu: number, sigma: number): { ok: boolean; prob: number; margin: number } {
-  let margin = 0
-  if (g.op === '>=') margin = mu - (g.lo ?? 0)
-  else if (g.op === '<=') margin = (g.hi ?? 0) - mu
-  else margin = Math.min(mu - (g.lo ?? 0), (g.hi ?? 0) - mu)
   const s = Math.max(sigma, 1e-9)
+  if (g.op === 'target' || g.op === 'between') {
+    const lo = g.op === 'target' ? (g.target ?? 0) - (g.tol ?? 0) : (g.lo ?? 0)
+    const hi = g.op === 'target' ? (g.target ?? 0) + (g.tol ?? 0) : (g.hi ?? 0)
+    const margin = Math.min(mu - lo, hi - mu)
+    return { ok: margin >= 0, prob: Math.max(0, normalCdf((hi - mu) / s) - normalCdf((lo - mu) / s)), margin }
+  }
+  const margin = g.op === '>=' ? mu - (g.lo ?? 0) : (g.hi ?? 0) - mu
   return { ok: margin >= 0, prob: normalCdf(margin / s), margin }
 }
 
@@ -565,6 +573,10 @@ export function suggest(model: Model, p: Project, opts: SuggestOptions = {}): Su
     const j = b.featureIndex
     if (g.op === '>=' || g.op === 'between') lo[j] = Math.max(lo[j], g.lo ?? lo[j])
     if (g.op === '<=' || g.op === 'between') hi[j] = Math.min(hi[j], g.hi ?? hi[j])
+    if (g.op === 'target') {
+      lo[j] = Math.max(lo[j], (g.target ?? 0) - (g.tol ?? 0))
+      hi[j] = Math.min(hi[j], (g.target ?? 0) + (g.tol ?? 0))
+    }
   }
   const free = features.map((_, j) => j).filter((j) => !fixedIdx.has(j))
   for (const j of free) if (lo[j] > hi[j]) return empty(`"${features[j].name}"의 목표 범위가 지금까지 실험한 범위와 겹치지 않습니다`)
