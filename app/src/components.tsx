@@ -96,9 +96,10 @@ export function useProjectParam(): { project: Project | null; setProject: (id: s
   const db = useDb()
   const [params, setParams] = useSearchParams()
   const id = params.get('p')
-  const projects = db.projects
-  const fallback = projects.find((p) => !p.reference && !status(p, runsOf(db, p.id)).finished) ?? projects.find((p) => !p.reference) ?? projects[0] ?? null
-  const project = projects.find((p) => p.id === id) ?? fallback
+  const all = db.projects
+  const projects = all.filter((p) => !p.reference)
+  const fallback = projects.find((p) => !status(p, runsOf(db, p.id)).finished) ?? projects[0] ?? all[0] ?? null
+  const project = all.find((p) => p.id === id) ?? fallback
   const setProject = (pid: string) => setParams({ p: pid })
   return { project, setProject, projects }
 }

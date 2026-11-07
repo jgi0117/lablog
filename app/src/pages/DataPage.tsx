@@ -171,8 +171,8 @@ export function DataPage() {
                 setPage(0)
               }}
             >
-              <option value={ALL}>전체 프로젝트 ({db.projects.length})</option>
-              {db.projects.map((p) => (
+              <option value={ALL}>전체 데이터 (프로젝트 {db.projects.filter((p) => !p.reference).length}개 + 과거 기록)</option>
+              {db.projects.filter((p) => !p.reference).map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
                 </option>

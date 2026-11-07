@@ -83,9 +83,11 @@ describe('예시 데이터', () => {
     const user = userEvent.setup()
     replaceDb(demoDb())
     open('/')
-    expect(await screen.findAllByRole('heading', { level: 2 })).toHaveLength(16)
+    // 참고 데이터(과거 배합 기록 4개)는 프로젝트 목록에 두지 않는다
+    expect(await screen.findAllByRole('heading', { level: 2 })).toHaveLength(12)
     expect(screen.getAllByText('목표 달성 · 종료')).toHaveLength(9)
-    expect(screen.getAllByText('참고 데이터')).toHaveLength(4)
+    expect(screen.queryByText('참고 데이터')).not.toBeInTheDocument()
+    expect(screen.queryByText(/참고 · 과거 배합 기록/)).not.toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: '결과 보기 →' })).toHaveLength(9)
     await user.click(screen.getByRole('link', { name: '스탠다드믹스 SM-35' }))
     expect(await screen.findByText(/목표 달성\. 실험 \d+건으로 끝났습니다/)).toBeInTheDocument()
