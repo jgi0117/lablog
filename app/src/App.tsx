@@ -1,29 +1,37 @@
-import type { ReactNode } from 'react'
-import { BackendProvider } from './app/BackendContext'
-import { AppRoutes } from './app/routes'
-import { StorageStatusProvider } from './app/StorageStatus'
-import { ErrorBoundary } from './components/ErrorBoundary'
-import { ToastProvider } from './components/Toast'
-import type { DataBackend } from './data/repositories'
-import { useBackupExport } from './hooks/useBackupExport'
+import { Link, NavLink, Route, Routes } from 'react-router-dom'
+import { HomePage } from './pages/HomePage'
+import { NewProjectPage } from './pages/NewProjectPage'
+import { ProjectPage } from './pages/ProjectPage'
+import { DataPage } from './pages/DataPage'
+import { SetupPage } from './pages/SetupPage'
 
-/** 앱 전체를 감싸는 마지막 안전망. 화면 하나가 아니라 셸 자체가 깨졌을 때를 위한 것이다. */
-function AppBoundary({ children }: { children: ReactNode }) {
-  const exportNow = useBackupExport()
-  return <ErrorBoundary onExport={() => void exportNow()}>{children}</ErrorBoundary>
-}
-
-/** 라우터는 main.tsx가 감싼다. 테스트에서는 backend를 직접 넣을 수 있다. */
-export default function App({ backend }: { backend?: DataBackend }) {
+/**
+ * 화면은 넷이다. 홈(프로젝트 목록) → 프로젝트(다음 실험·현황) → 데이터(표) · 설정(변수·목표).
+ */
+export default function App() {
   return (
-    <BackendProvider backend={backend}>
-      <ToastProvider>
-        <StorageStatusProvider>
-          <AppBoundary>
-            <AppRoutes />
-          </AppBoundary>
-        </StorageStatusProvider>
-      </ToastProvider>
-    </BackendProvider>
+    <div className="app">
+      <header className="top">
+        <Link to="/" className="brand">
+          lablog
+        </Link>
+        <nav>
+          <NavLink to="/" end>
+            프로젝트
+          </NavLink>
+          <NavLink to="/new">+ 새 프로젝트</NavLink>
+        </nav>
+      </header>
+      <main>
+        <Routes>
+          <Route index element={<HomePage />} />
+          <Route path="new" element={<NewProjectPage />} />
+          <Route path="p/:id" element={<ProjectPage />} />
+          <Route path="p/:id/data" element={<DataPage />} />
+          <Route path="p/:id/setup" element={<SetupPage />} />
+          <Route path="*" element={<p className="muted">페이지가 없습니다. <Link to="/">홈으로</Link></p>} />
+        </Routes>
+      </main>
+    </div>
   )
 }

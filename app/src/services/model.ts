@@ -1,22 +1,14 @@
-import type { Requirement } from '../domain/types'
-import { normalizeName, type Column, type Matrix, type MatrixRow } from './analysis'
-import { columnFor } from './requirements'
-import { mean, quantile, sd } from './stats'
+import { checkGoal, inputsOf, levelsOf, outputsOf, type Goal, type ID, type Project, type Run, type Variable } from '../domain/types'
 
 /**
- * 조건 → 결과 예측 모델과, 고객 요구를 만족할 조건 제안.
- *
- * 신제품 개발의 일은 "고객 요구를 만족하는 조건을 찾는 것"이다. 통계 분석은 "무엇이 결과를 움직이는가"까지 알려 주지만,
- * "그래서 다음 실험은 어떤 조건으로 해야 하는가"는 사람이 머릿속으로 짐작해야 했다. 이 모듈은 그 짐작을 대신한다.
- * 1) 모아 둔 실험으로 결과마다 예측 모델을 만들고(랜덤 포레스트 또는 능형회귀, 교차검증으로 고른다),
- * 2) 새 조건의 결과를 불확실성과 함께 예측하며,
- * 3) 관측 범위 안에서 필수 요구를 모두 만족할 가능성이 가장 큰 조건 몇 가지를 제안한다.
- * 외부 라이브러리 없이 이 기기 안에서만 계산하고, 근거(실험 수, 교차검증 R²)를 항상 함께 돌려준다.
+ * 조건 → 결과 예측 모델과 목표를 만족할 조건 제안. 외부 라이브러리 없이 브라우저 안에서 계산한다.
+ * - 결과마다 랜덤 포레스트와 능형회귀를 5겹 교차검증으로 시험해 더 잘 맞히는 쪽을 쓴다.
+ * - 예측은 평균과 불확실성(교차검증 오차 ⊕ 나무들의 흩어짐)으로 돌려준다.
+ * - 제안은 관측 범위 안에서 "필수 목표를 모두 만족할 확률"이 큰 조건을 찾고, 탐색 가중치를 주면 모델이 잘 모르는 곳도 섞는다.
  */
 
-// ---------- 난수 ----------
+// ---------- 난수·분포 ----------
 
-/** 같은 데이터면 같은 결과가 나오도록 씨앗을 쓰는 난수(mulberry32) */
 export function makeRandom(seed: number): () => number {
   let a = seed >>> 0
   return () => {
@@ -33,7 +25,6 @@ function gaussian(rand: () => number): number {
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rand())
 }
 
-/** 표준정규 누적분포 Φ(z) (오차함수 근사, 오차 1.5e-7) */
 export function normalCdf(z: number): number {
   if (!Number.isFinite(z)) return z > 0 ? 1 : 0
   const t = 1 / (1 + (0.3275911 * Math.abs(z)) / Math.SQRT2)
@@ -41,80 +32,80 @@ export function normalCdf(z: number): number {
   return z >= 0 ? 0.5 * (1 + y) : 0.5 * (1 - y)
 }
 
+const mean = (v: number[]) => v.reduce((a, b) => a + b, 0) / v.length
+function sd(v: number[]): number {
+  if (v.length < 2) return 0
+  const m = mean(v)
+  return Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / (v.length - 1))
+}
+function quantile(sorted: number[], p: number): number {
+  if (sorted.length === 1) return sorted[0]
+  const pos = (sorted.length - 1) * p
+  const lo = Math.floor(pos)
+  const hi = Math.ceil(pos)
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo)
+}
+
 // ---------- 데이터 ----------
 
-/** 모델을 만들려면 결과 값이 있는 실험이 이만큼은 있어야 한다 */
-export const MIN_TRAIN = 10
-/** 교차검증 R²가 이보다 작으면 "믿기 어려움"으로 표시하고 제안에 쓰지 않는다 */
+export const MIN_TRAIN = 8
 export const MIN_R2 = 0.3
 
 export interface Dataset {
-  /** 숫자 조건(입력) */
-  features: Column[]
-  /** 숫자 결과(출력) */
-  targets: Column[]
-  rows: MatrixRow[]
-  /** 실험 × 조건. 빈 칸은 그 조건의 중앙값으로 채운다 */
+  /** 입력 + level 변수 가운데 값이 달라지는 것 */
+  features: Variable[]
+  targets: Variable[]
+  runs: Run[]
   X: number[][]
-  /** 실험 × 결과. 없으면 null */
   Y: (number | null)[][]
   medians: number[]
-  /** 이상치 후보를 뺀 관측 범위. 제안은 이 범위 안에서만 한다 */
+  /** 관측 범위(변수의 min·max가 있으면 그것과 합친다) */
   bounds: [number, number][]
-  /** 입력한 값의 소수 자릿수(제안 값을 사람이 적은 정밀도로 맞춘다) */
-  decimals: number[]
 }
 
-const num = (row: MatrixRow, key: string): number | null => {
-  const c = row.cells[key]
-  return c && c.num !== null ? c.num : null
-}
-
-function decimalsOf(values: string[]): number {
-  let d = 0
-  for (const v of values) {
-    const m = /\.(\d+)$/.exec(v.trim())
-    if (m) d = Math.max(d, m[1].length)
-  }
-  return Math.min(d, 4)
-}
-
-/** 실험 × 항목 표에서 모델에 쓸 숫자 조건과 결과를 고른다. */
-export function buildDataset(m: Matrix, minN = MIN_TRAIN): Dataset {
-  const rowsAll = m.rows
-  const usable = (c: Column) => {
-    const vals = rowsAll.map((r) => num(r, c.key)).filter((v): v is number => v !== null)
+export function buildDataset(p: Project, runs: Run[], minN = MIN_TRAIN): Dataset {
+  const done = runs.filter((r) => r.status === 'done')
+  const cand = [...inputsOf(p), ...levelsOf(p)]
+  const features = cand.filter((v) => {
+    const vals = done.map((r) => r.x[v.id]).filter((x): x is number => Number.isFinite(x))
     return vals.length >= minN && new Set(vals).size > 1
-  }
-  const features = m.columns.filter((c) => c.kind === 'condition' && usable(c))
-  const targets = m.columns.filter((c) => c.kind === 'result' && usable(c))
-  // 조건이 하나도 없는 실험은 뺀다
-  const rows = rowsAll.filter((r) => features.some((f) => num(r, f.key) !== null))
+  })
+  const targets = outputsOf(p).filter((v) => {
+    const vals = done.map((r) => r.y[v.id]).filter((x): x is number => Number.isFinite(x))
+    return vals.length >= minN && new Set(vals).size > 1
+  })
+  const rows = done.filter((r) => features.some((f) => Number.isFinite(r.x[f.id])))
   const medians = features.map((f) => {
-    const vals = rows.map((r) => num(r, f.key)).filter((v): v is number => v !== null).sort((a, b) => a - b)
+    const vals = rows.map((r) => r.x[f.id]).filter((x): x is number => Number.isFinite(x)).sort((a, b) => a - b)
     return vals.length ? quantile(vals, 0.5) : 0
   })
-  const X = rows.map((r) => features.map((f, j) => num(r, f.key) ?? medians[j]))
-  const Y = rows.map((r) => targets.map((t) => num(r, t.key)))
-  const bounds = features.map((f): [number, number] => {
-    const vals = rows.filter((r) => !r.cells[f.key]?.outlier).map((r) => num(r, f.key)).filter((v): v is number => v !== null)
-    const all = vals.length ? vals : rows.map((r) => num(r, f.key)).filter((v): v is number => v !== null)
-    return [Math.min(...all), Math.max(...all)]
+  const X = rows.map((r) => features.map((f, j) => (Number.isFinite(r.x[f.id]) ? r.x[f.id] : medians[j])))
+  const Y = rows.map((r) => targets.map((t) => (Number.isFinite(r.y[t.id]) ? r.y[t.id] : null)))
+  const bounds = features.map((f, j): [number, number] => {
+    const col = X.map((r) => r[j])
+    let lo = Math.min(...col)
+    let hi = Math.max(...col)
+    if (f.role === 'input' && f.min !== undefined && f.max !== undefined && f.min < f.max) {
+      lo = Math.max(lo, f.min)
+      hi = Math.min(hi, f.max)
+      if (lo >= hi) {
+        lo = f.min
+        hi = f.max
+      }
+    }
+    return [lo, hi]
   })
-  const decimals = features.map((f) => decimalsOf(rows.map((r) => r.cells[f.key]?.value ?? '')))
-  return { features, targets, rows, X, Y, medians, bounds, decimals }
+  return { features, targets, runs: rows, X, Y, medians, bounds }
 }
 
 // ---------- 랜덤 포레스트 ----------
 
 type Node = { f: number; t: number; l: Node; r: Node } | { v: number }
-
 interface ForestOptions {
   trees: number
   minLeaf: number
   maxThresholds: number
 }
-
 const FOREST: ForestOptions = { trees: 80, minLeaf: 2, maxThresholds: 24 }
 
 function growTree(X: number[][], y: number[], idx: number[], mtry: number, opt: ForestOptions, rand: () => number, imp: number[]): Node {
@@ -126,7 +117,6 @@ function growTree(X: number[][], y: number[], idx: number[], mtry: number, opt: 
   let same = true
   for (let k = 1; k < n && same; k++) if (y[idx[k]] !== y[idx[0]]) same = false
   if (same) return leaf()
-
   const p = X[0].length
   const order = Array.from({ length: p }, (_, j) => j)
   for (let j = p - 1; j > 0; j--) {
@@ -202,7 +192,7 @@ function forestPredict(f: Forest, x: number[]): { mean: number; sd: number } {
   return { mean: mean(vals), sd: sd(vals) }
 }
 
-// ---------- 능형회귀(선형) ----------
+// ---------- 능형회귀 ----------
 
 interface Ridge {
   kind: 'ridge'
@@ -254,26 +244,19 @@ function ridgePredict(r: Ridge, x: number[]): number {
 // ---------- 결과별 모델 ----------
 
 export type ModelKind = 'forest' | 'ridge'
-export const KIND_LABEL: Record<ModelKind, string> = { forest: '랜덤 포레스트', ridge: '선형(능형) 회귀' }
+export const KIND_LABEL: Record<ModelKind, string> = { forest: '랜덤 포레스트', ridge: '선형 회귀' }
 
 export interface TargetModel {
-  target: Column
-  /** 학습에 쓴 실험 수(이 결과 값이 있는 실험) */
+  target: Variable
   n: number
   kind: ModelKind
-  /** 5겹 교차검증 결정계수. 학습에 쓰지 않은 실험을 얼마나 맞히는지 */
+  /** 5겹 교차검증 R² */
   r2: number
-  /** 교차검증 잔차의 표준편차(예측 구간의 바탕) */
   residSd: number
-  /** 교차검증 평균 절대 오차 */
   mae: number
-  /** 결과 값의 표준편차(오차를 견줄 기준) */
   ysd: number
-  /** 두 모델의 교차검증 R² */
   cv: Record<ModelKind, number | null>
-  /** 모델이 얼마나 의지하는 조건인지(합 1) */
-  importance: { column: Column; share: number }[]
-  /** 교차검증 R²가 MIN_R2 이상이면 예측과 제안에 쓴다 */
+  importance: { variable: Variable; share: number }[]
   reliable: boolean
   predictor: Forest | Ridge
 }
@@ -281,8 +264,7 @@ export interface TargetModel {
 export interface Model {
   dataset: Dataset
   models: TargetModel[]
-  /** 실험이 모자라거나 값이 모두 같아 모델을 만들지 못한 결과 */
-  skipped: { target: Column; reason: string }[]
+  skipped: { target: Variable; reason: string }[]
   seed: number
 }
 
@@ -324,52 +306,47 @@ function crossValidate(X: number[][], y: number[], kind: ModelKind, folds: numbe
   return pred
 }
 
-/**
- * 결과마다 모델을 만든다. 랜덤 포레스트와 선형 회귀를 모두 교차검증하고 더 잘 맞히는 쪽을 고른다.
- * 실험 수가 적으면 선형 쪽이 이기는 일이 많고, 곡선·상호작용이 있으면 포레스트가 이긴다.
- */
-export function trainModel(m: Matrix, opts: { seed?: number; folds?: number } = {}): Model {
+export function trainModel(p: Project, runs: Run[], opts: { seed?: number; folds?: number } = {}): Model {
   const seed = opts.seed ?? 7
   const folds = opts.folds ?? 5
-  const dataset = buildDataset(m)
+  const dataset = buildDataset(p, runs)
   const models: TargetModel[] = []
   const skipped: Model['skipped'] = []
+  const doneCount = runs.filter((r) => r.status === 'done').length
   if (dataset.features.length === 0) {
-    for (const t of dataset.targets) skipped.push({ target: t, reason: '숫자 조건이 없어 모델을 만들 수 없습니다' })
+    for (const t of outputsOf(p)) skipped.push({ target: t, reason: doneCount < MIN_TRAIN ? `완료한 실험이 ${doneCount}건입니다. ${MIN_TRAIN}건부터 모델을 만듭니다` : '값이 달라지는 입력 조건이 없습니다' })
     return { dataset, models, skipped, seed }
   }
-  dataset.targets.forEach((target, ti) => {
-    const idx = dataset.rows.map((_, i) => i).filter((i) => dataset.Y[i][ti] !== null)
-    if (idx.length < MIN_TRAIN) {
-      skipped.push({ target, reason: `값이 있는 실험이 ${idx.length}건이라 ${MIN_TRAIN}건은 있어야 합니다` })
-      return
+  for (const t of outputsOf(p)) {
+    const ti = dataset.targets.findIndex((x) => x.id === t.id)
+    if (ti < 0) {
+      const have = runs.filter((r) => r.status === 'done' && Number.isFinite(r.y[t.id])).length
+      skipped.push({ target: t, reason: have < MIN_TRAIN ? `값이 있는 실험이 ${have}건입니다. ${MIN_TRAIN}건부터 모델을 만듭니다` : '값이 모두 같아 모델을 만들 수 없습니다' })
+      continue
     }
+    const idx = dataset.runs.map((_, i) => i).filter((i) => dataset.Y[i][ti] !== null)
     const X = idx.map((i) => dataset.X[i])
     const y = idx.map((i) => dataset.Y[i][ti] as number)
     const cv: Record<ModelKind, number | null> = { forest: null, ridge: null }
     const preds: Partial<Record<ModelKind, number[]>> = {}
     for (const kind of ['forest', 'ridge'] as ModelKind[]) {
-      const p = crossValidate(X, y, kind, folds, seed)
-      if (p) {
-        preds[kind] = p
-        cv[kind] = r2Of(y, p)
+      const pr = crossValidate(X, y, kind, folds, seed)
+      if (pr) {
+        preds[kind] = pr
+        cv[kind] = r2Of(y, pr)
       }
     }
     const kind: ModelKind = (cv.ridge ?? -Infinity) > (cv.forest ?? -Infinity) ? 'ridge' : 'forest'
     const pred = preds[kind]
-    if (!pred) {
-      skipped.push({ target, reason: '조건끼리 같은 정보라서 모델을 풀 수 없습니다' })
-      return
+    const predictor = pred ? (kind === 'forest' ? fitForest(X, y, makeRandom(seed)) : fitRidge(X, y)) : null
+    if (!pred || !predictor) {
+      skipped.push({ target: t, reason: '조건끼리 같은 정보라서 모델을 풀 수 없습니다' })
+      continue
     }
     const resid = y.map((v, i) => v - pred[i])
-    const predictor = kind === 'forest' ? fitForest(X, y, makeRandom(seed)) : fitRidge(X, y)
-    if (!predictor) {
-      skipped.push({ target, reason: '모델을 풀 수 없습니다' })
-      return
-    }
     const r2 = cv[kind] ?? 0
     models.push({
-      target,
+      target: t,
       n: idx.length,
       kind,
       r2,
@@ -377,20 +354,19 @@ export function trainModel(m: Matrix, opts: { seed?: number; folds?: number } = 
       mae: mean(resid.map(Math.abs)),
       ysd: sd(y),
       cv,
-      importance: dataset.features.map((column, j) => ({ column, share: predictor.importance[j] })).sort((a, b) => b.share - a.share),
+      importance: dataset.features.map((variable, j) => ({ variable, share: predictor.importance[j] })).sort((a, b) => b.share - a.share),
       reliable: r2 >= MIN_R2,
       predictor,
     })
-  })
+  }
   return { dataset, models, skipped, seed }
 }
 
-/** 교차검증 R²를 사람 말로 */
 export function describeFit(r2: number): string {
-  if (r2 >= 0.8) return '새 조건에서도 잘 맞히는 편'
-  if (r2 >= 0.6) return '경향은 맞히지만 오차가 있음'
-  if (r2 >= MIN_R2) return '대략의 방향만 참고'
-  return '믿기 어려움(조건으로 설명되지 않음)'
+  if (r2 >= 0.8) return '잘 맞힘'
+  if (r2 >= 0.6) return '경향은 맞힘'
+  if (r2 >= MIN_R2) return '방향만 참고'
+  return '믿기 어려움'
 }
 
 // ---------- 예측 ----------
@@ -398,34 +374,31 @@ export function describeFit(r2: number): string {
 export interface Prediction {
   model: TargetModel
   mean: number
-  /** 예측의 표준편차(교차검증 오차와 모델 내부 흔들림을 합친 것) */
   sd: number
-  /** 대략 95% 구간 */
   lo: number
   hi: number
 }
 
-export function predictOne(tm: TargetModel, x: number[]): { mean: number; sd: number } {
+export function predictOne(tm: TargetModel, x: number[]): { mean: number; sd: number; epistemic: number } {
   if (tm.predictor.kind === 'forest') {
     const p = forestPredict(tm.predictor, x)
-    return { mean: p.mean, sd: Math.sqrt(tm.residSd ** 2 + p.sd ** 2) }
+    return { mean: p.mean, sd: Math.sqrt(tm.residSd ** 2 + p.sd ** 2), epistemic: p.sd }
   }
-  return { mean: ridgePredict(tm.predictor, x), sd: tm.residSd }
+  return { mean: ridgePredict(tm.predictor, x), sd: tm.residSd, epistemic: 0 }
 }
 
-/** 조건 이름 → 값(없는 조건은 중앙값)으로 입력 벡터를 만든다. 관측 범위를 벗어난 조건도 함께 알려 준다 */
-export function vectorOf(model: Model, values: Record<string, number | null | undefined>): { x: number[]; outOfRange: Column[]; missing: Column[] } {
+/** 변수 id → 값을 입력 벡터로. 빠진 값은 중앙값. 범위 밖 변수도 알려 준다 */
+export function vectorOf(model: Model, values: Record<ID, number | null | undefined>): { x: number[]; outOfRange: Variable[]; missing: Variable[] } {
   const { features, medians, bounds } = model.dataset
-  const outOfRange: Column[] = []
-  const missing: Column[] = []
-  const byName = new Map(Object.entries(values).map(([k, v]) => [normalizeName(k), v]))
+  const outOfRange: Variable[] = []
+  const missing: Variable[] = []
   const x = features.map((f, j) => {
-    const v = byName.get(normalizeName(f.name))
+    const v = values[f.id]
     if (v === null || v === undefined || !Number.isFinite(v)) {
       missing.push(f)
       return medians[j]
     }
-    if (v < bounds[j][0] || v > bounds[j][1]) outOfRange.push(f)
+    if (v < bounds[j][0] - 1e-9 || v > bounds[j][1] + 1e-9) outOfRange.push(f)
     return v
   })
   return { x, outOfRange, missing }
@@ -440,91 +413,89 @@ export function predictAll(model: Model, x: number[]): Prediction[] {
     })
 }
 
-// ---------- 요구 판정(예측값으로) ----------
+// ---------- 목표 판정(예측값으로) ----------
 
-/** 예측값이 요구를 만족할 확률. margin은 요구 경계까지의 여유(음수면 미달) */
-export function checkPredicted(r: Requirement, mu: number, sigma: number): { ok: boolean; prob: number; margin: number } {
+export function checkPredicted(g: Goal, mu: number, sigma: number): { ok: boolean; prob: number; margin: number } {
   let margin = 0
-  if (r.kind === 'min') margin = mu - (r.min ?? 0)
-  else if (r.kind === 'max') margin = (r.max ?? 0) - mu
-  else if (r.kind === 'range') margin = Math.min(mu - (r.min ?? 0), (r.max ?? 0) - mu)
-  else margin = (r.tolerance ?? 0) - Math.abs(mu - (r.target ?? 0))
+  if (g.op === '>=') margin = mu - (g.lo ?? 0)
+  else if (g.op === '<=') margin = (g.hi ?? 0) - mu
+  else margin = Math.min(mu - (g.lo ?? 0), (g.hi ?? 0) - mu)
   const s = Math.max(sigma, 1e-9)
   return { ok: margin >= 0, prob: normalCdf(margin / s), margin }
 }
 
-export interface RequirementCheck {
-  requirement: Requirement
-  /** 조건 항목에 거는 요구(예: 시멘트 ≤ 400)는 입력값을 그대로 판정한다 */
+export interface GoalCheck {
+  goal: Goal
+  /** 입력 조건에 거는 목표는 값 그대로 판정한다 */
   onCondition: boolean
   mean: number
   sd: number
+  epistemic: number
   prob: number
   ok: boolean
 }
 
-interface ReqBinding {
-  requirement: Requirement
-  /** 결과 모델(있으면) */
+interface Binding {
+  goal: Goal
   model: TargetModel | null
-  /** 조건 항목에 거는 요구이면 그 조건의 번호 */
   featureIndex: number | null
-  /** 적용 조건(재령 등)의 조건 번호와 값 */
   at: { index: number; value: number } | null
-  /** 판정할 수 없는 이유 */
   reason: string | null
 }
 
-function bind(model: Model, m: Matrix, r: Requirement): ReqBinding {
+function bind(model: Model, p: Project, g: Goal): Binding {
   const { features } = model.dataset
-  const fi = (name: string) => features.findIndex((f) => normalizeName(f.name) === normalizeName(name))
-  let at: ReqBinding['at'] = null
-  if (r.at) {
-    const i = fi(r.at.name)
-    if (i < 0) return { requirement: r, model: null, featureIndex: null, at: null, reason: `적용 조건 "${r.at.name}"이(가) 숫자 조건으로 쌓여 있지 않아 예측하지 않습니다` }
-    at = { index: i, value: r.at.value }
+  const fi = (id: ID) => features.findIndex((f) => f.id === id)
+  let at: Binding['at'] = null
+  if (g.at) {
+    const i = fi(g.at.variable)
+    if (i < 0) {
+      // level 변수가 데이터에서 한 값뿐이면(예: 모두 28일) 그 값과 같을 때만 판정할 수 있다
+      const lv = p.variables.find((v) => v.id === g.at!.variable)
+      const vals = new Set(model.dataset.runs.map((r) => r.x[g.at!.variable]))
+      if (!(vals.size === 1 && vals.has(g.at.value))) return { goal: g, model: null, featureIndex: null, at: null, reason: `"${lv?.name ?? ''}" 값이 ${g.at.value}인 실험이 없어 예측하지 않습니다` }
+    } else at = { index: i, value: g.at.value }
   }
-  const col = columnFor(m, r.name)
-  if (col?.kind === 'result') {
-    const tm = model.models.find((x) => x.target.key === col.key)
+  const v = p.variables.find((x) => x.id === g.variable)
+  if (!v) return { goal: g, model: null, featureIndex: null, at, reason: '목표의 변수를 찾을 수 없습니다' }
+  if (v.role === 'output') {
+    const tm = model.models.find((m) => m.target.id === v.id)
     if (!tm) {
-      const sk = model.skipped.find((s) => s.target.key === col.key)
-      return { requirement: r, model: null, featureIndex: null, at, reason: sk ? sk.reason : `"${r.name}"은(는) 숫자 결과로 쌓여 있지 않습니다` }
+      const sk = model.skipped.find((s) => s.target.id === v.id)
+      return { goal: g, model: null, featureIndex: null, at, reason: sk?.reason ?? '모델이 없습니다' }
     }
-    if (!tm.reliable) return { requirement: r, model: null, featureIndex: null, at, reason: `"${r.name}" 모델의 교차검증 R²가 ${tm.r2.toFixed(2)}로 낮아 예측을 믿기 어렵습니다` }
-    return { requirement: r, model: tm, featureIndex: null, at, reason: null }
+    if (!tm.reliable) return { goal: g, model: null, featureIndex: null, at, reason: `"${v.name}" 모델의 교차검증 R²가 ${tm.r2.toFixed(2)}로 낮아 예측을 믿기 어렵습니다` }
+    return { goal: g, model: tm, featureIndex: null, at, reason: null }
   }
-  const j = fi(r.name)
-  if (j >= 0) return { requirement: r, model: null, featureIndex: j, at, reason: null }
-  return { requirement: r, model: null, featureIndex: null, at, reason: `"${r.name}"은(는) 숫자 조건·결과로 쌓여 있지 않습니다` }
+  const j = fi(v.id)
+  if (j >= 0) return { goal: g, model: null, featureIndex: j, at, reason: null }
+  return { goal: g, model: null, featureIndex: null, at, reason: `"${v.name}"은(는) 값이 달라지지 않아 판정하지 않습니다` }
 }
 
-function evaluate(b: ReqBinding, x: number[]): RequirementCheck {
-  const r = b.requirement
+function evaluate(b: Binding, x: number[]): GoalCheck {
   if (b.featureIndex !== null) {
     const v = x[b.featureIndex]
-    const c = checkPredicted(r, v, 1e-9)
-    return { requirement: r, onCondition: true, mean: v, sd: 0, prob: c.ok ? 1 : 0, ok: c.ok }
+    const c = checkGoal(b.goal, v)
+    return { goal: b.goal, onCondition: true, mean: v, sd: 0, epistemic: 0, prob: c.ok ? 1 : 0, ok: c.ok }
   }
   const tm = b.model as TargetModel
   const xi = b.at ? x.map((v, j) => (j === b.at!.index ? b.at!.value : v)) : x
   const p = predictOne(tm, xi)
-  const c = checkPredicted(r, p.mean, p.sd)
-  return { requirement: r, onCondition: false, mean: p.mean, sd: p.sd, prob: c.prob, ok: c.ok }
+  const c = checkPredicted(b.goal, p.mean, p.sd)
+  return { goal: b.goal, onCondition: false, mean: p.mean, sd: p.sd, epistemic: p.epistemic, prob: c.prob, ok: c.ok }
 }
 
 export interface Unmodeled {
-  requirement: Requirement
+  goal: Goal
   reason: string
 }
 
-/** 입력한 조건이 프로젝트의 요구를 만족할지 예측으로 판정한다. 적용 조건(재령 등)은 요구마다 그 값으로 바꿔 넣는다 */
-export function checkRequirements(model: Model, m: Matrix, reqs: Requirement[], x: number[]): { checks: RequirementCheck[]; unmodeled: Unmodeled[] } {
-  const checks: RequirementCheck[] = []
+export function checkGoals(model: Model, p: Project, x: number[]): { checks: GoalCheck[]; unmodeled: Unmodeled[] } {
+  const checks: GoalCheck[] = []
   const unmodeled: Unmodeled[] = []
-  for (const r of reqs) {
-    const b = bind(model, m, r)
-    if (b.reason) unmodeled.push({ requirement: r, reason: b.reason })
+  for (const g of p.goals) {
+    const b = bind(model, p, g)
+    if (b.reason) unmodeled.push({ goal: g, reason: b.reason })
     else checks.push(evaluate(b, x))
   }
   return { checks, unmodeled }
@@ -533,28 +504,22 @@ export function checkRequirements(model: Model, m: Matrix, reqs: Requirement[], 
 // ---------- 조건 제안 ----------
 
 export interface Suggestion {
-  /** 제안하는 조건 값(적용 조건과 고정한 조건은 뺀다) */
-  values: { column: Column; value: number }[]
-  checks: RequirementCheck[]
-  /** 필수 요구를 모두 만족할 확률(독립 가정) */
+  /** 제안 조건(level 변수와 고정 변수는 뺀다) */
+  values: { variable: Variable; value: number }[]
+  checks: GoalCheck[]
+  /** 필수 목표를 모두 만족할 확률 */
   prob: number
-  /** 예측 평균이 필수 요구를 모두 만족하는가 */
   allOk: boolean
-  /** 가장 비슷한 과거 실험과 정규화한 거리(0이면 같은 조건) */
-  nearest: { row: MatrixRow; distance: number } | null
-  /** 이미 해 본 조건과 거의 같은가 */
+  nearest: { run: Run; distance: number } | null
   known: boolean
+  /** 모델이 이 조건을 얼마나 모르는지(0~1 정도, 결과 표준편차 대비) */
+  novelty: number
 }
 
 export interface SuggestResult {
   candidates: Suggestion[]
-  /** 예측에 넣지 못한 요구와 이유 */
   unmodeled: Unmodeled[]
-  /** 제안에서 움직인 조건과 탐색 범위 */
-  ranges: { column: Column; lo: number; hi: number }[]
-  /** 고정하거나 적용 조건이라 움직이지 않은 조건(적용 조건은 값이 null) */
-  fixed: { column: Column; value: number | null }[]
-  /** 탐색할 수 없을 때의 이유 */
+  ranges: { variable: Variable; lo: number; hi: number }[]
   problem: string | null
 }
 
@@ -562,64 +527,56 @@ export interface SuggestOptions {
   n?: number
   samples?: number
   seed?: number
-  /** 바꾸지 않을 조건과 그 값(이름 기준) */
-  fixed?: Record<string, number>
+  /** 탐색 가중치. 0이면 확률만 보고, 클수록 모델이 모르는 곳을 섞는다 */
+  explore?: number
+  /** 이미 계획해 둔 조건(피한다) */
+  avoid?: Record<ID, number>[]
+  fixed?: Record<ID, number>
 }
 
 const round = (v: number, d: number) => Number(v.toFixed(d))
 
-/**
- * 필수 요구를 모두 만족할 가능성이 가장 큰 조건을 찾는다.
- * 관측 범위 안에서 무작위로 조건을 많이 뽑고(이미 해 본 조건도 함께), 요구마다 만족 확률을 곱해 점수를 매긴 뒤
- * 상위 후보를 조금씩 흔들어 다듬는다. 과거 실험과 너무 먼 조건은 점수를 깎아, 모델이 본 적 없는 곳을 피한다.
- * 조건 항목에 거는 요구(시멘트 ≤ 400 등)는 탐색 범위를 좁히는 데 쓴다.
- */
-export function suggest(model: Model, m: Matrix, reqs: Requirement[], opts: SuggestOptions = {}): SuggestResult {
+export function suggest(model: Model, p: Project, opts: SuggestOptions = {}): SuggestResult {
   const n = opts.n ?? 3
   const samples = opts.samples ?? 1500
+  const explore = opts.explore ?? 0
   const rand = makeRandom(opts.seed ?? model.seed + 11)
-  const { features, bounds, decimals, X, rows } = model.dataset
-  const p = features.length
-  const bindings = reqs.map((r) => bind(model, m, r))
-  const unmodeled = bindings.filter((b) => b.reason).map((b) => ({ requirement: b.requirement, reason: b.reason as string }))
+  const { features, bounds, X, runs } = model.dataset
+  const bindings = p.goals.map((g) => bind(model, p, g))
+  const unmodeled = bindings.filter((b) => b.reason).map((b) => ({ goal: b.goal, reason: b.reason as string }))
   const active = bindings.filter((b) => !b.reason)
-  const musts = active.filter((b) => b.requirement.priority === 'must')
-  const empty = (problem: string | null): SuggestResult => ({ candidates: [], unmodeled, ranges: [], fixed: [], problem })
-  if (p === 0) return empty('숫자 조건이 없어 제안할 수 없습니다')
-  if (musts.filter((b) => b.model).length === 0) return empty('예측할 수 있는 필수 요구(결과 항목)가 없어 제안할 수 없습니다')
+  const musts = active.filter((b) => b.goal.must)
+  const empty = (problem: string | null): SuggestResult => ({ candidates: [], unmodeled, ranges: [], problem })
+  if (features.length === 0) return empty('값이 달라지는 입력 조건이 없어 제안할 수 없습니다')
+  if (musts.filter((b) => b.model).length === 0) return empty('예측할 수 있는 필수 목표(출력)가 없어 제안할 수 없습니다')
 
-  // 움직일 조건과 범위
   const fixedIdx = new Map<number, number | null>()
   for (const b of active) if (b.at) fixedIdx.set(b.at.index, null)
-  const fixedByName = new Map(Object.entries(opts.fixed ?? {}).map(([k, v]) => [normalizeName(k), v]))
   features.forEach((f, j) => {
-    const v = fixedByName.get(normalizeName(f.name))
+    if (f.role === 'level') fixedIdx.set(j, null)
+    const v = opts.fixed?.[f.id]
     if (v !== undefined && Number.isFinite(v)) fixedIdx.set(j, v)
   })
   const lo = bounds.map((b) => b[0])
   const hi = bounds.map((b) => b[1])
   for (const b of active) {
-    if (b.featureIndex === null || b.requirement.priority !== 'must') continue
-    const r = b.requirement
+    if (b.featureIndex === null || !b.goal.must) continue
+    const g = b.goal
     const j = b.featureIndex
-    if (r.kind === 'min' || r.kind === 'range') lo[j] = Math.max(lo[j], r.min ?? lo[j])
-    if (r.kind === 'max' || r.kind === 'range') hi[j] = Math.min(hi[j], r.max ?? hi[j])
-    if (r.kind === 'target') {
-      lo[j] = Math.max(lo[j], (r.target ?? 0) - (r.tolerance ?? 0))
-      hi[j] = Math.min(hi[j], (r.target ?? 0) + (r.tolerance ?? 0))
-    }
+    if (g.op === '>=' || g.op === 'between') lo[j] = Math.max(lo[j], g.lo ?? lo[j])
+    if (g.op === '<=' || g.op === 'between') hi[j] = Math.min(hi[j], g.hi ?? hi[j])
   }
   const free = features.map((_, j) => j).filter((j) => !fixedIdx.has(j))
-  for (const j of free) if (lo[j] > hi[j]) return empty(`"${features[j].name}"의 요구 범위가 지금까지 실험한 범위와 겹치지 않습니다`)
+  for (const j of free) if (lo[j] > hi[j]) return empty(`"${features[j].name}"의 목표 범위가 지금까지 실험한 범위와 겹치지 않습니다`)
   if (free.length === 0) return empty('움직일 수 있는 조건이 없습니다')
   const span = features.map((_, j) => Math.max(hi[j] - lo[j], 1e-9))
-
+  const decimals = features.map((f) => f.decimals ?? 2)
   const base = features.map((_, j) => {
     const fv = fixedIdx.get(j)
     return fv === null || fv === undefined ? model.dataset.medians[j] : fv
   })
-  // 과거 실험(움직이는 조건만 비교)
   const known = X.map((row) => row.map((v, j) => (free.includes(j) ? v : base[j])))
+  const avoid = (opts.avoid ?? []).map((a) => features.map((f, j) => (free.includes(j) && Number.isFinite(a[f.id]) ? a[f.id] : base[j])))
   const dist = (a: number[], b: number[]) => {
     let s = 0
     for (const j of free) s += ((a[j] - b[j]) / span[j]) ** 2
@@ -635,21 +592,27 @@ export function suggest(model: Model, m: Matrix, reqs: Requirement[], opts: Sugg
         bi = i
       }
     }
-    return bi < 0 ? null : { row: rows[bi], distance: bd }
+    return bi < 0 ? null : { run: runs[bi], distance: bd }
   }
   const clip = (x: number[]) => {
     for (const j of free) x[j] = round(Math.min(hi[j], Math.max(lo[j], x[j])), decimals[j])
     return x
   }
+  const ysdOf = (b: Binding) => (b.model ? b.model.ysd || 1 : 1)
   const score = (x: number[]) => {
     let s = 0
+    let nov = 0
     for (const b of active) {
       const c = evaluate(b, x)
       const lp = Math.log(Math.max(c.prob, 1e-6))
-      s += b.requirement.priority === 'must' ? lp : 0.2 * lp
+      s += b.goal.must ? lp : 0.2 * lp
+      if (b.model) nov = Math.max(nov, c.epistemic / ysdOf(b))
     }
     const nr = nearestOf(x)
-    return s - 0.5 * (nr ? nr.distance : 0)
+    const d = nr ? nr.distance : 0
+    let avoidPen = 0
+    for (const a of avoid) avoidPen += Math.max(0, 0.15 - dist(x, a)) * 20
+    return s - (explore > 0 ? 0 : 0.5 * d) + explore * (3 * nov + d) - avoidPen
   }
 
   const pool: number[][] = []
@@ -660,16 +623,13 @@ export function suggest(model: Model, m: Matrix, reqs: Requirement[], opts: Sugg
     seen.add(key)
     pool.push(x)
   }
-  for (const k of known) {
-    if (free.every((j) => k[j] >= lo[j] - 1e-9 && k[j] <= hi[j] + 1e-9)) push(clip([...k]))
-  }
+  for (const k of known) if (free.every((j) => k[j] >= lo[j] - 1e-9 && k[j] <= hi[j] + 1e-9)) push(clip([...k]))
   for (let i = 0; i < samples; i++) {
     const x = [...base]
     for (const j of free) x[j] = lo[j] + rand() * (hi[j] - lo[j])
     push(clip(x))
   }
   let scored = pool.map((x) => ({ x, s: score(x) })).sort((a, b) => b.s - a.s)
-  // 상위 후보를 조금씩 흔들어 다듬는다
   const top = scored.slice(0, 15)
   for (const c of top) {
     let step = 0.08
@@ -686,7 +646,6 @@ export function suggest(model: Model, m: Matrix, reqs: Requirement[], opts: Sugg
     }
   }
   scored = [...top, ...scored.slice(15)].sort((a, b) => b.s - a.s)
-  // 서로 다른 후보를 고른다
   const picked: typeof scored = []
   for (const minD of [0.12, 0.05, 0]) {
     for (const c of scored) {
@@ -697,22 +656,21 @@ export function suggest(model: Model, m: Matrix, reqs: Requirement[], opts: Sugg
   }
   const candidates: Suggestion[] = picked.map(({ x }) => {
     const checks = active.map((b) => evaluate(b, x))
-    const mustChecks = checks.filter((c) => c.requirement.priority === 'must')
+    const mustChecks = checks.filter((c) => c.goal.must)
     const nearest = nearestOf(x)
+    let nov = 0
+    active.forEach((b, i) => {
+      if (b.model) nov = Math.max(nov, checks[i].epistemic / ysdOf(b))
+    })
     return {
-      values: free.map((j) => ({ column: features[j], value: x[j] })),
+      values: free.map((j) => ({ variable: features[j], value: x[j] })),
       checks,
       prob: mustChecks.reduce((s, c) => s * c.prob, 1),
       allOk: mustChecks.every((c) => c.ok),
       nearest,
       known: nearest !== null && nearest.distance < 0.02,
+      novelty: nov,
     }
   })
-  return {
-    candidates,
-    unmodeled,
-    ranges: free.map((j) => ({ column: features[j], lo: lo[j], hi: hi[j] })),
-    fixed: features.map((f, j) => ({ column: f, value: fixedIdx.get(j) ?? null })).filter((_, j) => fixedIdx.has(j)),
-    problem: null,
-  }
+  return { candidates, unmodeled, ranges: free.map((j) => ({ variable: features[j], lo: lo[j], hi: hi[j] })), problem: null }
 }

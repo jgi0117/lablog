@@ -1,72 +1,57 @@
 # lablog
 
-맡은 프로젝트의 실험 기록을 빠뜨리지 않고 한곳에 모아 한눈에 보게 하는 개인 연구원용 실험 노트 웹앱. (예시 업무: 필름 제품 개발)
+**앱이 실험 순서를 정하고, 사람은 결과 숫자만 넣는** 제품개발 실험 관리 도구. 모인 데이터로 조건 → 결과를 예측하고, 고객 목표를 만족할 조건을 제안한다.
 
-**풀려는 문제**: 실험 기록이 여러 곳에 흩어져 찾기도 재현하기도 어려운 문제
+**풀려는 문제**: 실험 기록이 흩어져 있고, 절차·조건을 손으로 적느라 입력이 귀찮으며, 다음 실험 조건을 짐작으로 정한다.
 
-현재 단계: **Phase 10(조건 → 결과 예측, 고객 요구를 만족할 다음 실험 조건 제안) 구현 완료.** 프로젝트의 "예측·제안" 탭에서 모아 둔 실험으로 모델을 만들어(브라우저 안에서, 교차검증으로 신뢰도 표시) 요구를 만족할 조건 3가지를 제안하고, 버튼 하나로 그 조건의 새 실험을 만든다(`docs/phase10/00-예측과-제안.md`). Phase 8(복제·템플릿·달라진 점 기록), 데이터 허브·통계 분석, 고객 요구 특성 구현 완료. **Phase 9(Supabase 전환)는 코드와 문서가 준비됐고, 실제 Supabase 프로젝트 설정과 데이터 이전은 `docs/phase9/02-설정-가이드.md`를 따라 직접 합니다.** Phase 7은 혼자 쓰는 가벼운 배포(GitHub Pages)만 준비했고, 사용성 테스트와 실기기 확인은 남아 있습니다. 예시 데이터는 UCI 콘크리트 공개 데이터를 씁니다. 데이터는 지금 브라우저 로컬(IndexedDB)에만 저장하고, 이후 Supabase로 옮길 예정입니다.
+**해결**: 프로젝트에 "무엇을 바꾸고(입력), 무엇을 재고(출력), 어디까지 가야 하는지(목표)"만 적는다. 그러면
+1. 앱이 입력 범위를 고르게 덮는 첫 실험 조건들을 짜 준다(라틴 하이퍼큐브).
+2. 실험 카드에 조건이 적혀 있다. 당신은 결과 숫자만 넣고 "저장하고 다음 →"를 누른다.
+3. 완료 실험이 8건을 넘으면 모델(랜덤 포레스트·선형 회귀, 교차검증으로 선택)이 만들어지고, 목표를 만족할 가능성이 큰 조건을 다음 실험으로 자동으로 이어 붙인다.
+4. 목표를 모두 만족한 조건이 나오면 "목표 달성"이라고 알려 준다.
 
-## 디렉토리 구조
+모든 데이터는 이 브라우저(localStorage)에만 있다. CSV·JSON으로 내보내고 가져온다. 서버 없음.
 
-```
-lab/
-├─ README.md
-├─ app/                      앱 코드 (Vite + React + TypeScript)
-│  ├─ src/
-│  │  ├─ domain/             타입과 규칙 (저장소와 무관한 순수 코드)
-│  │  ├─ data/
-│  │  │  ├─ repositories/    저장소 인터페이스 (DataBackend)
-│  │  │  ├─ local/           IndexedDB 구현 (Dexie), 검색 색인
-│  │  │  └─ supabase/        Supabase 구현 (Phase 9)
-│  │  ├─ services/           검색 색인, 백업 같은 도메인 서비스
-│  │  ├─ hooks/              화면용 훅
-│  │  ├─ components/         공통 UI
-│  │  ├─ app/                라우트 정의, BackendContext
-│  │  ├─ pages/              라우트 단위 화면 (IA의 URL과 1:1)
-│  │  ├─ styles/             디자인 토큰 (tokens.css)
-│  │  └─ tests/              테스트 설정, 계약 테스트, 픽스처
-│  └─ .env.example
-├─ docs/
-│  ├─ planning/              기획: prd, IA, uj, 문제정의-솔루션, devplan
-│  ├─ design/                디자인: 시안(4종), 와이어프레임, 디자인 기준
-│  ├─ phase0/                준비: 결정 기록, 인터뷰 가이드, 샘플 수집, 기준선 측정
-│  ├─ phase1/                설계: 데이터 모델, 수행 모드 사전 검증, 테스트 계획
-│  ├─ phase2/                기반 구축 완료 기록
-│  ├─ phase3/                s1 모으기 완료 기록
-│  ├─ phase4/                s2 찾기 완료 기록
-│  ├─ phase4-5/              s4 살펴보기 완료 기록
-│  ├─ phase5/                안정화 완료 기록
-│  ├─ phase6/                최종 테스트 기록, Go/No-go
-│  ├─ phase7/                가벼운 배포 기록, 사용 안내
-│  ├─ phase8/                복제·템플릿·달라진 점 기록, 데이터 허브, 고객 요구
-│  ├─ phase9/                ERD, Supabase 설정과 데이터 이전 가이드
-│  ├─ phase10/               조건 → 결과 예측, 다음 실험 조건 제안 (발표자료 포함)
-│  ├─ references/            외부에서 받은 참고 문서
-│  └─ summary/               각 문서의 짧은 요약본
-├─ .github/workflows/        CI (린트, 타입 검사, 테스트, 빌드)
-└─ .claude/skills/           기획 작업에 쓴 스킬 (create-prd, information-architecture, user-journeys)
-```
+## 화면 (4개)
 
-단계별 문서는 `docs/phaseN/`에 쌓습니다. 새 단계를 시작하면 폴더를 하나 더 만듭니다.
+| 화면 | 주소 | 하는 일 |
+|---|---|---|
+| 프로젝트 목록 | `/` | 카드마다 목표 상태, 완료·계획 수, "다음 실험 결과 넣기" 버튼. 전체 백업·가져오기 |
+| 새 프로젝트 | `/new` | 변수(입력 범위·측정 시점·출력)와 탐색 조건 수 → 첫 계획 자동 생성. CSV로 바로 만들기. 예시 데이터 |
+| 프로젝트 | `/p/:id` | **다음 실험 카드**(조건 표시 + 결과 입력), 목표 현황, 최근 결과, 모델 신뢰도(교차검증 R²), 목표 만족 후보 3개, 조건 바꿔 보며 예측 |
+| 데이터 · 설정 | `/p/:id/data`, `/p/:id/setup` | 모든 실험 표(칸 바로 수정, CSV 더하기·내려받기, 직접 추가) · 변수·목표·탐색 수 편집, 계획 다시 짜기, 프로젝트 삭제 |
 
-## 문서 읽는 순서
+## 실행
 
-1. `docs/planning/prd.md` 무엇을 왜 만드는가
-2. `docs/planning/IA.md`, `uj.md` 화면 구조와 사용자 흐름
-3. `docs/planning/devplan.md` 단계별 개발 계획
-4. `docs/phase1/01-데이터-모델.md` 데이터와 규칙
-5. `docs/design/` 디자인 방향과 화면 설계
-6. `docs/phase8/02-고객-요구-특성.md` → `docs/phase10/00-예측과-제안.md` 고객 요구에서 다음 실험 조건 제안까지
-
-## 개발
-
-Node.js 24 LTS 필요. `app/`에서 실행합니다.
+Node.js 24. `app/`에서:
 
 ```bash
 npm install
-npm run dev        # 개발 서버
+npm run dev        # http://localhost:5173
 npm run check      # 린트 + 타입 검사 + 테스트
-npm run build      # 배포용 빌드
+npm run build      # 배포용 빌드 (dist/)
 ```
 
-자세한 규칙(브랜치, 커밋, PR 체크리스트)은 `docs/phase0/00-결정.md`에 있습니다.
+main에 올리면 GitHub Pages에 자동 배포된다(`.github/workflows/deploy.yml`). Vercel도 `app/vercel.json`으로 그대로 된다.
+
+## 구조
+
+```
+app/src/
+├─ domain/types.ts      프로젝트·변수·실험 모델, 목표 판정
+├─ services/store.ts    localStorage 저장소(useDb 훅)
+├─ services/plan.ts     실험 계획(라틴 하이퍼큐브, 측정 시점 펼치기, 모델 계획), 현황 계산
+├─ services/model.ts    랜덤 포레스트·능형회귀, 5겹 교차검증, 예측 구간, 목표 만족 확률, 조건 제안
+├─ services/csv.ts      CSV 읽기·쓰기, 백업 JSON, 예전 lablog(실험 노트) 백업 변환
+├─ data/demo.ts         예시 데이터(UCI 콘크리트 1,030건 → 프로젝트 4개)
+├─ pages/               HomePage, NewProjectPage, ProjectPage, DataPage, SetupPage
+└─ *.test.ts(x)         서비스 14개 + 화면 흐름 4개 테스트
+docs/                   문제 정의·설계, 발표자료
+```
+
+자세한 설계와 "어디까지 믿어도 되는가"는 [docs/01_문제정의와_설계.md](docs/01_문제정의와_설계.md), 발표자료는 [docs/발표자료.html](docs/발표자료.html).
+
+## 데이터
+
+- 예시: UCI *Concrete Compressive Strength* (Yeh 1998, CC BY 4.0). 값은 바꾸지 않았고 프로젝트 이름과 목표는 지어낸 것이다. `app/src/data/concrete/README.md`.
+- 예전 lablog(실험 노트) 백업 JSON을 "백업 가져오기"로 넣으면 조건·결과·고객 요구만 옮겨 온다. 절차·메모는 옮기지 않는다.
