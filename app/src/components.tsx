@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { fmt, type Goal, type Project, type Run, type Variable } from './domain/types'
+import { fmt, groupKeyOf, type Goal, type Project, type Run, type Variable } from './domain/types'
 import { trainModel, type Model } from './services/model'
 import { status, type Status } from './services/plan'
 import { pool } from './services/pool'
-import { runsOf, useDb } from './services/store'
+import { modelsOf, runsOf, useDb } from './services/store'
 
 /** 프로젝트 하나와 그 실험들. 없는 프로젝트면 project가 null */
 export function useProject(id: string | undefined): { project: Project | null; runs: Run[] } {
@@ -18,20 +18,21 @@ export function useProject(id: string | undefined): { project: Project | null; r
 export function useModel(project: Project | null): { model: Model | null; busy: boolean } {
   const db = useDb()
   const pooled = useMemo(() => (project ? pool(db, project) : null), [db, project])
+  const versions = useMemo(() => (project ? modelsOf(db, groupKeyOf(project)).filter((m) => m.applied) : []), [db, project])
   const sig = useMemo(
     () =>
       project && pooled
-        ? `${project.id}|${project.pool !== false}|${project.variables.map((v) => `${v.id}:${v.role}`).join(',')}|${pooled.runs
+        ? `${project.id}|${project.pool !== false}|${versions.map((v) => v.id).join(',')}|${project.variables.map((v) => `${v.id}:${v.role}`).join(',')}|${pooled.runs
             .filter((r) => r.status === 'done')
             .map((r) => `${r.id}:${Object.values(r.y).join('/')}`)
             .join(',')}`
         : '',
-    [project, pooled],
+    [project, pooled, versions],
   )
   const [state, setState] = useState<{ sig: string; model: Model } | null>(null)
   useEffect(() => {
     if (!project || !pooled) return
-    const h = setTimeout(() => setState({ sig, model: trainModel(project, pooled.runs, { extras: pooled.extras, fixed: pooled.fixed, pooledProjects: pooled.projects.length }) }), 20)
+    const h = setTimeout(() => setState({ sig, model: trainModel(project, pooled.runs, { extras: pooled.extras, fixed: pooled.fixed, pooledProjects: pooled.projects.length, versions }) }), 20)
     return () => clearTimeout(h)
     // pooled는 sig로 대표된다
     // eslint-disable-next-line react-hooks/exhaustive-deps

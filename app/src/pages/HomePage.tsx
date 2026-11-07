@@ -21,9 +21,11 @@ export function HomePage() {
       {db.projects.length === 0 && (
         <div className="card stack">
           <h2>아직 프로젝트가 없습니다</h2>
-          <p>
-            프로젝트는 "무엇을 바꿔(입력), 무엇을 재고(출력), 어디까지 가야 하는지(목표)"를 적어 둔 것입니다. 만들면 앱이 실험 순서를 정해 주고, 당신은 결과 숫자만 넣으면 됩니다. 백업 파일이 있으면 <Link to="/data">데이터</Link>에서 가져옵니다.
-          </p>
+          <ul className="goal-list">
+            <li>프로젝트 = 입력(바꿀 조건·범위) + 출력(측정) + 목표(목표값 ± 허용)</li>
+            <li>만들면 앱이 실험 순서를 정함 → 결과 숫자만 입력</li>
+            <li>백업 파일은 <Link to="/data">데이터</Link>에서 가져오기</li>
+          </ul>
           <div className="row">
             <Link to="/new" className="btn btn--primary">
               + 새 프로젝트
@@ -46,9 +48,9 @@ export function HomePage() {
               <p className="muted small">
                 완료 {s.done}건 · 계획 {s.planned}건 · 목표 {p.goals.length}개
               </p>
-              {s.overall === 'achieved' && <p className="small">실험 {s.done}건으로 목표를 만족한 조건을 찾았습니다</p>}
-              {s.overall === 'in-progress' && miss && <p className="small">가장 가까운 조건에서 "{describeGoal(p, miss.goal)}"이(가) 아직 부족합니다</p>}
-              {s.overall === 'no-goal' && <p className="small muted">목표를 적으면 달성 여부를 판정합니다</p>}
+              {s.overall === 'achieved' && <p className="small">실험 {s.done}건 만에 달성</p>}
+              {s.overall === 'in-progress' && miss && <p className="small">부족: {describeGoal(p, miss.goal)}</p>}
+              {s.overall === 'no-goal' && <p className="small muted">목표 없음 → 설정에서 추가</p>}
               <Link to={`/p/${p.id}`} className={`btn ${s.finished ? '' : 'btn--primary'}`}>
                 {s.finished ? '결과 보기 →' : next ? `다음 실험 #${next.order} 결과 넣기 →` : '다음 실험 받기 →'}
               </Link>

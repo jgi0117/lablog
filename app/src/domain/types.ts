@@ -77,13 +77,55 @@ export interface Run {
   date: string | null
 }
 
+/** 직접 학습해 저장한 모델 한 버전. 변수 이름이 같은 프로젝트들(group)에서 함께 쓴다 */
+export interface ModelVersion {
+  id: ID
+  /** 변수 묶음 열쇠(입력·측정 시점·출력 이름). 같은 묶음의 프로젝트에서 쓸 수 있다 */
+  group: string
+  version: number
+  /** 출력 변수 이름(label) */
+  target: string
+  /** 쓴 조건 이름(feature). 프로젝트 표시 변수는 'proj:<id>' */
+  features: string[]
+  algo: 'forest' | 'ridge' | 'knn' | 'gbm'
+  params: Record<string, number | undefined>
+  folds: number
+  pooled: boolean
+  projects: ID[]
+  n: number
+  r2: number
+  mae: number
+  residSd: number
+  ysd: number
+  importance: number[]
+  cv_pred: number[]
+  cv_actual: number[]
+  /** 학습한 모델 본체(숫자·배열만) */
+  predictor: unknown
+  trainedAt: string
+  /** 같은 group·target에서 하나만 적용 */
+  applied: boolean
+  note: string
+}
+
 export interface Db {
   version: 3
   projects: Project[]
   runs: Run[]
+  models?: ModelVersion[]
 }
 
-export const emptyDb = (): Db => ({ version: 3, projects: [], runs: [] })
+export const emptyDb = (): Db => ({ version: 3, projects: [], runs: [], models: [] })
+
+/** 변수 묶음 열쇠: 입력·측정 시점·출력의 이름(공백·대소문자 무시). 같은 열쇠면 데이터와 모델을 함께 쓴다 */
+export function groupKeyOf(p: Project): string {
+  const norm = (s: string) => s.toLowerCase().replace(/\s+/g, '')
+  return p.variables
+    .filter((v) => v.name.trim())
+    .map((v) => `${v.role}:${norm(v.name)}`)
+    .sort()
+    .join('|')
+}
 
 export const inputsOf = (p: Project) => p.variables.filter((v) => v.role === 'input')
 export const levelsOf = (p: Project) => p.variables.filter((v) => v.role === 'level')

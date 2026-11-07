@@ -138,7 +138,7 @@ export function DataPage() {
 
       <div className="row between">
         <p className="muted small">
-          <Link to={`/p/${project.id}`}>{project.name} 실험 화면 →</Link> · 고른 프로젝트의 칸은 바로 고칠 수 있고, 다른 프로젝트의 실험은 읽기만 합니다.
+          <Link to={`/p/${project.id}`}>{project.name} 실험 화면 →</Link> · 고른 프로젝트 칸만 수정 가능
         </p>
         <div className="row">
           <button type="button" className="btn" onClick={() => setAdding((a) => !a)}>
@@ -289,7 +289,7 @@ export function DataPage() {
           </section>
           <section className="card stack" aria-labelledby="h-infl">
             <h2 id="h-infl">어떤 조건이 {y.name}을(를) 움직이는가</h2>
-            <p className="hint">조건마다 결과와의 상관계수(−1~1). 상관은 원인이 아니며, 실험이 적으면 우연일 수 있습니다. 모델이 보는 중요도는 모델 탭에 있습니다.</p>
+            <p className="hint">상관계수(−1~1) · 상관 ≠ 원인 · 실험 적으면 우연일 수 있음 · 모델 중요도는 모델 탭</p>
             <InfluenceBars variables={[...inputs, ...levels]} runs={doneScope} y={y} levelVar={levelVar} goal={goal} />
           </section>
         </div>

@@ -1,10 +1,10 @@
-import { checkGoal, inputsOf, levelsOf, outputsOf, type Goal, type ID, type Project, type Run, type Variable } from '../domain/types'
+import { checkGoal, inputsOf, levelsOf, outputsOf, type Goal, type ID, type ModelVersion, type Project, type Run, type Variable } from '../domain/types'
 
 /**
  * 조건 → 결과 예측 모델과 목표를 만족할 조건 제안. 외부 라이브러리 없이 브라우저 안에서 계산한다.
- * - 결과마다 랜덤 포레스트와 능형회귀를 5겹 교차검증으로 시험해 더 잘 맞히는 쪽을 쓴다.
- * - 예측은 평균과 불확실성(교차검증 오차 ⊕ 나무들의 흩어짐)으로 돌려준다.
- * - 제안은 관측 범위 안에서 "필수 목표를 모두 만족할 확률"이 큰 조건을 찾고, 탐색 가중치를 주면 모델이 잘 모르는 곳도 섞는다.
+ * - 알고리즘 4종(랜덤 포레스트, 선형(능형) 회귀, k-최근접, 그래디언트 부스팅)과 파라미터를 골라 직접 학습할 수 있다.
+ * - 학습한 모델은 함수 없이 숫자·배열만으로 되어 있어 그대로 저장(버전)하고 다시 불러 쓴다.
+ * - 아무것도 고르지 않으면 "자동"(포레스트 vs 선형을 교차검증으로 고름)으로 학습한다.
  */
 
 // ---------- 난수·분포 ----------
@@ -52,14 +52,13 @@ export const MIN_TRAIN = 8
 export const MIN_R2 = 0.3
 
 export interface Dataset {
-  /** 입력 + level 변수 가운데 값이 달라지는 것 */
+  /** 입력 + level 변수(+ 프로젝트 표시 변수) 가운데 값이 달라지는 것 */
   features: Variable[]
   targets: Variable[]
   runs: Run[]
   X: number[][]
   Y: (number | null)[][]
   medians: number[]
-  /** 관측 범위(변수의 min·max가 있으면 그것과 합친다) */
   bounds: [number, number][]
 }
 
@@ -98,22 +97,85 @@ export function buildDataset(p: Project, runs: Run[], minN = MIN_TRAIN, extras: 
   return { features, targets, runs: rows, X, Y, medians, bounds }
 }
 
-// ---------- 랜덤 포레스트 ----------
+// ---------- 알고리즘 ----------
+
+export type Algo = 'forest' | 'ridge' | 'knn' | 'gbm'
+
+export interface Params {
+  trees?: number
+  minLeaf?: number
+  maxDepth?: number
+  lambda?: number
+  k?: number
+  depth?: number
+  rate?: number
+}
+
+export interface ParamSpec {
+  key: keyof Params
+  label: string
+  def: number
+  min: number
+  max: number
+  step: number
+}
+
+export const ALGOS: Record<Algo, { label: string; short: string; params: ParamSpec[]; note: string }> = {
+  forest: {
+    label: '랜덤 포레스트',
+    short: 'RF',
+    params: [
+      { key: 'trees', label: '나무 수', def: 80, min: 10, max: 500, step: 10 },
+      { key: 'minLeaf', label: '잎 최소 실험 수', def: 2, min: 1, max: 20, step: 1 },
+      { key: 'maxDepth', label: '최대 깊이 (0 = 제한 없음)', def: 0, min: 0, max: 30, step: 1 },
+    ],
+    note: '곡선·상호작용에 강함. 범위 밖은 평평. 불확실성 = 나무들의 흩어짐',
+  },
+  ridge: {
+    label: '선형(능형) 회귀',
+    short: '선형',
+    params: [{ key: 'lambda', label: '규제 λ', def: 1, min: 0, max: 100, step: 0.5 }],
+    note: '실험이 적을 때 안정적. 직선 관계만. 계수로 설명 쉬움',
+  },
+  knn: {
+    label: 'k-최근접 이웃',
+    short: 'kNN',
+    params: [{ key: 'k', label: '이웃 수 k', def: 5, min: 1, max: 30, step: 1 }],
+    note: '비슷한 과거 실험의 평균. 설명 직관적. 조건 수가 많으면 약해짐',
+  },
+  gbm: {
+    label: '그래디언트 부스팅',
+    short: 'GBM',
+    params: [
+      { key: 'trees', label: '나무 수', def: 150, min: 10, max: 1000, step: 10 },
+      { key: 'depth', label: '나무 깊이', def: 3, min: 1, max: 8, step: 1 },
+      { key: 'rate', label: '학습률', def: 0.1, min: 0.01, max: 1, step: 0.01 },
+    ],
+    note: '정확도 높은 편. 과적합 주의(교차검증 R²로 확인)',
+  },
+}
+
+export function defaultParams(algo: Algo): Params {
+  return Object.fromEntries(ALGOS[algo].params.map((s) => [s.key, s.def])) as Params
+}
+
+export const KIND_LABEL: Record<Algo, string> = { forest: '랜덤 포레스트', ridge: '선형 회귀', knn: 'k-최근접', gbm: '부스팅' }
 
 type Node = { f: number; t: number; l: Node; r: Node } | { v: number }
-interface ForestOptions {
-  trees: number
-  minLeaf: number
-  maxThresholds: number
-}
-const FOREST: ForestOptions = { trees: 80, minLeaf: 2, maxThresholds: 24 }
 
-function growTree(X: number[][], y: number[], idx: number[], mtry: number, opt: ForestOptions, rand: () => number, imp: number[]): Node {
+interface TreeOpt {
+  minLeaf: number
+  maxDepth: number
+  maxThresholds: number
+  mtry: number
+}
+
+function growTree(X: number[][], y: number[], idx: number[], depth: number, opt: TreeOpt, rand: () => number, imp: number[]): Node {
   const n = idx.length
   let sum = 0
   for (const i of idx) sum += y[i]
   const leaf = (): Node => ({ v: sum / n })
-  if (n < 2 * opt.minLeaf) return leaf()
+  if (n < 2 * opt.minLeaf || (opt.maxDepth > 0 && depth >= opt.maxDepth)) return leaf()
   let same = true
   for (let k = 1; k < n && same; k++) if (y[idx[k]] !== y[idx[0]]) same = false
   if (same) return leaf()
@@ -125,7 +187,7 @@ function growTree(X: number[][], y: number[], idx: number[], mtry: number, opt: 
   }
   const base = (sum * sum) / n
   let best: { f: number; t: number; gain: number } | null = null
-  for (const f of order.slice(0, mtry)) {
+  for (const f of order.slice(0, opt.mtry)) {
     const uniq = [...new Set(idx.map((i) => X[i][f]))].sort((a, b) => a - b)
     if (uniq.length < 2) continue
     const thresholds: number[] = []
@@ -158,7 +220,7 @@ function growTree(X: number[][], y: number[], idx: number[], mtry: number, opt: 
   const li: number[] = []
   const ri: number[] = []
   for (const i of idx) (X[i][best.f] <= best.t ? li : ri).push(i)
-  return { f: best.f, t: best.t, l: growTree(X, y, li, mtry, opt, rand, imp), r: growTree(X, y, ri, mtry, opt, rand, imp) }
+  return { f: best.f, t: best.t, l: growTree(X, y, li, depth + 1, opt, rand, imp), r: growTree(X, y, ri, depth + 1, opt, rand, imp) }
 }
 
 function predictTree(node: Node, x: number[]): number {
@@ -167,40 +229,48 @@ function predictTree(node: Node, x: number[]): number {
   return cur.v
 }
 
-interface Forest {
-  kind: 'forest'
-  trees: Node[]
-  importance: number[]
+/** 학습한 모델. 함수 없이 숫자만이라 JSON으로 저장할 수 있다 */
+export type Predictor =
+  | { kind: 'forest'; trees: Node[]; importance: number[] }
+  | { kind: 'ridge'; w: number[]; b: number; mu: number[]; sig: number[]; importance: number[] }
+  | { kind: 'knn'; X: number[][]; y: number[]; mu: number[]; sig: number[]; k: number; importance: number[] }
+  | { kind: 'gbm'; base: number; rate: number; trees: Node[]; importance: number[] }
+
+function normalize(imp: number[]): number[] {
+  const total = imp.reduce((a, b) => a + b, 0) || 1
+  return imp.map((v) => v / total)
 }
 
-function fitForest(X: number[][], y: number[], rand: () => number, opt = FOREST): Forest {
+function fitForest(X: number[][], y: number[], prm: Params, rand: () => number): Predictor {
   const n = y.length
   const p = X[0].length
-  const mtry = Math.max(1, Math.round(p / 3))
+  const opt: TreeOpt = { minLeaf: prm.minLeaf ?? 2, maxDepth: prm.maxDepth ?? 0, maxThresholds: 24, mtry: Math.max(1, Math.round(p / 3)) }
   const importance = new Array<number>(p).fill(0)
   const trees: Node[] = []
-  for (let t = 0; t < opt.trees; t++) {
+  for (let t = 0; t < (prm.trees ?? 80); t++) {
     const idx = Array.from({ length: n }, () => Math.floor(rand() * n))
-    trees.push(growTree(X, y, idx, mtry, opt, rand, importance))
+    trees.push(growTree(X, y, idx, 0, opt, rand, importance))
   }
-  const total = importance.reduce((a, b) => a + b, 0) || 1
-  return { kind: 'forest', trees, importance: importance.map((v) => v / total) }
+  return { kind: 'forest', trees, importance: normalize(importance) }
 }
 
-function forestPredict(f: Forest, x: number[]): { mean: number; sd: number } {
-  const vals = f.trees.map((t) => predictTree(t, x))
-  return { mean: mean(vals), sd: sd(vals) }
-}
-
-// ---------- 능형회귀 ----------
-
-interface Ridge {
-  kind: 'ridge'
-  w: number[]
-  b: number
-  mu: number[]
-  sig: number[]
-  importance: number[]
+function fitGbm(X: number[][], y: number[], prm: Params, rand: () => number): Predictor {
+  const n = y.length
+  const p = X[0].length
+  const base = mean(y)
+  const rate = prm.rate ?? 0.1
+  const opt: TreeOpt = { minLeaf: 3, maxDepth: prm.depth ?? 3, maxThresholds: 24, mtry: p }
+  const importance = new Array<number>(p).fill(0)
+  const trees: Node[] = []
+  const pred = new Array<number>(n).fill(base)
+  const all = Array.from({ length: n }, (_, i) => i)
+  for (let t = 0; t < (prm.trees ?? 150); t++) {
+    const resid = y.map((v, i) => v - pred[i])
+    const tree = growTree(X, resid, all, 0, opt, rand, importance)
+    trees.push(tree)
+    for (let i = 0; i < n; i++) pred[i] += rate * predictTree(tree, X[i])
+  }
+  return { kind: 'gbm', base, rate, trees, importance: normalize(importance) }
 }
 
 function solve(A: number[][], b: number[]): number[] | null {
@@ -220,48 +290,83 @@ function solve(A: number[][], b: number[]): number[] | null {
   return a.map((row, i) => row[n] / row[i])
 }
 
-function fitRidge(X: number[][], y: number[], lambda = 1): Ridge | null {
+function standardizer(X: number[][]): { mu: number[]; sig: number[] } {
   const p = X[0].length
   const cols = Array.from({ length: p }, (_, j) => X.map((r) => r[j]))
-  const mu = cols.map(mean)
-  const sig = cols.map((c) => sd(c) || 1)
+  return { mu: cols.map(mean), sig: cols.map((c) => sd(c) || 1) }
+}
+
+function fitRidge(X: number[][], y: number[], prm: Params): Predictor | null {
+  const p = X[0].length
+  const { mu, sig } = standardizer(X)
   const Z = X.map((r) => r.map((v, j) => (v - mu[j]) / sig[j]))
   const ym = mean(y)
-  const A = Array.from({ length: p }, (_, a) => Array.from({ length: p }, (_, b) => Z.reduce((s, r) => s + r[a] * r[b], 0) + (a === b ? lambda : 0)))
+  const lambda = prm.lambda ?? 1
+  const A = Array.from({ length: p }, (_, a) => Array.from({ length: p }, (_, b) => Z.reduce((s, r) => s + r[a] * r[b], 0) + (a === b ? lambda + 1e-9 : 0)))
   const rhs = Array.from({ length: p }, (_, a) => Z.reduce((s, r, i) => s + r[a] * (y[i] - ym), 0))
   const w = solve(A, rhs)
   if (!w) return null
-  const total = w.reduce((s, v) => s + Math.abs(v), 0) || 1
-  return { kind: 'ridge', w, b: ym, mu, sig, importance: w.map((v) => Math.abs(v) / total) }
+  return { kind: 'ridge', w, b: ym, mu, sig, importance: normalize(w.map(Math.abs)) }
 }
 
-function ridgePredict(r: Ridge, x: number[]): number {
-  let s = r.b
-  for (let j = 0; j < r.w.length; j++) s += r.w[j] * ((x[j] - r.mu[j]) / r.sig[j])
-  return s
+function fitKnn(X: number[][], y: number[], prm: Params): Predictor {
+  const { mu, sig } = standardizer(X)
+  return { kind: 'knn', X: X.map((r) => [...r]), y: [...y], mu, sig, k: Math.max(1, Math.min(prm.k ?? 5, y.length)), importance: new Array<number>(X[0].length).fill(0) }
+}
+
+export function fitAlgo(algo: Algo, prm: Params, X: number[][], y: number[], rand: () => number): Predictor | null {
+  if (algo === 'forest') return fitForest(X, y, prm, rand)
+  if (algo === 'gbm') return fitGbm(X, y, prm, rand)
+  if (algo === 'knn') return fitKnn(X, y, prm)
+  return fitRidge(X, y, prm)
+}
+
+/** 예측 평균과 모델 내부의 흔들림(epistemic). 선형·부스팅은 흔들림을 모른다(0) */
+export function predictWith(m: Predictor, x: number[]): { mean: number; epistemic: number } {
+  if (m.kind === 'forest') {
+    const vals = m.trees.map((t) => predictTree(t, x))
+    return { mean: mean(vals), epistemic: sd(vals) }
+  }
+  if (m.kind === 'gbm') {
+    let s = m.base
+    for (const t of m.trees) s += m.rate * predictTree(t, x)
+    return { mean: s, epistemic: 0 }
+  }
+  if (m.kind === 'knn') {
+    const z = x.map((v, j) => (v - m.mu[j]) / m.sig[j])
+    const d = m.X.map((row, i) => ({ i, d: row.reduce((s, v, j) => s + ((v - m.mu[j]) / m.sig[j] - z[j]) ** 2, 0) }))
+    d.sort((a, b) => a.d - b.d)
+    const ys = d.slice(0, m.k).map((q) => m.y[q.i])
+    return { mean: mean(ys), epistemic: sd(ys) }
+  }
+  let s = m.b
+  for (let j = 0; j < m.w.length; j++) s += m.w[j] * ((x[j] - m.mu[j]) / m.sig[j])
+  return { mean: s, epistemic: 0 }
 }
 
 // ---------- 결과별 모델 ----------
 
-export type ModelKind = 'forest' | 'ridge'
-export const KIND_LABEL: Record<ModelKind, string> = { forest: '랜덤 포레스트', ridge: '선형 회귀' }
-
 export interface TargetModel {
   target: Variable
+  /** 이 모델이 쓰는 조건: dataset.features의 번호 */
+  featureIdx: number[]
   n: number
-  kind: ModelKind
-  /** 5겹 교차검증 R² */
+  algo: Algo
+  params: Params
+  folds: number
   r2: number
   residSd: number
   mae: number
   ysd: number
-  cv: Record<ModelKind, number | null>
   importance: { variable: Variable; share: number }[]
   reliable: boolean
-  predictor: Forest | Ridge
-  /** 교차검증에서 학습에 쓰지 않은 채 맞힌 값(실제값과 나란히, 산점도용) */
+  predictor: Predictor
   cv_pred: number[]
   cv_actual: number[]
+  /** 저장한 버전이면 그 id, 자동이면 null */
+  versionId: string | null
+  /** 자동일 때 함께 시험한 다른 알고리즘의 교차검증 R² */
+  cv: Partial<Record<Algo, number>>
 }
 
 export interface Model {
@@ -269,9 +374,7 @@ export interface Model {
   models: TargetModel[]
   skipped: { target: Variable; reason: string }[]
   seed: number
-  /** 프로젝트 표시 변수처럼 이 프로젝트에서는 고정해 두는 값 */
   fixed: Record<ID, number>
-  /** 함께 학습한 프로젝트 수 */
   pooledProjects: number
 }
 
@@ -286,7 +389,7 @@ function r2Of(y: number[], pred: number[]): number {
   return sst === 0 ? 0 : 1 - sse / sst
 }
 
-function crossValidate(X: number[][], y: number[], kind: ModelKind, folds: number, seed: number): number[] | null {
+function crossValidate(X: number[][], y: number[], algo: Algo, prm: Params, folds: number, seed: number): number[] | null {
   const n = y.length
   const rand = makeRandom(seed)
   const order = Array.from({ length: n }, (_, i) => i)
@@ -295,25 +398,106 @@ function crossValidate(X: number[][], y: number[], kind: ModelKind, folds: numbe
     ;[order[j], order[k]] = [order[k], order[j]]
   }
   const pred = new Array<number>(n).fill(0)
-  const k = Math.min(folds, n)
+  const k = Math.max(2, Math.min(folds, n))
+  const cvPrm: Params = algo === 'forest' ? { ...prm, trees: Math.min(prm.trees ?? 80, 50) } : prm
   for (let f = 0; f < k; f++) {
     const test = new Set(order.filter((_, i) => i % k === f))
     const tr = order.filter((i) => !test.has(i))
-    const Xt = tr.map((i) => X[i])
-    const yt = tr.map((i) => y[i])
-    if (kind === 'forest') {
-      const m = fitForest(Xt, yt, makeRandom(seed + f + 1), { ...FOREST, trees: 50 })
-      for (const i of test) pred[i] = forestPredict(m, X[i]).mean
-    } else {
-      const m = fitRidge(Xt, yt)
-      if (!m) return null
-      for (const i of test) pred[i] = ridgePredict(m, X[i])
-    }
+    const m = fitAlgo(algo, cvPrm, tr.map((i) => X[i]), tr.map((i) => y[i]), makeRandom(seed + f + 1))
+    if (!m) return null
+    for (const i of test) pred[i] = predictWith(m, X[i]).mean
   }
   return pred
 }
 
-export function trainModel(p: Project, runs: Run[], opts: { seed?: number; folds?: number; extras?: Variable[]; fixed?: Record<ID, number>; pooledProjects?: number } = {}): Model {
+export interface TrainSpec {
+  algo: Algo
+  params: Params
+  featureIdx: number[]
+  folds: number
+  seed?: number
+}
+
+/** 결과 하나를 지정한 알고리즘·조건으로 학습(교차검증 포함). 실패하면 이유 */
+export function trainTarget(dataset: Dataset, target: Variable, spec: TrainSpec): TargetModel | { reason: string } {
+  const ti = dataset.targets.findIndex((x) => x.id === target.id)
+  if (ti < 0) return { reason: `값이 있는 실험이 ${MIN_TRAIN}건은 있어야 합니다` }
+  if (spec.featureIdx.length === 0) return { reason: '조건을 하나는 골라야 합니다' }
+  const seed = spec.seed ?? 7
+  const idx = dataset.runs.map((_, i) => i).filter((i) => dataset.Y[i][ti] !== null)
+  const X = idx.map((i) => spec.featureIdx.map((j) => dataset.X[i][j]))
+  const y = idx.map((i) => dataset.Y[i][ti] as number)
+  const pred = crossValidate(X, y, spec.algo, spec.params, spec.folds, seed)
+  const predictor = pred ? fitAlgo(spec.algo, spec.params, X, y, makeRandom(seed)) : null
+  if (!pred || !predictor) return { reason: '조건끼리 같은 정보라서 모델을 풀 수 없습니다' }
+  const resid = y.map((v, i) => v - pred[i])
+  const r2 = r2Of(y, pred)
+  return {
+    target,
+    featureIdx: spec.featureIdx,
+    n: idx.length,
+    algo: spec.algo,
+    params: spec.params,
+    folds: spec.folds,
+    r2,
+    residSd: Math.sqrt(resid.reduce((s, v) => s + v * v, 0) / resid.length),
+    mae: mean(resid.map(Math.abs)),
+    ysd: sd(y),
+    importance: spec.featureIdx.map((j, k) => ({ variable: dataset.features[j], share: predictor.importance[k] })).sort((a, b) => b.share - a.share),
+    reliable: r2 >= MIN_R2,
+    predictor,
+    cv_pred: pred,
+    cv_actual: y,
+    versionId: null,
+    cv: { [spec.algo]: r2 },
+  }
+}
+
+export interface TrainOptions {
+  seed?: number
+  folds?: number
+  extras?: Variable[]
+  fixed?: Record<ID, number>
+  pooledProjects?: number
+  /** 저장한 버전. 적용(applied)된 것이 있으면 자동 대신 쓴다 */
+  versions?: ModelVersion[]
+}
+
+/** 저장한 버전을 이 데이터셋에 맞춰 되살린다. 조건이 하나라도 없으면 null */
+export function fromVersion(dataset: Dataset, v: ModelVersion): TargetModel | null {
+  const target = dataset.targets.find((t) => t.name === v.target)
+  if (!target) return null
+  const featureIdx: number[] = []
+  for (const name of v.features) {
+    const j = dataset.features.findIndex((f) => (name.startsWith('proj:') ? f.id === name : f.name === name && !f.id.startsWith('proj:')))
+    if (j < 0) return null
+    featureIdx.push(j)
+  }
+  return {
+    target,
+    featureIdx,
+    n: v.n,
+    algo: v.algo,
+    params: v.params as Params,
+    folds: v.folds,
+    r2: v.r2,
+    residSd: v.residSd,
+    mae: v.mae,
+    ysd: v.ysd,
+    importance: featureIdx.map((j, k) => ({ variable: dataset.features[j], share: v.importance[k] ?? 0 })).sort((a, b) => b.share - a.share),
+    reliable: v.r2 >= MIN_R2,
+    predictor: v.predictor as Predictor,
+    cv_pred: v.cv_pred,
+    cv_actual: v.cv_actual,
+    versionId: v.id,
+    cv: { [v.algo]: v.r2 },
+  }
+}
+
+/**
+ * 결과마다 모델을 만든다. 적용한 버전이 있으면 그것을, 없으면 자동(포레스트 vs 선형, 교차검증 R²가 큰 쪽).
+ */
+export function trainModel(p: Project, runs: Run[], opts: TrainOptions = {}): Model {
   const seed = opts.seed ?? 7
   const folds = opts.folds ?? 5
   const fixed = opts.fixed ?? {}
@@ -323,54 +507,63 @@ export function trainModel(p: Project, runs: Run[], opts: { seed?: number; folds
   const skipped: Model['skipped'] = []
   const doneCount = runs.filter((r) => r.status === 'done').length
   if (dataset.features.length === 0) {
-    for (const t of outputsOf(p)) skipped.push({ target: t, reason: doneCount < MIN_TRAIN ? `완료한 실험이 ${doneCount}건입니다. ${MIN_TRAIN}건부터 모델을 만듭니다` : '값이 달라지는 입력 조건이 없습니다' })
+    for (const t of outputsOf(p)) skipped.push({ target: t, reason: doneCount < MIN_TRAIN ? `완료 ${doneCount}건. ${MIN_TRAIN}건부터 학습` : '값이 달라지는 입력 조건 없음' })
     return { dataset, models, skipped, seed, fixed, pooledProjects }
   }
+  const all = dataset.features.map((_, j) => j)
   for (const t of outputsOf(p)) {
-    const ti = dataset.targets.findIndex((x) => x.id === t.id)
-    if (ti < 0) {
-      const have = runs.filter((r) => r.status === 'done' && Number.isFinite(r.y[t.id])).length
-      skipped.push({ target: t, reason: have < MIN_TRAIN ? `값이 있는 실험이 ${have}건입니다. ${MIN_TRAIN}건부터 모델을 만듭니다` : '값이 모두 같아 모델을 만들 수 없습니다' })
-      continue
-    }
-    const idx = dataset.runs.map((_, i) => i).filter((i) => dataset.Y[i][ti] !== null)
-    const X = idx.map((i) => dataset.X[i])
-    const y = idx.map((i) => dataset.Y[i][ti] as number)
-    const cv: Record<ModelKind, number | null> = { forest: null, ridge: null }
-    const preds: Partial<Record<ModelKind, number[]>> = {}
-    for (const kind of ['forest', 'ridge'] as ModelKind[]) {
-      const pr = crossValidate(X, y, kind, folds, seed)
-      if (pr) {
-        preds[kind] = pr
-        cv[kind] = r2Of(y, pr)
+    const applied = opts.versions?.find((v) => v.target === t.name && v.applied)
+    if (applied) {
+      const tm = fromVersion(dataset, applied)
+      if (tm) {
+        models.push(tm)
+        continue
       }
     }
-    const kind: ModelKind = (cv.ridge ?? -Infinity) > (cv.forest ?? -Infinity) ? 'ridge' : 'forest'
-    const pred = preds[kind]
-    const predictor = pred ? (kind === 'forest' ? fitForest(X, y, makeRandom(seed)) : fitRidge(X, y)) : null
-    if (!pred || !predictor) {
-      skipped.push({ target: t, reason: '조건끼리 같은 정보라서 모델을 풀 수 없습니다' })
+    if (!dataset.targets.some((x) => x.id === t.id)) {
+      const have = runs.filter((r) => r.status === 'done' && Number.isFinite(r.y[t.id])).length
+      skipped.push({ target: t, reason: have < MIN_TRAIN ? `값 있는 실험 ${have}건. ${MIN_TRAIN}건부터 학습` : '값이 모두 같음' })
       continue
     }
-    const resid = y.map((v, i) => v - pred[i])
-    const r2 = cv[kind] ?? 0
-    models.push({
-      target: t,
-      n: idx.length,
-      kind,
-      r2,
-      residSd: Math.sqrt(resid.reduce((s, v) => s + v * v, 0) / resid.length),
-      mae: mean(resid.map(Math.abs)),
-      ysd: sd(y),
-      cv,
-      importance: dataset.features.map((variable, j) => ({ variable, share: predictor.importance[j] })).sort((a, b) => b.share - a.share),
-      reliable: r2 >= MIN_R2,
-      predictor,
-      cv_pred: pred,
-      cv_actual: y,
-    })
+    const cands = (['forest', 'ridge'] as Algo[]).map((algo) => trainTarget(dataset, t, { algo, params: defaultParams(algo), featureIdx: all, folds, seed }))
+    const ok = cands.filter((c): c is TargetModel => !('reason' in c))
+    if (ok.length === 0) {
+      skipped.push({ target: t, reason: (cands[0] as { reason: string }).reason })
+      continue
+    }
+    const best = ok.sort((a, b) => b.r2 - a.r2)[0]
+    best.cv = Object.fromEntries(ok.map((c) => [c.algo, c.r2]))
+    models.push(best)
   }
   return { dataset, models, skipped, seed, fixed, pooledProjects }
+}
+
+/** 학습한 모델을 저장용 버전으로 */
+export function toVersion(tm: TargetModel, dataset: Dataset, meta: { id: string; group: string; version: number; projects: ID[]; pooled: boolean; note?: string }): ModelVersion {
+  return {
+    id: meta.id,
+    group: meta.group,
+    version: meta.version,
+    target: tm.target.name,
+    features: tm.featureIdx.map((j) => (dataset.features[j].id.startsWith('proj:') ? dataset.features[j].id : dataset.features[j].name)),
+    algo: tm.algo,
+    params: tm.params as Record<string, number | undefined>,
+    folds: tm.folds,
+    pooled: meta.pooled,
+    projects: meta.projects,
+    n: tm.n,
+    r2: tm.r2,
+    mae: tm.mae,
+    residSd: tm.residSd,
+    ysd: tm.ysd,
+    importance: tm.featureIdx.map((j) => tm.importance.find((i) => i.variable.id === dataset.features[j].id)?.share ?? 0),
+    cv_pred: tm.cv_pred,
+    cv_actual: tm.cv_actual,
+    predictor: tm.predictor,
+    trainedAt: new Date().toISOString(),
+    applied: false,
+    note: meta.note ?? '',
+  }
 }
 
 export function describeFit(r2: number): string {
@@ -390,15 +583,12 @@ export interface Prediction {
   hi: number
 }
 
+/** 데이터셋 전체 벡터 x에서 이 모델이 쓰는 조건만 골라 예측 */
 export function predictOne(tm: TargetModel, x: number[]): { mean: number; sd: number; epistemic: number } {
-  if (tm.predictor.kind === 'forest') {
-    const p = forestPredict(tm.predictor, x)
-    return { mean: p.mean, sd: Math.sqrt(tm.residSd ** 2 + p.sd ** 2), epistemic: p.sd }
-  }
-  return { mean: ridgePredict(tm.predictor, x), sd: tm.residSd, epistemic: 0 }
+  const p = predictWith(tm.predictor, tm.featureIdx.map((j) => x[j]))
+  return { mean: p.mean, sd: Math.sqrt(tm.residSd ** 2 + p.epistemic ** 2), epistemic: p.epistemic }
 }
 
-/** 변수 id → 값을 입력 벡터로. 빠진 값은 중앙값. 범위 밖 변수도 알려 준다 */
 export function vectorOf(model: Model, values: Record<ID, number | null | undefined>): { x: number[]; outOfRange: Variable[]; missing: Variable[] } {
   const { features, medians, bounds } = model.dataset
   const outOfRange: Variable[] = []
@@ -440,7 +630,6 @@ export function checkPredicted(g: Goal, mu: number, sigma: number): { ok: boolea
 
 export interface GoalCheck {
   goal: Goal
-  /** 입력 조건에 거는 목표는 값 그대로 판정한다 */
   onCondition: boolean
   mean: number
   sd: number
@@ -464,26 +653,25 @@ function bind(model: Model, p: Project, g: Goal): Binding {
   if (g.at) {
     const i = fi(g.at.variable)
     if (i < 0) {
-      // level 변수가 데이터에서 한 값뿐이면(예: 모두 28일) 그 값과 같을 때만 판정할 수 있다
       const lv = p.variables.find((v) => v.id === g.at!.variable)
       const vals = new Set(model.dataset.runs.map((r) => r.x[g.at!.variable]))
-      if (!(vals.size === 1 && vals.has(g.at.value))) return { goal: g, model: null, featureIndex: null, at: null, reason: `"${lv?.name ?? ''}" 값이 ${g.at.value}인 실험이 없어 예측하지 않습니다` }
+      if (!(vals.size === 1 && vals.has(g.at.value))) return { goal: g, model: null, featureIndex: null, at: null, reason: `"${lv?.name ?? ''}" ${g.at.value} 실험 없음` }
     } else at = { index: i, value: g.at.value }
   }
   const v = p.variables.find((x) => x.id === g.variable)
-  if (!v) return { goal: g, model: null, featureIndex: null, at, reason: '목표의 변수를 찾을 수 없습니다' }
+  if (!v) return { goal: g, model: null, featureIndex: null, at, reason: '목표의 변수 없음' }
   if (v.role === 'output') {
     const tm = model.models.find((m) => m.target.id === v.id)
     if (!tm) {
       const sk = model.skipped.find((s) => s.target.id === v.id)
-      return { goal: g, model: null, featureIndex: null, at, reason: sk?.reason ?? '모델이 없습니다' }
+      return { goal: g, model: null, featureIndex: null, at, reason: sk?.reason ?? '모델 없음' }
     }
-    if (!tm.reliable) return { goal: g, model: null, featureIndex: null, at, reason: `"${v.name}" 모델의 교차검증 R²가 ${tm.r2.toFixed(2)}로 낮아 예측을 믿기 어렵습니다` }
+    if (!tm.reliable) return { goal: g, model: null, featureIndex: null, at, reason: `"${v.name}" 모델 R² ${tm.r2.toFixed(2)} (0.3 미만)` }
     return { goal: g, model: tm, featureIndex: null, at, reason: null }
   }
   const j = fi(v.id)
   if (j >= 0) return { goal: g, model: null, featureIndex: j, at, reason: null }
-  return { goal: g, model: null, featureIndex: null, at, reason: `"${v.name}"은(는) 값이 달라지지 않아 판정하지 않습니다` }
+  return { goal: g, model: null, featureIndex: null, at, reason: `"${v.name}" 값이 달라지지 않음` }
 }
 
 function evaluate(b: Binding, x: number[]): GoalCheck {
@@ -518,15 +706,12 @@ export function checkGoals(model: Model, p: Project, x: number[]): { checks: Goa
 // ---------- 조건 제안 ----------
 
 export interface Suggestion {
-  /** 제안 조건(level 변수와 고정 변수는 뺀다) */
   values: { variable: Variable; value: number }[]
   checks: GoalCheck[]
-  /** 필수 목표를 모두 만족할 확률 */
   prob: number
   allOk: boolean
   nearest: { run: Run; distance: number } | null
   known: boolean
-  /** 모델이 이 조건을 얼마나 모르는지(0~1 정도, 결과 표준편차 대비) */
   novelty: number
 }
 
@@ -541,9 +726,7 @@ export interface SuggestOptions {
   n?: number
   samples?: number
   seed?: number
-  /** 탐색 가중치. 0이면 확률만 보고, 클수록 모델이 모르는 곳을 섞는다 */
   explore?: number
-  /** 이미 계획해 둔 조건(피한다) */
   avoid?: Record<ID, number>[]
   fixed?: Record<ID, number>
 }
@@ -561,8 +744,8 @@ export function suggest(model: Model, p: Project, opts: SuggestOptions = {}): Su
   const active = bindings.filter((b) => !b.reason)
   const musts = active.filter((b) => b.goal.must)
   const empty = (problem: string | null): SuggestResult => ({ candidates: [], unmodeled, ranges: [], problem })
-  if (features.length === 0) return empty('값이 달라지는 입력 조건이 없어 제안할 수 없습니다')
-  if (musts.filter((b) => b.model).length === 0) return empty('예측할 수 있는 필수 목표(출력)가 없어 제안할 수 없습니다')
+  if (features.length === 0) return empty('값이 달라지는 입력 조건 없음')
+  if (musts.filter((b) => b.model).length === 0) return empty('예측할 수 있는 필수 목표(출력) 없음')
 
   const fixedIdx = new Map<number, number | null>()
   for (const b of active) if (b.at) fixedIdx.set(b.at.index, null)
@@ -585,8 +768,8 @@ export function suggest(model: Model, p: Project, opts: SuggestOptions = {}): Su
     }
   }
   const free = features.map((_, j) => j).filter((j) => !fixedIdx.has(j))
-  for (const j of free) if (lo[j] > hi[j]) return empty(`"${features[j].name}"의 목표 범위가 지금까지 실험한 범위와 겹치지 않습니다`)
-  if (free.length === 0) return empty('움직일 수 있는 조건이 없습니다')
+  for (const j of free) if (lo[j] > hi[j]) return empty(`"${features[j].name}" 목표 범위가 실험 범위와 겹치지 않음`)
+  if (free.length === 0) return empty('움직일 수 있는 조건 없음')
   const span = features.map((_, j) => Math.max(hi[j] - lo[j], 1e-9))
   const decimals = features.map((f) => f.decimals ?? 2)
   const base = features.map((_, j) => {

@@ -3,7 +3,7 @@ import csv from '../data/concrete/concrete.csv?raw'
 import { demoDb } from '../data/demo'
 import { checkGoal, describeGoal, inputsOf, levelsOf, type Goal, type Project, type Run } from '../domain/types'
 import { parseBackup, parseCsv, runsToCsv, splitHeader, tableToProject, tableToRuns } from './csv'
-import { checkGoals, checkPredicted, predictAll, suggest, trainModel, vectorOf } from './model'
+import { checkGoals, checkPredicted, defaultParams, fromVersion, predictAll, suggest, toVersion, trainModel, trainTarget, vectorOf } from './model'
 import { designPoints, expandRuns, initialPlan, latinHypercube, levelCombos, modelPlan, nextRun, status } from './plan'
 import { PROJECT_PREFIX, pool } from './pool'
 import { newId } from './store'
@@ -170,7 +170,7 @@ describe('모델과 제안 (공개 콘크리트 데이터 1,030건)', () => {
     const m = model.models[0]
     expect(m.target.name).toBe('압축강도')
     expect(m.n).toBe(1030)
-    expect(m.kind).toBe('forest')
+    expect(m.algo).toBe('forest')
     expect(m.r2).toBeGreaterThan(0.8)
     expect(m.reliable).toBe(true)
     expect(m.cv_pred).toHaveLength(1030)
@@ -238,6 +238,45 @@ describe('모델과 제안 (공개 콘크리트 데이터 1,030건)', () => {
     const m = trainModel(full, runs.slice(0, 5))
     expect(m.models).toHaveLength(0)
     expect(m.skipped[0].reason).toContain('8건')
+  })
+})
+
+describe('직접 학습과 버전', () => {
+  const { project: full, runs } = fullProject()
+  const base = trainModel(full, runs)
+  const ds = base.dataset
+  const target = ds.targets[0]
+
+  it('알고리즘 4종을 같은 데이터로 학습하면 모두 R²가 나오고 저장할 수 있는 모양이다', () => {
+    const all = ds.features.map((_, j) => j)
+    for (const algo of ['forest', 'ridge', 'knn', 'gbm'] as const) {
+      const tm = trainTarget(ds, target, { algo, params: defaultParams(algo), featureIdx: all, folds: 3 })
+      expect('reason' in tm).toBe(false)
+      if ('reason' in tm) continue
+      expect(tm.r2).toBeGreaterThan(0.4)
+      expect(tm.cv_pred).toHaveLength(tm.n)
+      expect(JSON.parse(JSON.stringify(tm.predictor)).kind).toBe(algo)
+    }
+  })
+
+  it('조건을 골라 학습하면 그 조건만 쓰고, 버전으로 저장했다가 되살리면 같은 예측을 한다', () => {
+    const idx = ds.features.map((f, j) => (['시멘트', '물', '재령'].includes(f.name) ? j : -1)).filter((j) => j >= 0)
+    const tm = trainTarget(ds, target, { algo: 'gbm', params: { trees: 60, depth: 3, rate: 0.1 }, featureIdx: idx, folds: 3 })
+    if ('reason' in tm) throw new Error(tm.reason)
+    expect(tm.featureIdx).toEqual(idx)
+    expect(tm.importance.map((i) => i.variable.name).sort()).toEqual(['물', '시멘트', '재령'])
+    const v = toVersion(tm, ds, { id: 'm1', group: 'g', version: 1, projects: [full.id], pooled: true })
+    expect(v.features).toEqual(['시멘트', '물', '재령'])
+    const back = fromVersion(ds, JSON.parse(JSON.stringify(v)))!
+    expect(back.featureIdx).toEqual(idx)
+    const x = ds.X[0]
+    expect(predictAll({ ...base, models: [back] }, x)[0].mean).toBeCloseTo(predictAll({ ...base, models: [tm] }, x)[0].mean, 6)
+    // 적용한 버전이 있으면 자동 대신 그것을 쓴다
+    const m2 = trainModel(full, runs, { versions: [{ ...v, applied: true }] })
+    expect(m2.models[0].versionId).toBe('m1')
+    expect(m2.models[0].algo).toBe('gbm')
+    // 조건 이름이 없는 데이터셋에는 되살리지 못한다
+    expect(fromVersion(ds, { ...v, features: ['없는조건'] })).toBeNull()
   })
 })
 

@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { emptyDb, type Db, type ID, type Project, type Run } from '../domain/types'
+import { emptyDb, type Db, type ID, type ModelVersion, type Project, type Run } from '../domain/types'
 
 /**
  * 저장소: 메모리의 Db 하나를 localStorage에 통째로 저장한다(JSON 몇백 KB).
@@ -18,7 +18,7 @@ function load(): Db {
     if (!raw) return emptyDb()
     const obj = JSON.parse(raw) as Partial<Db>
     if (obj.version !== 3 || !Array.isArray(obj.projects) || !Array.isArray(obj.runs)) return emptyDb()
-    return { version: 3, projects: obj.projects, runs: obj.runs }
+    return { version: 3, projects: obj.projects, runs: obj.runs, models: Array.isArray(obj.models) ? obj.models : [] }
   } catch {
     return emptyDb()
   }
@@ -62,7 +62,7 @@ export const now = () => new Date().toISOString()
 // ---------- 바꾸기 ----------
 
 export function replaceDb(next: Db) {
-  commit({ version: 3, projects: [...next.projects], runs: [...next.runs] })
+  commit({ version: 3, projects: [...next.projects], runs: [...next.runs], models: [...(next.models ?? [])] })
 }
 
 export function resetDb() {
@@ -79,6 +79,24 @@ export function updateProject(id: ID, patch: Partial<Project>) {
 
 export function deleteProject(id: ID) {
   commit({ ...db, projects: db.projects.filter((p) => p.id !== id), runs: db.runs.filter((r) => r.project !== id) })
+}
+
+// ---------- 모델 버전 ----------
+
+export const modelsOf = (d: Db, group: string) => (d.models ?? []).filter((m) => m.group === group)
+
+export function addModelVersion(v: ModelVersion, apply: boolean) {
+  const rest = (db.models ?? []).map((m) => (apply && m.group === v.group && m.target === v.target ? { ...m, applied: false } : m))
+  commit({ ...db, models: [...rest, { ...v, applied: apply }] })
+}
+
+/** id의 버전을 적용(같은 group·target의 다른 버전은 해제). id가 null이면 자동으로 되돌린다 */
+export function applyModelVersion(group: string, target: string, id: ID | null) {
+  commit({ ...db, models: (db.models ?? []).map((m) => (m.group === group && m.target === target ? { ...m, applied: m.id === id } : m)) })
+}
+
+export function deleteModelVersion(id: ID) {
+  commit({ ...db, models: (db.models ?? []).filter((m) => m.id !== id) })
 }
 
 export function addRuns(runs: Run[]) {

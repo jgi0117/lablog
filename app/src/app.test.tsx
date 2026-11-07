@@ -107,8 +107,8 @@ describe('예시 데이터', () => {
     expect(screen.getByRole('img', { name: /실험 순서에 따른 압축강도/ })).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: '자세히 →' }))
     expect(await screen.findByRole('heading', { name: '모델' })).toBeInTheDocument()
-    expect(screen.getByLabelText('제안·예측할 프로젝트')).toHaveValue(hb.id)
-    expect(await screen.findByText(/같은 변수를 가진 프로젝트 11개/)).toBeInTheDocument()
+    expect(screen.getByLabelText('프로젝트', { selector: '#mp' })).toHaveValue(hb.id)
+    expect(await screen.findByText(/같은 변수 프로젝트 11개/)).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: '목표를 만족할 가능성이 큰 조건' })).toBeInTheDocument()
   }, 40000)
 
@@ -123,6 +123,30 @@ describe('예시 데이터', () => {
     await user.click(screen.getByRole('link', { name: '모델' }))
     expect(await screen.findByRole('heading', { name: '모델' })).toBeInTheDocument()
   }, 30000)
+
+  it('모델 탭에서 직접 학습해 버전으로 저장·적용하면 적용 중인 모델이 바뀐다', async () => {
+    const user = userEvent.setup()
+    replaceDb(demoDb())
+    const hb = getDb().projects.find((x) => x.name.includes('HB-70'))!
+    open(`/model?p=${hb.id}`)
+    expect(await screen.findByText(/자동 RF|자동 선형/, {}, { timeout: 15000 })).toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText('알고리즘'), 'gbm')
+    // 조건 둘만 빼고 학습
+    await user.click(screen.getByLabelText('굵은 골재'))
+    await user.click(screen.getByLabelText('잔골재'))
+    expect(screen.getByText(/조건 \(feature\) · 18개 선택/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '학습하기' }))
+    expect(await screen.findByRole('button', { name: '저장하고 적용' }, { timeout: 20000 })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '저장하고 적용' }))
+    expect(await screen.findByText('적용 중')).toBeInTheDocument()
+    expect(getDb().models).toHaveLength(1)
+    expect(getDb().models![0]).toMatchObject({ version: 1, algo: 'gbm', applied: true, target: '압축강도' })
+    expect(getDb().models![0].features).toHaveLength(18)
+    expect(await screen.findByText(/v1 GBM/, {}, { timeout: 15000 })).toBeInTheDocument()
+    // 자동으로 되돌리기
+    await user.click(screen.getByRole('button', { name: '자동으로' }))
+    expect(await screen.findByText(/자동 RF|자동 선형/, {}, { timeout: 15000 })).toBeInTheDocument()
+  }, 60000)
 
   it('데이터 화면에서 CSV를 내려받고 값을 고칠 수 있다', async () => {
     replaceDb(demoDb())

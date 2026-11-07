@@ -100,7 +100,7 @@ export function ProjectPage() {
       )}
       {project.goals.length === 0 && (
         <div className="banner">
-          목표가 없습니다. <Link to={`/p/${project.id}/setup`}>설정</Link>에서 목표(예: 압축강도 35 ± 3 MPa)를 적으면 달성 여부를 판정하고, 모델이 그 목표를 향해 조건을 제안합니다.
+          목표 없음 → <Link to={`/p/${project.id}/setup`}>설정</Link>에서 추가 (예: 압축강도 35 ± 3 MPa)
         </div>
       )}
 
@@ -111,7 +111,7 @@ export function ProjectPage() {
           ) : (
             <div className="card stack">
               <h2>다음 실험</h2>
-              {busy ? <p className="muted">다음 조건을 정하는 중…</p> : <p className="muted">{inputs.some((v) => v.min !== undefined && v.max !== undefined && v.min < v.max) ? '계획을 짜는 중입니다.' : '입력 조건에 범위(최소·최대)가 없어 계획을 짤 수 없습니다. 설정에서 범위를 적어 주세요.'}</p>}
+              {busy ? <p className="muted">다음 조건 정하는 중…</p> : <p className="muted">{inputs.some((v) => v.min !== undefined && v.max !== undefined && v.min < v.max) ? '계획 짜는 중' : '입력 범위(최소·최대) 없음 → 설정에서 추가'}</p>}
             </div>
           )}
 
@@ -123,7 +123,7 @@ export function ProjectPage() {
               </Link>
             </h2>
             {recent.length === 0 ? (
-              <p className="muted">아직 완료한 실험이 없습니다.</p>
+              <p className="muted">완료한 실험 없음</p>
             ) : (
               <div className="table-wrap">
                 <table>
@@ -216,7 +216,7 @@ export function ProjectPage() {
             <div className="card stack">
               <h2>목표에 가까워지고 있는가</h2>
               <TrackChart runs={runs} y={outputs[0]} goal={project.goals.find((g) => g.variable === outputs[0].id && g.must) ?? project.goals.find((g) => g.variable === outputs[0].id)} levelVar={levels[0]} />
-              <p className="hint">초록 띠가 목표 범위, 초록 점은 목표 안에 든 실험입니다.</p>
+              <p className="hint">초록 띠 = 목표 범위 · 초록 점 = 목표 안</p>
             </div>
           )}
 
@@ -243,7 +243,7 @@ export function ProjectPage() {
                 ))}
               </ul>
             )}
-            <p className="hint">{model && model.pooledProjects > 1 ? `같은 변수를 가진 프로젝트 ${model.pooledProjects}개의 실험을 모아 학습했습니다. ` : ''}모델 탭에서 목표를 만족할 조건 제안과 조건 바꿔 보기를 할 수 있습니다.</p>
+            <p className="hint">{model && model.pooledProjects > 1 ? `프로젝트 ${model.pooledProjects}개 모아 학습 · ` : ''}제안·예측·직접 학습은 모델 탭</p>
           </div>
         </div>
       </div>
