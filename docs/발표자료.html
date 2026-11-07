@@ -23,8 +23,11 @@
   .box small { display: block; color: var(--c, var(--accent)); font-size: 13px; font-weight: 800; letter-spacing: .14em; }
   .box h3 { margin: 8px 0 10px; font-size: 30px; line-height: 1.2; letter-spacing: -0.03em; }
   .box p { margin: 0; color: var(--ink-2); font-size: 20px; line-height: 1.5; }
+  .box .now, .box .ideal { display: block; margin-top: 8px; color: var(--ink-2); font-size: 20px; line-height: 1.45; }
+  .box .now::before { content: '✕ 현재 '; color: var(--orange); font-weight: 800; }
+  .box .ideal::before { content: '✓ 이상 '; color: var(--green); font-weight: 800; }
   .box.bad { --c: var(--orange); } .box.good { --c: var(--green); } .box.plan { --c: var(--violet); }
-  .num { font-size: 88px; font-weight: 800; letter-spacing: -0.05em; line-height: 1; color: var(--accent); margin: 6px 0; }
+  .num { font-size: 88px; font-weight: 800; letter-spacing: -0.05em; line-height: 1; color: var(--accent); margin: 6px 0; white-space: nowrap; }
   .num small { font-size: 26px; color: var(--ink-3); font-weight: 600; letter-spacing: 0; margin-left: 8px; }
   img.shot { width: 100%; border: 1px solid var(--line); border-radius: 12px; }
   .caption { margin: 14px 0 0; font-size: 22px; color: var(--ink-2); text-align: center; }
@@ -44,28 +47,28 @@
 
 <section class="slide is-active">
   <p class="kicker">lablog · 제품개발팀 실험 관리</p>
-  <h1>조건은 앱이 정하고,<br>사람은 결과 숫자만 넣는다</h1>
-  <p class="sub">실험 기록이 쌓이면, 다음 실험 조건을 데이터가 제안합니다</p>
-  <p class="muted" style="margin-top:40px">2026-11-07 · 예시 데이터: UCI 콘크리트 공개 데이터 1,030행</p>
+  <h1>흩어진 실험을 한 곳에 모으고,<br>조건을 머신러닝으로 예측·시뮬레이션한다</h1>
+  <p class="sub">실험 관리 도구 lablog — 기록은 한 표에, 다음 조건은 쌓인 데이터로</p>
+  <p class="muted" style="margin-top:40px">2026-11-07 · 외부 공개 데이터 사용: UCI Concrete Compressive Strength 1,030건</p>
   <div class="n">1 / 12</div>
 </section>
 
 <section class="slide">
-  <p class="kicker">01 · 문제 정의 = 이상과 현재의 차이</p>
-  <h2>이상 vs 현재</h2>
+  <p class="kicker">01 · 문제 정의 = 현재와 이상의 차이</p>
+  <h2>문제 상황 둘</h2>
   <div class="two">
-    <div class="box good"><small>이상</small><h3>모든 실험이 한 표에 있고,<br>그 표가 다음 조건을 계산한다</h3><p>프로젝트가 달라도 같은 틀. 다음 실험은 데이터가 정한다.</p></div>
-    <div class="box bad"><small>현재</small><h3>흩어져 있고,<br>다음 조건은 짐작이다</h3><p>엑셀·노트·메신저. 입력이 귀찮아 쌓이지 않고, 조건은 경험으로 정한다.</p></div>
+    <div class="box bad"><small>문제 ①</small><h3>실험 기록이<br>흩어져 있다</h3><span class="now">엑셀·노트·메신저에 따로 적혀 모이지 않음</span><span class="ideal">모든 프로젝트의 실험이 한 표에 모여 있음</span></div>
+    <div class="box bad"><small>문제 ②</small><h3>다음 실험 조건을<br>짐작한다</h3><span class="now">경험으로 정하고, 빗나가면 하루가 감</span><span class="ideal">머신러닝으로 결과를 예측·시뮬레이션해 정함</span></div>
   </div>
   <div class="n">2 / 12</div>
 </section>
 
 <section class="slide">
   <p class="kicker">02 · 해결 = 기능 둘</p>
-  <h2>모으기, 그리고 시뮬레이션</h2>
+  <h2>모으는 기능 + 시뮬레이션하는 기능</h2>
   <div class="two">
-    <div class="box good"><small>① 한 곳에 모으기</small><h3>조건은 앱이 정하고,<br>사람은 결과만 넣는다</h3><p>입력·측정 시점·출력·목표(목표값 ± 허용)만 적으면 같은 틀로 쌓인다.</p></div>
-    <div class="box plan"><small>② 시뮬레이션</small><h3>쌓인 데이터로<br>예측하고 제안한다</h3><p>조건 → 결과 예측, 목표 → 만족할 조건 제안. 달성하면 종료.</p></div>
+    <div class="box good"><small>① 한 곳에 모으는 기능</small><h3>조건·결과만<br>같은 틀로 기록</h3><p>입력·측정 시점·출력·목표(목표값 ± 허용)만 적는다. 프로젝트가 달라도 한 표에 쌓여 바로 비교·학습 가능.</p></div>
+    <div class="box plan"><small>② 시뮬레이션하는 기능</small><h3>결과를 예측하고<br>조건을 제안</h3><p>쌓인 데이터로 머신러닝 학습. 조건을 넣으면 결과를 예측하고, 목표를 만족할 조건을 제안. 달성하면 종료.</p></div>
   </div>
   <div class="n">3 / 12</div>
 </section>
@@ -75,9 +78,9 @@
   <h2>5단계</h2>
   <div class="flow">
     <div><b>01</b>변수·목표 입력</div>
-    <div><b>02</b>앱이 조건 계획<br><span class="muted" style="font-size:15px;font-weight:500">라틴 하이퍼큐브</span></div>
+    <div><b>02</b>처음 조건 제안<br><span class="muted" style="font-size:15px;font-weight:500">범위를 고르게 덮는 설계</span></div>
     <div><b>03</b>결과만 입력</div>
-    <div><b>04</b>모델이 다음 조건<br><span class="muted" style="font-size:15px;font-weight:500">목표 만족 확률</span></div>
+    <div><b>04</b>머신러닝이<br>다음 조건 제안<br><span class="muted" style="font-size:15px;font-weight:500">결과 예측 · 목표 만족 확률</span></div>
     <div><b>05</b>목표 달성 → 종료</div>
   </div>
   <div class="n">4 / 12</div>
@@ -86,14 +89,14 @@
 <section class="slide">
   <p class="kicker">04 · 화면 · 실험</p>
   <img class="shot" src="img/project.jpg" alt="다음 실험 카드: 조건 8개가 적혀 있고 결과 입력 칸 하나, 오른쪽에 목표 현황과 가장 가까운 조건">
-  <p class="caption">다음 실험 카드 — 조건은 읽기만, 결과만 넣는다</p>
+  <p class="caption">다음 실험 카드 — 제안받은 조건 확인, 결과 숫자만 입력, 목표 ± 허용 판정</p>
   <div class="n">5 / 12</div>
 </section>
 
 <section class="slide">
   <p class="kicker">05 · 화면 · 모델</p>
   <img class="shot" src="img/model.jpg" alt="모델 탭: 적용 중인 모델의 교차검증 R², 예측 vs 실제 산점도, 조건 중요도">
-  <p class="caption">같은 변수 프로젝트를 모아 학습 · 알고리즘·파라미터를 골라 직접 학습 · 버전 저장·적용</p>
+  <p class="caption">모델 탭 — 예측 정확도·오차, 조건 중요도 · 알고리즘·파라미터를 골라 직접 학습, 버전 저장·적용</p>
   <div class="n">6 / 12</div>
 </section>
 
@@ -105,21 +108,21 @@
 </section>
 
 <section class="slide">
-  <p class="kicker">07 · 결과</p>
-  <h2>숫자 둘</h2>
+  <p class="kicker">07 · 결과 · 한 표와 예측</p>
+  <h2>한 표에 모인 실험, 결과 예측 정확도</h2>
   <div class="two">
-    <div class="box good"><small>입력</small><div class="num">1<small>클릭</small></div><p>실험 등록에 필요한 클릭. 나머지는 결과 숫자뿐.</p></div>
-    <div class="box good"><small>모델</small><div class="num">0.8<small>R²</small></div><p>992건을 모아 학습한 교차검증 R². 프로젝트 하나만 쓰면 −0.2~0.96.</p></div>
+    <div class="box good"><small>한 표에 모인 실험</small><div class="num">992<small>건</small></div><p>프로젝트 16개의 실험 기록 전부가 한 표에. 흩어진 기록 없음.</p></div>
+    <div class="box good"><small>결과 예측 정확도</small><div class="num">80<small>%</small></div><p>실험 전에 결과를 맞히는 정도(R² 0.8, 교차검증). 프로젝트 하나만으로 학습하면 −20~96%.</p></div>
   </div>
   <div class="n">8 / 12</div>
 </section>
 
 <section class="slide">
-  <p class="kicker">08 · 결과 · 예시 프로젝트 12개</p>
-  <h2>실제 프로젝트처럼 끝난다</h2>
+  <p class="kicker">08 · 결과 · 목표 달성</p>
+  <h2>예시 프로젝트 12개 중 9개가 목표 달성</h2>
   <div class="two">
-    <div class="box good"><small>달성</small><h3>9개 · 10~23건 만에 목표 ± 허용 안</h3><p>달성하면 종료. 다음 실험을 더 짜지 않는다.</p></div>
-    <div class="box plan"><small>진행 중</small><h3>3개 · 모델이 다음 조건 제안</h3><p>목표 만족 확률이 가장 큰 조건 3개, 이미 계획한 조건은 피한다.</p></div>
+    <div class="box good"><small>목표 달성 프로젝트</small><div class="num">9<small>/ 12</small></div><p>실험 10~23번 만에 목표 ± 허용 안. 달성하면 종료, 다음 실험을 더 짜지 않는다.</p></div>
+    <div class="box plan"><small>진행 중 3개</small><h3>머신러닝이<br>다음 조건 제안</h3><p>목표 만족 확률이 가장 큰 조건 3개를 제안, 이미 계획한 조건은 피한다.</p></div>
   </div>
   <div class="n">9 / 12</div>
 </section>
