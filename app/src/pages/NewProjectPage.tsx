@@ -1,10 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { demoDb } from '../data/demo'
 import { type Project, type Role, type Variable } from '../domain/types'
 import { parseCsv, tableToProject, type Table } from '../services/csv'
 import { initialPlan } from '../services/plan'
-import { addProject, newId, now, replaceDb, useDb } from '../services/store'
+import { addProject, newId, now } from '../services/store'
 
 interface VarDraft {
   key: string
@@ -22,7 +21,6 @@ const blank = (role: Role): VarDraft => ({ key: newId('d'), name: '', unit: '', 
 /** 새 프로젝트: 변수와 목표를 적으면 앱이 첫 실험 계획을 짠다. CSV가 있으면 그 표로 바로 만든다 */
 export function NewProjectPage() {
   const navigate = useNavigate()
-  const db = useDb()
   const [name, setName] = useState('')
   const [vars, setVars] = useState<VarDraft[]>([blank('input'), blank('input'), blank('output')])
   const [initialRuns, setInitialRuns] = useState('8')
@@ -209,22 +207,6 @@ export function NewProjectPage() {
               </div>
             )}
           </div>
-          {db.projects.length === 0 && (
-            <div className="card stack">
-              <h2>예시로 둘러보기</h2>
-              <p className="hint">공개 콘크리트 데이터 1,030건을 네 프로젝트로 나눠 넣습니다.</p>
-              <button
-                type="button"
-                className="btn"
-                onClick={() => {
-                  replaceDb(demoDb())
-                  navigate('/')
-                }}
-              >
-                예시 데이터 넣기
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

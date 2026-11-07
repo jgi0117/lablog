@@ -77,10 +77,10 @@ describe('핵심 흐름: 프로젝트 만들기 → 결과만 넣기', () => {
 })
 
 describe('예시 데이터', () => {
-  it('홈에서 예시를 넣으면 프로젝트 4개가 보이고, 프로젝트를 열면 모델 제안으로 다음 실험이 생긴다', async () => {
+  it('예시 데이터가 들어 있으면 프로젝트 4개가 보이고, 프로젝트를 열면 모델 제안으로 다음 실험이 생긴다', async () => {
     const user = userEvent.setup()
+    replaceDb(demoDb())
     open('/')
-    await user.click(screen.getByRole('button', { name: /예시 데이터로 둘러보기/ }))
     expect(await screen.findAllByRole('heading', { level: 2 })).toHaveLength(4)
     expect(screen.getAllByText('목표 달성').length).toBeGreaterThanOrEqual(2)
     await user.click(screen.getByRole('link', { name: '스탠다드믹스 SM-00' }))

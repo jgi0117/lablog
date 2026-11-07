@@ -1,7 +1,6 @@
 import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { StatusChip } from '../components'
-import { demoDb } from '../data/demo'
 import { describeGoal } from '../domain/types'
 import { download, exportDb, parseBackup } from '../services/csv'
 import { nextRun, status } from '../services/plan'
@@ -53,9 +52,6 @@ export function HomePage() {
             <Link to="/new" className="btn btn--primary">
               + 새 프로젝트
             </Link>
-            <button type="button" className="btn" onClick={() => replaceDb(demoDb())}>
-              예시 데이터로 둘러보기 (콘크리트 1,030건)
-            </button>
           </div>
         </div>
       )}
