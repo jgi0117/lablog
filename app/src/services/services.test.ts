@@ -5,6 +5,7 @@ import { checkGoal, describeGoal, inputsOf, levelsOf, type Goal, type Project, t
 import { parseBackup, parseCsv, runsToCsv, splitHeader, tableToProject, tableToRuns } from './csv'
 import { checkGoals, checkPredicted, predictAll, suggest, trainModel, vectorOf } from './model'
 import { designPoints, expandRuns, initialPlan, latinHypercube, levelCombos, modelPlan, nextRun, status } from './plan'
+import { PROJECT_PREFIX, pool } from './pool'
 import { newId } from './store'
 
 const demo = demoDb()
@@ -43,11 +44,17 @@ describe('목표 판정', () => {
 })
 
 describe('예시 데이터', () => {
-  it('네 프로젝트: 셋은 마지막 실험에서 목표를 만족해 끝났고, HB-50은 진행 중이다', () => {
-    expect(demo.projects).toHaveLength(4)
+  it('프로젝트 12개: 아홉은 마지막 실험에서 목표를 만족해 끝났고, 셋은 진행 중이다', () => {
+    expect(demo.projects).toHaveLength(12)
     expect(demo.runs.every((r) => r.status === 'done')).toBe(true)
-    expect(demo.runs.length).toBeLessThan(120)
-    for (const key of ['SM-00', 'ES-30', 'LF-20']) {
+    expect(demo.runs.length).toBeGreaterThan(150)
+    expect(demo.runs.length).toBeLessThan(300)
+    // 같은 배합은 한 프로젝트에만
+    const keys = demo.runs.map((r) => `${r.project}|${Object.entries(r.x).filter(([k]) => !k.includes('재령')).map(([, v]) => v).join(',')}`)
+    expect(new Set(keys).size).toBe(keys.length)
+    const finished = demo.projects.filter((p) => status(p, runsOf(p)).finished).map((p) => p.name)
+    expect(finished).toHaveLength(9)
+    for (const key of ['SM-25', 'SM-35', 'SM-45', 'ES-40', 'ES-50', 'LF-35', 'LF-45', 'HB-45', 'HB-60']) {
       const p = projectOf(key)
       const s = status(p, runsOf(p))
       expect(s.overall).toBe('achieved')
@@ -56,15 +63,40 @@ describe('예시 데이터', () => {
       const last = runsOf(p).at(-1)!
       expect(s.achieved[0].runs.map((r) => r.id)).toContain(last.id)
     }
-    const hb = projectOf('HB-50')
-    const h = status(hb, runsOf(hb))
-    expect(h.overall).toBe('in-progress')
-    expect(h.closest).not.toBeNull()
-    expect(h.closest!.verdicts.find((v) => v.goal.must && v.ok === false)).toBeDefined()
+    for (const key of ['SM-55', 'ES-60', 'HB-70']) {
+      const p = projectOf(key)
+      const h = status(p, runsOf(p))
+      expect(h.overall).toBe('in-progress')
+      expect(runsOf(p).length).toBeGreaterThanOrEqual(10)
+      expect(h.closest!.verdicts.find((v) => v.goal.must && v.ok === false)).toBeDefined()
+    }
   })
 
-  it('SM-00: 입력 7개, 재령은 측정 시점(28일), 목표는 압축강도 35 ± 3', () => {
-    const sm = projectOf('SM-00')
+  it('같은 변수를 가진 프로젝트의 실험을 모아 학습하면 실험이 적은 프로젝트의 모델이 좋아진다', () => {
+    const hb = projectOf('HB-45')
+    const own = trainModel(hb, runsOf(hb))
+    const pd = pool(demo, hb)
+    expect(pd.projects).toHaveLength(12)
+    expect(pd.runs.length).toBe(demo.runs.length)
+    expect(pd.extras).toHaveLength(12)
+    expect(pd.fixed[`${PROJECT_PREFIX}${hb.id}`]).toBe(1)
+    expect(Object.values(pd.fixed).filter((v) => v === 1)).toHaveLength(1)
+    const pooled = trainModel(hb, pd.runs, { extras: pd.extras, fixed: pd.fixed, pooledProjects: pd.projects.length })
+    expect(pooled.models[0].n).toBe(demo.runs.length)
+    expect(pooled.models[0].r2).toBeGreaterThan(0.6)
+    expect(pooled.models[0].r2).toBeGreaterThan(own.models[0]?.r2 ?? -1)
+    // 제안은 이 프로젝트의 표시 변수를 1로 고정하고, 제안 값에 표시 변수가 없다
+    const res = suggest(pooled, hb, { n: 2 })
+    expect(res.problem).toBeNull()
+    expect(res.candidates[0].values.every((v) => !v.variable.id.startsWith(PROJECT_PREFIX))).toBe(true)
+    // pool을 끄면 자기 실험만
+    const alone = pool(demo, { ...hb, pool: false })
+    expect(alone.runs).toHaveLength(runsOf(hb).length)
+    expect(alone.extras).toHaveLength(0)
+  })
+
+  it('SM-35: 입력 7개, 재령은 측정 시점(28일), 목표는 압축강도 35 ± 3', () => {
+    const sm = projectOf('SM-35')
     expect(inputsOf(sm).map((v) => v.name)).toEqual(['시멘트', '고로슬래그', '플라이애시', '물', '고성능 감수제', '굵은 골재', '잔골재'])
     expect(levelsOf(sm)[0].levels).toEqual([28])
     expect(describeGoal(sm, sm.goals[0])).toBe('재령 28일일 때 압축강도 35 ± 3 MPa')
@@ -190,7 +222,7 @@ describe('모델과 제안 (공개 콘크리트 데이터 1,030건)', () => {
   })
 
   it('예시 프로젝트(실험 20여 건)도 모델을 만들고, 입력에 건 목표가 제안 범위를 좁힌다', () => {
-    const es = projectOf('ES-30')
+    const es = projectOf('ES-50')
     const m = trainModel(es, runsOf(es))
     expect(m.models).toHaveLength(1)
     const res = suggest(m, es, { n: 3 })

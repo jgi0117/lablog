@@ -3,6 +3,7 @@ import { Link, NavLink } from 'react-router-dom'
 import { fmt, type Goal, type Project, type Run, type Variable } from './domain/types'
 import { trainModel, type Model } from './services/model'
 import { status, type Status } from './services/plan'
+import { pool } from './services/pool'
 import { runsOf, useDb } from './services/store'
 
 /** 프로젝트 하나와 그 실험들. 없는 프로젝트면 project가 null */
@@ -13,24 +14,26 @@ export function useProject(id: string | undefined): { project: Project | null; r
   return { project, runs }
 }
 
-/** 완료 실험이 바뀔 때마다 모델을 다시 만든다. 화면이 먼저 그려지도록 한 박자 뒤에 계산한다 */
-export function useModel(project: Project | null, runs: Run[]): { model: Model | null; busy: boolean } {
+/** 완료 실험이 바뀔 때마다 모델을 다시 만든다. 같은 변수를 가진 프로젝트의 실험을 모아 학습한다. 화면이 먼저 그려지도록 한 박자 뒤에 계산한다 */
+export function useModel(project: Project | null): { model: Model | null; busy: boolean } {
+  const db = useDb()
+  const pooled = useMemo(() => (project ? pool(db, project) : null), [db, project])
   const sig = useMemo(
     () =>
-      project
-        ? `${project.id}|${project.variables.map((v) => `${v.id}:${v.role}`).join(',')}|${runs
+      project && pooled
+        ? `${project.id}|${project.pool !== false}|${project.variables.map((v) => `${v.id}:${v.role}`).join(',')}|${pooled.runs
             .filter((r) => r.status === 'done')
             .map((r) => `${r.id}:${Object.values(r.y).join('/')}`)
             .join(',')}`
         : '',
-    [project, runs],
+    [project, pooled],
   )
   const [state, setState] = useState<{ sig: string; model: Model } | null>(null)
   useEffect(() => {
-    if (!project) return
-    const h = setTimeout(() => setState({ sig, model: trainModel(project, runs) }), 20)
+    if (!project || !pooled) return
+    const h = setTimeout(() => setState({ sig, model: trainModel(project, pooled.runs, { extras: pooled.extras, fixed: pooled.fixed, pooledProjects: pooled.projects.length }) }), 20)
     return () => clearTimeout(h)
-    // runs는 sig로 대표된다
+    // pooled는 sig로 대표된다
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sig, project])
   return { model: state?.sig === sig ? state.model : null, busy: state?.sig !== sig }

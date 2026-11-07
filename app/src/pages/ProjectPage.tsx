@@ -33,7 +33,7 @@ function runGoal(p: Project, r: Run, g: Goal): boolean | null {
 export function ProjectPage() {
   const { id } = useParams()
   const { project, runs } = useProject(id)
-  const { model, busy } = useModel(project, runs)
+  const { model, busy } = useModel(project)
   const s = useStatus(project, runs)
   const next = useMemo(() => nextRun(runs), [runs])
   const [more, setMore] = useState(false)

@@ -4,7 +4,8 @@ import { GoalMark, ProjectHeader, useModel, useProject, valueText } from '../com
 import { describeGoal, fmt, inputsOf, label, type ID, type Project, type Run } from '../domain/types'
 import { KIND_LABEL, MIN_R2, MIN_TRAIN, checkGoals, describeFit, predictAll, suggest, vectorOf, type Model, type TargetModel } from '../services/model'
 import { expandRuns, nextRun } from '../services/plan'
-import { addRuns, insertPlanned, newId, nextOrder } from '../services/store'
+import { PROJECT_PREFIX, pool } from '../services/pool'
+import { addRuns, insertPlanned, newId, nextOrder, updateProject, useDb } from '../services/store'
 
 const pct = (p: number) => `${Math.round(p * 100)}%`
 const C = { point: '#2a78d6', line: '#4b5563', grid: '#e5e8ec' }
@@ -85,9 +86,11 @@ function ImportanceBars({ m }: { m: TargetModel }) {
 /** 모델 탭: 무엇으로 학습했고 얼마나 믿을 만한지, 목표를 만족할 조건 제안, 조건 바꿔 보며 예측 */
 export function ModelPage() {
   const { id } = useParams()
+  const db = useDb()
   const { project, runs } = useProject(id)
-  const { model, busy } = useModel(project, runs)
-  if (!project) {
+  const { model, busy } = useModel(project)
+  const pooled = useMemo(() => (project ? pool(db, project) : null), [db, project])
+  if (!project || !pooled) {
     return (
       <p className="muted">
         프로젝트가 없습니다. <Link to="/">홈으로</Link>
@@ -95,13 +98,25 @@ export function ModelPage() {
     )
   }
   const done = runs.filter((r) => r.status === 'done').length
+  const pooledDone = pooled.runs.filter((r) => r.status === 'done').length
+  const others = db.projects.filter((q) => q.id !== project.id)
   return (
     <div className="stack">
       <ProjectHeader project={project} runs={runs} />
       <section className="card stack" aria-labelledby="h-fit">
         <h2 id="h-fit">무엇으로 학습했고, 얼마나 믿을 만한가</h2>
+        <div className="banner">
+          <b>학습 데이터: {pooled.projects.length > 1 ? `이 프로젝트 ${done}건 + 같은 변수를 가진 프로젝트 ${pooled.projects.length - 1}개 = 완료 ${pooledDone}건` : `이 프로젝트 완료 ${done}건`}</b>
+          {pooled.projects.length > 1 && <span className="muted small"> ({pooled.projects.filter((q) => q.id !== project.id).map((q) => q.name).join(', ')})</span>}
+          {others.length > 0 && (
+            <label className="row small" style={{ marginTop: 6 }}>
+              <input type="checkbox" checked={project.pool !== false} onChange={(e) => updateProject(project.id, { pool: e.target.checked })} />
+              같은 변수(입력·측정 시점·출력 이름이 모두 같은)를 가진 다른 프로젝트의 실험도 모아서 학습 — 프로젝트 하나에 20여 건이면 모델이 약하지만 모으면 수백 건이 됩니다. 프로젝트 차이는 "프로젝트" 표시 변수로 모델이 배웁니다.
+            </label>
+          )}
+        </div>
         <p className="hint">
-          완료 실험 {done}건의 조건 → 결과로 학습합니다. 결과가 바뀔 때마다 자동으로 다시 만듭니다. 랜덤 포레스트와 선형 회귀를 5겹 교차검증(학습에 쓰지 않은 실험 맞히기)으로 시험해 더 잘 맞히는 쪽을 씁니다. 교차검증 R²가 {MIN_R2} 미만이면 예측·제안에 쓰지 않습니다. 계산은 이 브라우저 안에서만.
+          결과가 바뀔 때마다 자동으로 다시 만듭니다. 랜덤 포레스트와 선형 회귀를 5겹 교차검증(학습에 쓰지 않은 실험 맞히기)으로 시험해 더 잘 맞히는 쪽을 씁니다. 교차검증 R²가 {MIN_R2} 미만이면 예측·제안에 쓰지 않습니다. 계산은 이 브라우저 안에서만.
         </p>
         {!model ? (
           <p className="muted">{busy ? '모델을 만드는 중…' : ''}</p>
@@ -185,7 +200,7 @@ export function ModelPage() {
 function SuggestCard({ project, runs, model }: { project: Project; runs: Run[]; model: Model }) {
   const next = useMemo(() => nextRun(runs), [runs])
   const sug = useMemo(() => (project.goals.some((g) => g.must) ? suggest(model, project, { n: 3, explore: 0 }) : null), [model, project])
-  const features = useMemo(() => model.dataset.features, [model])
+  const features = useMemo(() => model.dataset.features.filter((f) => !f.id.startsWith(PROJECT_PREFIX)), [model])
   const [draft, setDraft] = useState<Record<ID, string>>({})
   const what = useMemo(() => {
     const values: Record<ID, number | null> = {}

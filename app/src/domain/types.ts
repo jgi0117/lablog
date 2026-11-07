@@ -52,6 +52,8 @@ export interface Project {
   goals: Goal[]
   /** 처음 탐색 단계에서 앱이 짜는 실험(조건 묶음) 수 */
   initialRuns: number
+  /** 같은 변수를 가진 다른 프로젝트의 실험도 모아 학습하는가(기본 true) */
+  pool?: boolean
   created: string
   updated: string
 }

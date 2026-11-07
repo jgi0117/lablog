@@ -8,7 +8,7 @@ import csv from './concrete/concrete.csv?raw'
  * 예시 데이터: UCI 콘크리트 압축강도 공개 데이터(Yeh 1998, CC BY 4.0)에서 뽑은 네 프로젝트.
  * 실제 프로젝트처럼 "목표에서 먼 배합부터 시작해 점점 가까워지다가, 목표 ±허용 안에 들어오면 끝난다"는 순서로
  * 배합을 골라 실험 기록을 만들었다. 값은 바꾸지 않았고 프로젝트 이름·고객·목표는 지어낸 것이다.
- * 세 프로젝트는 목표를 달성해 끝났고, HB-50은 아직 진행 중이다.
+ * 결합재 종류 4가지 × 목표 강도가 다른 프로젝트 12개. 아홉은 목표를 달성해 끝났고 셋은 진행 중이다. 같은 변수를 쓰므로 모델은 전체를 모아 학습한다.
  */
 
 const NAMES = ['시멘트', '고로슬래그', '플라이애시', '물', '고성능 감수제', '굵은 골재', '잔골재']
@@ -31,11 +31,27 @@ interface Def {
   n: number
 }
 
+const LIM = {
+  SM: [{ name: '시멘트', op: '<=' as const, value: 380, must: true }],
+  ES: [{ name: '고로슬래그', op: '>=' as const, value: 120, must: true }, { name: '시멘트', op: '<=' as const, value: 300, must: true }],
+  LF: [{ name: '플라이애시', op: '>=' as const, value: 80, must: true }],
+  HB: [{ name: '물', op: '<=' as const, value: 170, must: true }],
+}
+
+/** 결합재 종류마다 목표 강도가 다른 프로젝트 여러 개. 같은 배합은 한 프로젝트에만 쓴다 */
 const DEFS: Def[] = [
-  { key: 'SM', name: '스탠다드믹스 SM-00', note: '시멘트 단독 배합. 고객: 한빛건설 구조팀 (예시)', target: 35, tol: 3, limits: [{ name: '시멘트', op: '<=', value: 380, must: true }], finished: true, n: 12 },
-  { key: 'ES', name: '에코슬래그 ES-30', note: '시멘트 + 고로슬래그. 고객: 그린인프라공사 (예시)', target: 50, tol: 4, limits: [{ name: '고로슬래그', op: '>=', value: 120, must: true }, { name: '시멘트', op: '<=', value: 300, must: true }], finished: true, n: 14 },
-  { key: 'LF', name: '로히트 플라이 LF-20', note: '시멘트 + 플라이애시. 고객: 한솔플랜트 설비팀 (예시)', target: 45, tol: 4, limits: [{ name: '플라이애시', op: '>=', value: 80, must: true }], finished: true, n: 13 },
-  { key: 'HB', name: '하이브리드본드 HB-50', note: '시멘트 + 고로슬래그 + 플라이애시. 고객: 미래전력 토목팀 (예시)', target: 70, tol: 3, limits: [{ name: '물', op: '<=', value: 170, must: true }], finished: false, n: 28 },
+  { key: 'SM', name: '스탠다드믹스 SM-25', note: '시멘트 단독 배합, 일반 구조용. 고객: 한빛건설 구조팀 (예시)', target: 25, tol: 2, limits: LIM.SM, finished: true, n: 10 },
+  { key: 'SM', name: '스탠다드믹스 SM-35', note: '시멘트 단독 배합. 고객: 한빛건설 구조팀 (예시)', target: 35, tol: 3, limits: LIM.SM, finished: true, n: 12 },
+  { key: 'SM', name: '스탠다드믹스 SM-45', note: '시멘트 단독 배합, 고강도. 고객: 대양토건 (예시)', target: 45, tol: 3, limits: LIM.SM, finished: true, n: 11 },
+  { key: 'SM', name: '스탠다드믹스 SM-55', note: '시멘트 단독 배합, 고강도 기둥용. 고객: 대양토건 (예시)', target: 55, tol: 3, limits: LIM.SM, finished: false, n: 14 },
+  { key: 'ES', name: '에코슬래그 ES-40', note: '시멘트 + 고로슬래그, 저탄소. 고객: 그린인프라공사 (예시)', target: 40, tol: 3, limits: LIM.ES, finished: true, n: 11 },
+  { key: 'ES', name: '에코슬래그 ES-50', note: '시멘트 + 고로슬래그. 고객: 그린인프라공사 (예시)', target: 50, tol: 4, limits: LIM.ES, finished: true, n: 14 },
+  { key: 'ES', name: '에코슬래그 ES-60', note: '시멘트 + 고로슬래그, 고강도 저탄소. 고객: 서해항만공사 (예시)', target: 60, tol: 4, limits: LIM.ES, finished: false, n: 16 },
+  { key: 'LF', name: '로히트 플라이 LF-35', note: '시멘트 + 플라이애시, 저발열 매스콘크리트. 고객: 한솔플랜트 설비팀 (예시)', target: 35, tol: 3, limits: LIM.LF, finished: true, n: 10 },
+  { key: 'LF', name: '로히트 플라이 LF-45', note: '시멘트 + 플라이애시. 고객: 한솔플랜트 설비팀 (예시)', target: 45, tol: 4, limits: LIM.LF, finished: true, n: 13 },
+  { key: 'HB', name: '하이브리드본드 HB-45', note: '시멘트 + 고로슬래그 + 플라이애시. 고객: 미래전력 토목팀 (예시)', target: 45, tol: 3, limits: LIM.HB, finished: true, n: 10 },
+  { key: 'HB', name: '하이브리드본드 HB-60', note: '시멘트 + 고로슬래그 + 플라이애시, 교량 바닥판. 고객: 미래전력 토목팀 (예시)', target: 60, tol: 3, limits: LIM.HB, finished: true, n: 11 },
+  { key: 'HB', name: '하이브리드본드 HB-70', note: '시멘트 + 고로슬래그 + 플라이애시, 고성능. 고객: 미래전력 토목팀 (예시)', target: 70, tol: 3, limits: [{ name: '물', op: '<=', value: 185, must: true }], finished: false, n: 22 },
 ]
 
 interface Mix {
@@ -78,6 +94,19 @@ export function demoDb(): Db {
   const rand = makeRandom(2026)
   const projects: Project[] = []
   const runs: Run[] = []
+  const used = new Set<Mix>()
+  const okLimit = (def: Def, m: Mix) => def.limits.filter((l) => l.must).every((l) => (l.op === '>=' ? m.x[NAMES.indexOf(l.name)] >= l.value : m.x[NAMES.indexOf(l.name)] <= l.value))
+  const candsOf = (def: Def) => (mixes.get(def.key) ?? []).filter((m) => m.byAge.has(28) && okLimit(def, m) && !used.has(m)).map((m) => ({ m, d: Math.abs((m.byAge.get(28) as number) - def.target) }))
+  // 1) 끝난 프로젝트마다 허용 안의 배합을 하나씩 먼저 잡아 둔다(다른 프로젝트가 먼 점으로 써 버리지 않게)
+  const finale = new Map<Def, Mix>()
+  for (const def of DEFS) {
+    if (!def.finished) continue
+    const inside = candsOf(def).filter((c) => c.d <= def.tol).sort((a, b) => a.d - b.d)
+    if (inside.length > 0) {
+      finale.set(def, inside[0].m)
+      used.add(inside[0].m)
+    }
+  }
   for (const def of DEFS) {
     const all = mixes.get(def.key) ?? []
     // 변수: 입력 7개(설계 범위는 이 결합재 종류 전체의 2~98 백분위), 재령(측정 시점), 압축강도
@@ -98,17 +127,16 @@ export function demoDb(): Db {
     const project: Project = { id: newId('p'), name: def.name, note: def.note, variables, goals, initialRuns: 8, created: now(), updated: now() }
     projects.push(project)
 
-    // 배합 고르기: 입력 제한을 지키는 배합 중 28일 강도가 있는 것. 목표에서 먼 것부터 가까운 순으로 n개, 끝났으면 허용 안의 배합 하나로 마무리
-    const okLimit = (m: Mix) => def.limits.filter((l) => l.must).every((l) => (l.op === '>=' ? m.x[NAMES.indexOf(l.name)] >= l.value : m.x[NAMES.indexOf(l.name)] <= l.value))
-    const cands = all.filter((m) => m.byAge.has(28) && okLimit(m)).map((m) => ({ m, d: Math.abs((m.byAge.get(28) as number) - def.target) }))
-    const outside = cands.filter((c) => c.d > def.tol).sort((a, b) => b.d - a.d)
-    const inside = cands.filter((c) => c.d <= def.tol).sort((a, b) => a.d - b.d)
+    // 2) 목표에서 먼 것부터 가까운 순으로 n개(허용 밖에서만), 끝났으면 잡아 둔 배합으로 마무리
+    const outside = candsOf(def).filter((c) => c.d > def.tol).sort((a, b) => b.d - a.d)
     const picked: Mix[] = []
     const n = Math.min(def.n, outside.length)
     for (let i = 0; i < n; i++) picked.push(outside[Math.round((i * (outside.length - 1)) / Math.max(1, n - 1))].m)
     // 실제 기록처럼 순서를 조금 흐트러뜨린다(대체로 가까워지지만 늘 그렇지는 않게)
     for (let i = 0; i + 1 < picked.length; i++) if (rand() < 0.35) [picked[i], picked[i + 1]] = [picked[i + 1], picked[i]]
-    if (def.finished && inside.length > 0) picked.push(inside[0].m)
+    for (const m of picked) used.add(m)
+    const last = finale.get(def)
+    if (last) picked.push(last)
 
     let order = 1
     const day0 = Date.parse('2026-03-02T09:00:00Z')

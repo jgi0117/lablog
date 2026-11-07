@@ -63,9 +63,9 @@ export interface Dataset {
   bounds: [number, number][]
 }
 
-export function buildDataset(p: Project, runs: Run[], minN = MIN_TRAIN): Dataset {
+export function buildDataset(p: Project, runs: Run[], minN = MIN_TRAIN, extras: Variable[] = []): Dataset {
   const done = runs.filter((r) => r.status === 'done')
-  const cand = [...inputsOf(p), ...levelsOf(p)]
+  const cand = [...inputsOf(p), ...levelsOf(p), ...extras]
   const features = cand.filter((v) => {
     const vals = done.map((r) => r.x[v.id]).filter((x): x is number => Number.isFinite(x))
     return vals.length >= minN && new Set(vals).size > 1
@@ -269,6 +269,10 @@ export interface Model {
   models: TargetModel[]
   skipped: { target: Variable; reason: string }[]
   seed: number
+  /** 프로젝트 표시 변수처럼 이 프로젝트에서는 고정해 두는 값 */
+  fixed: Record<ID, number>
+  /** 함께 학습한 프로젝트 수 */
+  pooledProjects: number
 }
 
 function r2Of(y: number[], pred: number[]): number {
@@ -309,16 +313,18 @@ function crossValidate(X: number[][], y: number[], kind: ModelKind, folds: numbe
   return pred
 }
 
-export function trainModel(p: Project, runs: Run[], opts: { seed?: number; folds?: number } = {}): Model {
+export function trainModel(p: Project, runs: Run[], opts: { seed?: number; folds?: number; extras?: Variable[]; fixed?: Record<ID, number>; pooledProjects?: number } = {}): Model {
   const seed = opts.seed ?? 7
   const folds = opts.folds ?? 5
-  const dataset = buildDataset(p, runs)
+  const fixed = opts.fixed ?? {}
+  const pooledProjects = opts.pooledProjects ?? 1
+  const dataset = buildDataset(p, runs, MIN_TRAIN, opts.extras ?? [])
   const models: TargetModel[] = []
   const skipped: Model['skipped'] = []
   const doneCount = runs.filter((r) => r.status === 'done').length
   if (dataset.features.length === 0) {
     for (const t of outputsOf(p)) skipped.push({ target: t, reason: doneCount < MIN_TRAIN ? `완료한 실험이 ${doneCount}건입니다. ${MIN_TRAIN}건부터 모델을 만듭니다` : '값이 달라지는 입력 조건이 없습니다' })
-    return { dataset, models, skipped, seed }
+    return { dataset, models, skipped, seed, fixed, pooledProjects }
   }
   for (const t of outputsOf(p)) {
     const ti = dataset.targets.findIndex((x) => x.id === t.id)
@@ -364,7 +370,7 @@ export function trainModel(p: Project, runs: Run[], opts: { seed?: number; folds
       cv_actual: y,
     })
   }
-  return { dataset, models, skipped, seed }
+  return { dataset, models, skipped, seed, fixed, pooledProjects }
 }
 
 export function describeFit(r2: number): string {
@@ -398,7 +404,7 @@ export function vectorOf(model: Model, values: Record<ID, number | null | undefi
   const outOfRange: Variable[] = []
   const missing: Variable[] = []
   const x = features.map((f, j) => {
-    const v = values[f.id]
+    const v = values[f.id] ?? model.fixed[f.id]
     if (v === null || v === undefined || !Number.isFinite(v)) {
       missing.push(f)
       return medians[j]
@@ -562,7 +568,7 @@ export function suggest(model: Model, p: Project, opts: SuggestOptions = {}): Su
   for (const b of active) if (b.at) fixedIdx.set(b.at.index, null)
   features.forEach((f, j) => {
     if (f.role === 'level') fixedIdx.set(j, null)
-    const v = opts.fixed?.[f.id]
+    const v = opts.fixed?.[f.id] ?? model.fixed[f.id]
     if (v !== undefined && Number.isFinite(v)) fixedIdx.set(j, v)
   })
   const lo = bounds.map((b) => b[0])

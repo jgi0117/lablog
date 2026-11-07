@@ -79,43 +79,45 @@ describe('핵심 흐름: 프로젝트 만들기 → 결과만 넣기', () => {
 })
 
 describe('예시 데이터', () => {
-  it('홈: 끝난 프로젝트 셋과 진행 중 하나. 끝난 프로젝트는 다음 실험을 만들지 않는다', async () => {
+  it('홈: 끝난 프로젝트 아홉과 진행 중 셋. 끝난 프로젝트는 다음 실험을 만들지 않는다', async () => {
     const user = userEvent.setup()
     replaceDb(demoDb())
     open('/')
-    expect(await screen.findAllByRole('heading', { level: 2 })).toHaveLength(4)
-    expect(screen.getAllByText('목표 달성 · 종료')).toHaveLength(3)
-    expect(screen.getAllByRole('link', { name: '결과 보기 →' })).toHaveLength(3)
-    await user.click(screen.getByRole('link', { name: '스탠다드믹스 SM-00' }))
+    expect(await screen.findAllByRole('heading', { level: 2 })).toHaveLength(12)
+    expect(screen.getAllByText('목표 달성 · 종료')).toHaveLength(9)
+    expect(screen.getAllByRole('link', { name: '결과 보기 →' })).toHaveLength(9)
+    await user.click(screen.getByRole('link', { name: '스탠다드믹스 SM-35' }))
     expect(await screen.findByText(/목표 달성\. 실험 \d+건으로 끝났습니다/)).toBeInTheDocument()
     await new Promise((r) => setTimeout(r, 300))
     expect(screen.queryByRole('heading', { name: /다음 실험 #/ })).not.toBeInTheDocument()
-    const sm = getDb().projects.find((x) => x.name.includes('SM-00'))!
+    const sm = getDb().projects.find((x) => x.name.includes('SM-35'))!
     expect(runsOf(getDb(), sm.id).filter((r) => r.status === 'planned')).toHaveLength(0)
   }, 30000)
 
-  it('진행 중 프로젝트를 열면 다음 실험이 자동으로 생기고, 시각화·모델 탭이 열린다', async () => {
+  it('진행 중 프로젝트를 열면 모아 학습한 모델이 다음 실험을 제안하고, 시각화·모델 탭이 열린다', async () => {
     const user = userEvent.setup()
     replaceDb(demoDb())
-    const hb = getDb().projects.find((x) => x.name.includes('HB-50'))!
+    const hb = getDb().projects.find((x) => x.name.includes('HB-70'))!
     const n = runsOf(getDb(), hb.id).length
     open(`/p/${hb.id}`)
     expect(await screen.findByRole('heading', { name: new RegExp(`다음 실험 #${n + 1}`) }, { timeout: 15000 })).toBeInTheDocument()
     expect(screen.getByText(/아직 목표를 만족한 조건이 없습니다/)).toBeInTheDocument()
+    expect(screen.getByText('모델 제안')).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: '시각화' }))
     expect(await screen.findByRole('heading', { name: /목표에 가까워지고 있는가/ })).toBeInTheDocument()
     expect(screen.getByRole('img', { name: /실험 순서에 따른 압축강도/ })).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: '모델' }))
     expect(await screen.findByRole('heading', { name: '무엇으로 학습했고, 얼마나 믿을 만한가' })).toBeInTheDocument()
-    expect((await screen.findAllByText(/R²/)).length).toBeGreaterThan(0)
+    expect(await screen.findByText(/같은 변수를 가진 프로젝트 11개/)).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '목표를 만족할 가능성이 큰 조건' })).toBeInTheDocument()
   }, 40000)
 
   it('데이터 화면에서 CSV를 내려받고 값을 고칠 수 있다', async () => {
     replaceDb(demoDb())
-    const p = getDb().projects.find((x) => x.name.includes('HB-50'))!
+    const p = getDb().projects.find((x) => x.name.includes('HB-70'))!
     open(`/p/${p.id}/data`)
     expect(await screen.findByRole('button', { name: 'CSV 내려받기' })).toBeInTheDocument()
-    expect(screen.getAllByRole('row').length).toBeGreaterThan(20)
+    expect(screen.getAllByRole('row').length).toBeGreaterThan(10)
     const user = userEvent.setup()
     const last = runsOf(getDb(), p.id).at(-1)!
     const cell = screen.getByLabelText(`#${last.order} 압축강도`)
